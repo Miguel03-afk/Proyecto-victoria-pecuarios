@@ -137,11 +137,11 @@ router.put("/:id", verificarToken, soloAdmin, async (req, res) => {
     "destacado","activo","categoria_id","requiere_formula",
   ];
 
-  const updates = Object.keys(campos)
-    .filter((k) => permitidos.includes(k))
+const updates = Object.keys(campos)
+    .filter((k) => permitidos.includes(k) && campos[k] !== "" && campos[k] !== null)
     .map((k) => `${k} = ?`);
-  const values = Object.keys(campos)
-    .filter((k) => permitidos.includes(k))
+const values = Object.keys(campos)
+    .filter((k) => permitidos.includes(k) && campos[k] !== "" && campos[k] !== null)
     .map((k) => campos[k]);
 
   if (updates.length === 0) return res.status(400).json({ error: "No hay campos válidos para actualizar." });
@@ -149,9 +149,10 @@ router.put("/:id", verificarToken, soloAdmin, async (req, res) => {
   try {
     await db.query(`UPDATE productos SET ${updates.join(", ")} WHERE id = ?`, [...values, req.params.id]);
     res.json({ mensaje: "Producto actualizado." });
-  } catch (err) {
+} catch (err) {
+    console.error("Error actualizar producto:", err.message, err.sqlMessage);
     res.status(500).json({ error: "Error al actualizar el producto." });
-  }
+}
 });
 
 // DELETE /api/productos/:id  — desactivar (soft delete)
