@@ -6,6 +6,9 @@ import productosRoutes  from "./routes/productos.routes.js";
 import categoriasRoutes from "./routes/categorias.routes.js";
 import adminRoutes      from "./routes/admin.routes.js";
 import metasRoutes      from "./routes/metas.routes.js";
+import reportesRoutes from './routes/reportes.routes.js';
+
+
 
 dotenv.config();
 
@@ -21,6 +24,7 @@ app.use("/api/productos",  productosRoutes);
 app.use("/api/categorias", categoriasRoutes);
 app.use("/api/admin",      adminRoutes);
 app.use("/api/metas",      metasRoutes);
+app.use('/api/reportes', reportesRoutes);
 
 app.get("/", (req, res) => {
   res.json({ mensaje: "API Victoria Pecuarios activa", version: "2.0" });

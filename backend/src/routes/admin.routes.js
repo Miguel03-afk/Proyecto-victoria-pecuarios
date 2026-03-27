@@ -6,39 +6,49 @@ const router = Router();
 router.use(verificarToken, soloAdmin);
  
 // ── STATS DASHBOARD ──────────────────────────────────────────
-router.get("/stats", async (req, res) => {
+router.get("/productos", async (req, res) => {
   try {
-    const [[{ total_usuarios }]] = await db.query("SELECT COUNT(*) AS total_usuarios FROM usuarios WHERE rol='cliente'");
-    const [[{ total_productos }]] = await db.query("SELECT COUNT(*) AS total_productos FROM productos WHERE activo=1");
-    const [[{ total_ordenes }]]   = await db.query("SELECT COUNT(*) AS total_ordenes FROM ordenes");
-    const [[{ ingresos }]]        = await db.query("SELECT COALESCE(SUM(total),0) AS ingresos FROM ordenes WHERE estado != 'cancelada'");
-    const [[{ stock_bajo }]]      = await db.query("SELECT COUNT(*) AS stock_bajo FROM productos WHERE stock <= stock_minimo AND activo=1");
- 
-    // Ventas por mes (últimos 6 meses)
-    const [ventas_mes] = await db.query(`
-      SELECT DATE_FORMAT(created_at,'%Y-%m') AS mes,
-             COUNT(*) AS ordenes,
-             COALESCE(SUM(total),0) AS total
-      FROM ordenes
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-        AND estado != 'cancelada'
-      GROUP BY mes ORDER BY mes ASC`);
- 
-    const [ordenes_recientes] = await db.query(`
-      SELECT o.id, o.codigo, o.total, o.estado, o.created_at,
-             CONCAT(u.nombre,' ',u.apellido) AS cliente
-      FROM ordenes o JOIN usuarios u ON o.usuario_id=u.id
-      ORDER BY o.created_at DESC LIMIT 6`);
- 
-    const [productos_stock_bajo] = await db.query(`
-      SELECT id, nombre, stock, stock_minimo FROM productos
-      WHERE stock <= stock_minimo AND activo=1 ORDER BY stock ASC LIMIT 5`);
- 
-    res.json({ total_usuarios, total_productos, total_ordenes, ingresos,
-               stock_bajo, ventas_mes, ordenes_recientes, productos_stock_bajo });
+    const { buscar = "", pagina = 1, limite = 10, categoria_id = "" } = req.query;
+    const offset = (pagina - 1) * limite;
+
+    let q = `
+      SELECT p.id, p.nombre, p.slug, p.precio, p.precio_antes, p.stock,
+             p.stock_minimo, p.activo, p.destacado, p.imagen_url, p.marca,
+             c.nombre AS categoria, c.id AS categoria_id
+      FROM productos p
+      JOIN categorias c ON p.categoria_id = c.id
+      WHERE 1=1`;
+    const params = [];
+
+    if (buscar) {
+      q += " AND p.nombre LIKE ?";
+      params.push(`%${buscar}%`);
+    }
+    if (categoria_id) {
+      q += " AND p.categoria_id = ?";
+      params.push(Number(categoria_id));
+    }
+
+    // Total con filtros aplicados
+    const countQ = `SELECT COUNT(*) AS total FROM productos p
+                    JOIN categorias c ON p.categoria_id = c.id
+                    WHERE 1=1
+                    ${buscar ? " AND p.nombre LIKE ?" : ""}
+                    ${categoria_id ? " AND p.categoria_id = ?" : ""}`;
+    const countParams = [
+      ...(buscar ? [`%${buscar}%`] : []),
+      ...(categoria_id ? [Number(categoria_id)] : []),
+    ];
+
+    q += " ORDER BY p.id DESC LIMIT ? OFFSET ?";
+    params.push(Number(limite), Number(offset));
+
+    const [rows] = await db.query(q, params);
+    const [[{ total }]] = await db.query(countQ, countParams);
+
+    res.json({ productos: rows, total });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error al obtener estadísticas." });
+    res.status(500).json({ error: "Error." });
   }
 });
  
@@ -189,39 +199,81 @@ router.post("/facturas", async (req, res) => {
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
+
+    const IVA_PCT = 19; // ← NUEVO
+
     let subtotal = 0;
     for (const item of items) {
-      const [[prod]] = await conn.query("SELECT precio, stock FROM productos WHERE id=?", [item.producto_id]);
+      // ↓ CAMBIADO: también traemos precio_costo
+      const [[prod]] = await conn.query(
+        "SELECT precio, precio_costo, stock FROM productos WHERE id=?",
+        [item.producto_id]
+      );
       if (!prod) throw new Error(`Producto ${item.producto_id} no encontrado.`);
       if (prod.stock < item.cantidad) throw new Error(`Stock insuficiente para producto ${item.producto_id}.`);
-      item._precio = prod.precio;
+      item._precio      = prod.precio;
+      item._precio_costo = prod.precio_costo; // ← NUEVO
       subtotal += prod.precio * item.cantidad;
     }
+
     const total = subtotal;
+
+    // ── Calcular totales de IVA y ganancia ── NUEVO
+    let iva_total      = 0;
+    let ganancia_total = 0;
+    for (const item of items) {
+      iva_total      += +(item._precio * item.cantidad * IVA_PCT / 100).toFixed(2);
+      ganancia_total += +((item._precio - item._precio_costo) * item.cantidad).toFixed(2);
+    }
+
     const anio = new Date().getFullYear();
-    const [[{ ultimo }]] = await conn.query("SELECT COUNT(*) AS ultimo FROM ordenes WHERE YEAR(created_at)=?", [anio]);
-    const codigo = `VIC-${anio}-${String(ultimo + 1).padStart(5,"0")}`;
+    const [[{ ultimo }]] = await conn.query(
+      "SELECT COUNT(*) AS ultimo FROM ordenes WHERE YEAR(created_at)=?", [anio]
+    );
+    const codigo = `VIC-${anio}-${String(ultimo + 1).padStart(5, "0")}`;
+
+    // ↓ CAMBIADO: se agregan iva_total y ganancia_total al INSERT
     const [ord] = await conn.query(
-      `INSERT INTO ordenes (usuario_id,codigo,estado,subtotal,descuento,total,metodo_pago,
-        direccion_entrega,ciudad_entrega,notas)
-       VALUES (?,?,'pagada',?,0,?,?,?,?,?)`,
-      [usuario_id, codigo, subtotal, total, metodo_pago||"efectivo",
-       direccion_entrega||null, ciudad_entrega||null, notas||null]
+      `INSERT INTO ordenes
+         (usuario_id, codigo, estado, subtotal, descuento, total,
+          iva_total, ganancia_total,
+          metodo_pago, direccion_entrega, ciudad_entrega, notas)
+       VALUES (?, ?, 'pagada', ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
+      [usuario_id, codigo, subtotal, total,
+       iva_total, ganancia_total,
+       metodo_pago || "efectivo",
+       direccion_entrega || null, ciudad_entrega || null, notas || null]
     );
     const orden_id = ord.insertId;
+
+    // ↓ CAMBIADO: INSERT detalle_orden ahora incluye precio_costo, iva y ganancia
     for (const item of items) {
+      const item_subtotal = +(item._precio * item.cantidad).toFixed(2);
+      const iva_valor     = +(item_subtotal * IVA_PCT / 100).toFixed(2);
+      const ganancia      = +((item._precio - item._precio_costo) * item.cantidad).toFixed(2);
+
       await conn.query(
-        `INSERT INTO detalle_orden (orden_id,producto_id,nombre_snap,cantidad,precio_unit,subtotal)
-         SELECT ?,id,nombre,?,?,? FROM productos WHERE id=?`,
-        [orden_id, item.cantidad, item._precio, item._precio * item.cantidad, item.producto_id]
+        `INSERT INTO detalle_orden
+           (orden_id, producto_id, nombre_snap, cantidad,
+            precio_unit, precio_costo, subtotal,
+            iva_porcentaje, iva_valor, ganancia)
+         SELECT ?, id, nombre, ?, ?, ?, ?, ?, ?, ?
+         FROM productos WHERE id=?`,
+        [orden_id, item.cantidad,
+         item._precio, item._precio_costo, item_subtotal,
+         IVA_PCT, iva_valor, ganancia,
+         item.producto_id]
       );
     }
+
     await conn.commit();
     res.status(201).json({ mensaje: "Factura creada.", orden_id, codigo });
   } catch (err) {
     await conn.rollback();
     res.status(400).json({ error: err.message });
   } finally { conn.release(); }
+
+  
 });
- 
+
 export default router;
