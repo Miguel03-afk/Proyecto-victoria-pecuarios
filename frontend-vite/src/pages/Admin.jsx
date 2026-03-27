@@ -7,6 +7,8 @@ import {
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Objetivos from "../components/Objetivos.jsx";
+import ReporteVentas from "./admin/ReporteVentas.jsx";
+import ReporteSalidas from "./admin/ReporteSalidas.jsx";
 
 // ─── Design tokens premium ───────────────────────────────────
 const T = {
@@ -527,109 +529,133 @@ function Usuarios() {
 
 // ─── SECCIÓN: Productos ───────────────────────────────────────
 function Productos() {
-  const [lista,setLista]         = useState([]);
-  const [total,setTotal]         = useState(0);
-  const [pagina,setPagina]       = useState(1);
-  const [buscar,setBuscar]       = useState("");
-  const [cargando,setCargando]   = useState(true);
-  const [modal,setModal]         = useState(false);
-  const [editando,setEditando]   = useState(null);
-  const [categorias,setCategorias] = useState([]);
-  const [msg,setMsg]             = useState({});
+  const [lista, setLista]           = useState([]);
+  const [total, setTotal]           = useState(0);
+  const [pagina, setPagina]         = useState(1);
+  const [buscar, setBuscar]         = useState("");
+  const [categoriaFiltro, setCategoriaFiltro] = useState("");
+  const [cargando, setCargando]     = useState(true);
+  const [modal, setModal]           = useState(false);
+  const [editando, setEditando]     = useState(null);
+  const [categorias, setCategorias] = useState([]);
+  const [msg, setMsg]               = useState({});
 
   const FORM_VACIO = {
-    nombre:"",slug:"",descripcion:"",descripcion_corta:"",categoria_id:"",
-    precio:"",precio_antes:"",stock:"",stock_minimo:"5",imagen_url:"",
-    marca:"",unidad:"",especie:"",destacado:false,activo:true,requiere_formula:false
+    nombre:"", slug:"", descripcion:"", descripcion_corta:"", categoria_id:"",
+    precio:"", precio_antes:"", stock:"", stock_minimo:"5", imagen_url:"",
+    marca:"", unidad:"", especie:"", destacado:false, activo:true, requiere_formula:false
   };
-  const [form,setForm] = useState(FORM_VACIO);
+  const [form, setForm] = useState(FORM_VACIO);
 
-  const cargar = useCallback(async()=>{
+  const cargar = useCallback(async () => {
     setCargando(true);
-    try{
-      const [rP,rC] = await Promise.all([
-        api.get(`/admin/productos?pagina=${pagina}&buscar=${buscar}&limite=12`),
+    try {
+      const [rP, rC] = await Promise.all([
+        api.get(`/admin/productos?pagina=${pagina}&buscar=${buscar}&limite=10&categoria_id=${categoriaFiltro}`),
         api.get("/categorias"),
       ]);
-      setLista(rP.data.productos); setTotal(rP.data.total);
+      setLista(rP.data.productos);
+      setTotal(rP.data.total);
       setCategorias(rC.data);
-    }finally{setCargando(false);}
-  },[pagina,buscar]);
+    } finally {
+      setCargando(false);
+    }
+  }, [pagina, buscar, categoriaFiltro]);
 
-  useEffect(()=>{cargar();},[cargar]);
+  useEffect(() => { cargar(); }, [cargar]);
 
-  const showMsg = (texto,tipo="ok")=>{ setMsg({texto,tipo}); setTimeout(()=>setMsg({}),3000); };
+  const showMsg = (texto, tipo="ok") => { setMsg({texto,tipo}); setTimeout(()=>setMsg({}),3000); };
 
-  const abrirNuevo = ()=>{ setForm(FORM_VACIO); setEditando(null); setModal(true); };
+  const abrirNuevo = () => { setForm(FORM_VACIO); setEditando(null); setModal(true); };
 
-  const abrirEditar = (p)=>{
+  const abrirEditar = (p) => {
     setForm({
-      nombre:p.nombre,slug:p.slug||"",descripcion:p.descripcion||"",
-      descripcion_corta:p.descripcion_corta||"",categoria_id:p.categoria_id||"",
-      precio:p.precio,precio_antes:p.precio_antes||"",stock:p.stock,
-      stock_minimo:p.stock_minimo||5,imagen_url:p.imagen_url||"",
-      marca:p.marca||"",unidad:p.unidad||"",especie:p.especie||"",
-      destacado:!!p.destacado,activo:p.activo!==0,requiere_formula:!!p.requiere_formula
+      nombre:p.nombre, slug:p.slug||"", descripcion:p.descripcion||"",
+      descripcion_corta:p.descripcion_corta||"", categoria_id:p.categoria_id||"",
+      precio:p.precio, precio_antes:p.precio_antes||"", stock:p.stock,
+      stock_minimo:p.stock_minimo||5, imagen_url:p.imagen_url||"",
+      marca:p.marca||"", unidad:p.unidad||"", especie:p.especie||"",
+      destacado:!!p.destacado, activo:p.activo!==0, requiere_formula:!!p.requiere_formula
     });
     setEditando(p); setModal(true);
   };
 
-const guardar = async()=>{
-    try{
+  const guardar = async () => {
+    try {
       const payload = {};
-      if (form.nombre)            payload.nombre = form.nombre;
-      if (form.slug)              payload.slug = form.slug;
-      if (form.descripcion)       payload.descripcion = form.descripcion;
-      if (form.descripcion_corta) payload.descripcion_corta = form.descripcion_corta;
-      if (form.categoria_id)      payload.categoria_id = Number(form.categoria_id);
-      if (form.precio !== "")     payload.precio = Number(form.precio);
+      if (form.nombre)              payload.nombre = form.nombre;
+      if (form.slug)                payload.slug = form.slug;
+      if (form.descripcion)         payload.descripcion = form.descripcion;
+      if (form.descripcion_corta)   payload.descripcion_corta = form.descripcion_corta;
+      if (form.categoria_id)        payload.categoria_id = Number(form.categoria_id);
+      if (form.precio !== "")       payload.precio = Number(form.precio);
       if (form.precio_antes !== "") payload.precio_antes = Number(form.precio_antes);
-      if (form.stock !== "")      payload.stock = Number(form.stock);
+      if (form.stock !== "")        payload.stock = Number(form.stock);
       if (form.stock_minimo !== "") payload.stock_minimo = Number(form.stock_minimo);
-      if (form.imagen_url)        payload.imagen_url = form.imagen_url;
-      if (form.marca)             payload.marca = form.marca;
-      if (form.unidad)            payload.unidad = form.unidad;
-      if (form.especie)           payload.especie = form.especie;
-      payload.destacado         = form.destacado ? 1 : 0;
-      payload.activo            = form.activo ? 1 : 0;
-      payload.requiere_formula  = form.requiere_formula ? 1 : 0;
+      if (form.imagen_url)          payload.imagen_url = form.imagen_url;
+      if (form.marca)               payload.marca = form.marca;
+      if (form.unidad)              payload.unidad = form.unidad;
+      if (form.especie)             payload.especie = form.especie;
+      payload.destacado        = form.destacado ? 1 : 0;
+      payload.activo           = form.activo ? 1 : 0;
+      payload.requiere_formula = form.requiere_formula ? 1 : 0;
       if (!payload.slug && payload.nombre) {
         payload.slug = payload.nombre.toLowerCase()
           .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
           .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
       }
-      if(editando){
-        await api.put(`/productos/${editando.id}`,payload);
+      if (editando) {
+        await api.put(`/productos/${editando.id}`, payload);
         showMsg("Producto actualizado correctamente.");
       } else {
-        await api.post("/productos",payload);
+        await api.post("/productos", payload);
         showMsg("Producto creado correctamente.");
       }
       setModal(false); cargar();
-    }catch(err){
-      showMsg(err.response?.data?.error||"Error al guardar.","err");
+    } catch(err) {
+      showMsg(err.response?.data?.error || "Error al guardar.", "err");
     }
   };
 
-  const toggleActivo = async(p)=>{
-    await api.put(`/productos/${p.id}`,{activo:p.activo?0:1}); cargar();
+  const toggleActivo = async (p) => {
+    await api.put(`/productos/${p.id}`, {activo: p.activo ? 0 : 1}); cargar();
   };
 
-  const ff = k => e => setForm({...form,[k]:e.target.value});
-  const fc = k => e => setForm({...form,[k]:e.target.checked});
+  const ff = k => e => setForm({...form, [k]: e.target.value});
+  const fc = k => e => setForm({...form, [k]: e.target.checked});
 
   return (
     <div className="space-y-5">
       <Msg texto={msg.texto} tipo={msg.tipo} />
+
+      {/* Barra de filtros */}
       <div className="flex gap-3 items-center justify-between flex-wrap">
-        <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{color:T.textMuted}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-          </svg>
-          <input value={buscar} placeholder="Buscar producto..."
-            onChange={e=>{setBuscar(e.target.value);setPagina(1);}}
-            className="pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none w-64 transition-all"
-            style={{border:`1.5px solid ${T.border}`,background:T.surface,color:T.text}} />
+        <div className="flex gap-3 flex-wrap items-center">
+
+          {/* Buscador */}
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
+              style={{color:T.textMuted}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input value={buscar} placeholder="Buscar producto..."
+              onChange={e => { setBuscar(e.target.value); setPagina(1); }}
+              className="pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none w-56 transition-all"
+              style={{border:`1.5px solid ${T.border}`, background:T.surface, color:T.text}} />
+          </div>
+
+          {/* Filtro por categoría */}
+          <select value={categoriaFiltro}
+            onChange={e => { setCategoriaFiltro(e.target.value); setPagina(1); }}
+            className="px-3.5 py-2.5 text-sm rounded-xl outline-none transition-all"
+            style={{border:`1.5px solid ${T.border}`, background:T.surface, color:T.text}}>
+            <option value="">Todas las categorías</option>
+            {categorias.map(c => (
+              <option key={c.id} value={c.id}>{c.nombre}</option>
+            ))}
+          </select>
+
         </div>
         <Btn onClick={abrirNuevo} size="md">+ Nuevo producto</Btn>
       </div>
@@ -641,9 +667,9 @@ const guardar = async()=>{
             <tbody>
               {cargando
                 ? <tr><td colSpan={7}><Spinner /></td></tr>
-                : lista.map((p,i)=>(
+                : lista.map((p, i) => (
                   <tr key={p.id} className="transition-colors"
-                    style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?"#fff":T.surface}}
+                    style={{borderBottom:`1px solid ${T.border}`, background:i%2===0?"#fff":T.surface}}
                     onMouseEnter={e=>e.currentTarget.style.background=T.goldBg}
                     onMouseLeave={e=>e.currentTarget.style.background=i%2===0?"#fff":T.surface}>
                     <td className="py-3.5 px-4">
@@ -661,7 +687,7 @@ const guardar = async()=>{
                     <td className="py-3.5 px-4 text-xs" style={{color:T.textMuted}}>{p.categoria}</td>
                     <td className="py-3.5 px-4">
                       <p className="text-xs font-bold" style={{color:T.green}}>{fmt(p.precio)}</p>
-                      {p.precio_antes&&<p className="text-xs line-through" style={{color:T.textMuted}}>{fmt(p.precio_antes)}</p>}
+                      {p.precio_antes && <p className="text-xs line-through" style={{color:T.textMuted}}>{fmt(p.precio_antes)}</p>}
                     </td>
                     <td className="py-3.5 px-4">
                       <span className={`text-xs font-bold ${p.stock<=p.stock_minimo?"text-red-600":"text-gray-700"}`}>
@@ -687,11 +713,11 @@ const guardar = async()=>{
           </table>
         </div>
         <div className="px-6 py-4">
-          <Paginacion pagina={pagina} total={total} limite={12} onChange={setPagina} />
+          <Paginacion pagina={pagina} total={total} limite={10} onChange={p=>{setPagina(p);}} />
         </div>
       </Card>
 
-      {/* Modal crear / editar producto */}
+      {/* Modal crear / editar — sin cambios */}
       <Modal abierto={modal} onClose={()=>setModal(false)}
         titulo={editando?"Editar producto":"Nuevo producto"} ancho="max-w-2xl">
         <div className="space-y-4">
@@ -705,14 +731,14 @@ const guardar = async()=>{
             <textarea value={form.descripcion_corta} onChange={ff("descripcion_corta")} rows={2}
               placeholder="Resumen para la tarjeta de producto..."
               className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none resize-none transition-all"
-              style={{border:`1.5px solid ${T.border}`,background:"#fafaf7",color:T.text}} />
+              style={{border:`1.5px solid ${T.border}`, background:"#fafaf7", color:T.text}} />
           </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{color:T.textMuted}}>Descripción completa</label>
             <textarea value={form.descripcion} onChange={ff("descripcion")} rows={3}
               placeholder="Descripción detallada del producto..."
               className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none resize-none transition-all"
-              style={{border:`1.5px solid ${T.border}`,background:"#fafaf7",color:T.text}} />
+              style={{border:`1.5px solid ${T.border}`, background:"#fafaf7", color:T.text}} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Select label="Categoría *" value={form.categoria_id} onChange={ff("categoria_id")}>
@@ -734,17 +760,16 @@ const guardar = async()=>{
             <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{color:T.textMuted}}>Especie (separadas por coma)</label>
             <input value={form.especie} onChange={ff("especie")} placeholder="ej: perros,gatos"
               className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none"
-              style={{border:`1.5px solid ${T.border}`,background:"#fafaf7",color:T.text}} />
+              style={{border:`1.5px solid ${T.border}`, background:"#fafaf7", color:T.text}} />
           </div>
           <div className="flex gap-6 pt-1">
             {[
-              {key:"activo",label:"Producto activo"},
-              {key:"destacado",label:"Destacado ★"},
-              {key:"requiere_formula",label:"Requiere fórmula"},
+              {key:"activo", label:"Producto activo"},
+              {key:"destacado", label:"Destacado ★"},
+              {key:"requiere_formula", label:"Requiere fórmula"},
             ].map(({key,label})=>(
               <label key={key} className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={!!form[key]} onChange={fc(key)}
-                  className="rounded accent-green-700" />
+                <input type="checkbox" checked={!!form[key]} onChange={fc(key)} className="rounded accent-green-700" />
                 <span className="text-sm" style={{color:T.text}}>{label}</span>
               </label>
             ))}
@@ -986,12 +1011,16 @@ const NAV = [
   {id:"ordenes",  label:"Órdenes",    icono:"🛒"},
   {id:"factura",  label:"Nueva venta",icono:"🧾"},
   {id:"objetivos",label:"Objetivos",  icono:"🎯"},
+  {id:"reporte-ventas",   label:"Reporte ventas",  icono:"📊"},
+  {id:"reporte-salidas",  label:"Salidas stock",   icono:"📉"}, 
 ];
 
 const TITULOS = {
   dashboard:"Dashboard", usuarios:"Gestión de usuarios",
   productos:"Gestión de productos", ordenes:"Órdenes",
   factura:"Nueva venta / Factura", objetivos:"Objetivos y metas",
+  "reporte-ventas":  "Reporte de Ventas", 
+  "reporte-salidas": "Salidas de Stock", 
 };
 
 export default function Admin() {
@@ -1009,6 +1038,8 @@ export default function Admin() {
     if(seccion==="ordenes")   return <Ordenes />;
     if(seccion==="factura")   return <Factura />;
     if(seccion==="objetivos") return <Objetivos />;
+    if(seccion==="reporte-ventas")  return <ReporteVentas />; 
+    if(seccion==="reporte-salidas") return <ReporteSalidas />; 
   };
 
   return (
