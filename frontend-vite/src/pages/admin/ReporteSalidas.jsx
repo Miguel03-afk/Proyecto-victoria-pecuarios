@@ -1,14 +1,13 @@
-// frontend-vite/src/pages/admin/ReporteSalidas.jsx
+// src/pages/admin/ReporteSalidas.jsx
 import { useState } from 'react';
 import api from '../../services/api';
+import { T, shadow, font, fmt, fdoc, movimientoStyle } from '../../styles/admin.tokens';
 
-const TIPOS = ['todos', 'venta', 'compra', 'ajuste_manual', 'devolucion'];
+const TIPOS = ['todos','venta','compra','ajuste_manual','devolucion'];
 
 export default function ReporteSalidas() {
-  const [filtros, setFiltros] = useState({
-    fecha_inicio: '', fecha_fin: '', tipo_movimiento: 'todos'
-  });
-  const [datos, setDatos] = useState(null);
+  const [filtros, setFiltros]   = useState({ fecha_inicio:'', fecha_fin:'', tipo_movimiento:'todos' });
+  const [datos, setDatos]       = useState(null);
   const [cargando, setCargando] = useState(false);
 
   const buscar = async () => {
@@ -18,51 +17,45 @@ export default function ReporteSalidas() {
       if (filtros.fecha_inicio) params.append('fecha_inicio', filtros.fecha_inicio);
       if (filtros.fecha_fin)    params.append('fecha_fin', filtros.fecha_fin);
       if (filtros.tipo_movimiento !== 'todos') params.append('tipo_movimiento', filtros.tipo_movimiento);
-
       const { data } = await api.get(`/reportes/stock-salidas?${params}`);
       setDatos(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setCargando(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setCargando(false); }
   };
 
-  const colorTipo = (tipo) => ({
-    venta:         'bg-red-100 text-red-700',
-    compra:        'bg-green-100 text-green-700',
-    ajuste_manual: 'bg-yellow-100 text-yellow-700',
-    devolucion:    'bg-blue-100 text-blue-700',
-  }[tipo] || 'bg-gray-100 text-gray-700');
-
   return (
-    <div className="p-6 space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Reporte de Salidas de Stock</h2>
+    <div className="space-y-6">
+      <h2 className="text-base font-bold" style={{ color:T.text, fontFamily:font.display }}>Salidas de stock</h2>
 
       {/* Filtros */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap gap-4 items-end">
+      <div className="rounded-2xl p-4 flex flex-wrap gap-4 items-end"
+        style={{ background:T.surface, border:`1px solid ${T.border}`, boxShadow:shadow.sm }}>
+        {[
+          { label:'Fecha inicio', key:'fecha_inicio', type:'date' },
+          { label:'Fecha fin',    key:'fecha_fin',    type:'date' },
+        ].map(({ label, key, type }) => (
+          <div key={key}>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>{label}</label>
+            <input type={type} value={filtros[key]}
+              onChange={e => setFiltros(f => ({ ...f, [key]: e.target.value }))}
+              className="rounded-xl px-3 py-2 text-sm outline-none"
+              style={{ border:`1.5px solid ${T.border}`, background:T.surfaceAlt, color:T.text }}
+              onFocus={e => e.target.style.borderColor = T.brand}
+              onBlur={e => e.target.style.borderColor = T.border} />
+          </div>
+        ))}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Fecha inicio</label>
-          <input type="date" value={filtros.fecha_inicio}
-            onChange={e => setFiltros(f => ({ ...f, fecha_inicio: e.target.value }))}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Fecha fin</label>
-          <input type="date" value={filtros.fecha_fin}
-            onChange={e => setFiltros(f => ({ ...f, fecha_fin: e.target.value }))}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo movimiento</label>
+          <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>Tipo movimiento</label>
           <select value={filtros.tipo_movimiento}
             onChange={e => setFiltros(f => ({ ...f, tipo_movimiento: e.target.value }))}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 outline-none">
+            className="rounded-xl px-3 py-2 text-sm outline-none"
+            style={{ border:`1.5px solid ${T.border}`, background:T.surfaceAlt, color:T.text }}>
             {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <button onClick={buscar}
-          className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors">
+          className="px-5 py-2 rounded-xl text-sm font-semibold"
+          style={{ background:T.brand, color:'#fff' }}>
           {cargando ? 'Buscando...' : 'Buscar'}
         </button>
       </div>
@@ -71,49 +64,65 @@ export default function ReporteSalidas() {
         <>
           {/* Resumen por tipo */}
           <div className="flex flex-wrap gap-3">
-            {datos.resumen.map(r => (
-              <div key={r.tipo_movimiento}
-                className={`px-4 py-2 rounded-xl border text-sm font-medium ${colorTipo(r.tipo_movimiento)}`}>
-                {r.tipo_movimiento}: {r.total_movimientos} movs · {r.total_unidades} uds
-              </div>
-            ))}
+            {datos.resumen.map(r => {
+              const s = movimientoStyle(r.tipo_movimiento);
+              return (
+                <div key={r.tipo_movimiento} className="px-4 py-2.5 rounded-xl text-xs font-semibold"
+                  style={{ background:s.bg, color:s.text, border:`1px solid ${s.border}` }}>
+                  <span className="capitalize">{r.tipo_movimiento}</span>
+                  <span className="mx-1.5 opacity-50">·</span>
+                  {r.total_movimientos} movs
+                  <span className="mx-1.5 opacity-50">·</span>
+                  {r.total_unidades} uds
+                </div>
+              );
+            })}
           </div>
 
           {/* Tabla */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background:T.surface, border:`1px solid ${T.border}`, boxShadow:shadow.sm }}>
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  {['Producto','Tipo','Stock ant.','Cantidad','Stock nuevo','Referencia','Usuario','Fecha'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">{h}</th>
+              <thead>
+                <tr style={{ borderBottom:`1px solid ${T.border}`, background:T.surfaceAlt }}>
+                  {['Producto','Tipo','Stock ant.','Movimiento','Stock nuevo','Referencia','Usuario','Fecha'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
+                      style={{ color:T.textTer }}>{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {datos.movimientos.map(m => (
-                  <tr key={m.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-900">{m.nombre_snap}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorTipo(m.tipo_movimiento)}`}>
-                        {m.tipo_movimiento}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">{m.stock_anterior}</td>
-                    <td className={`px-4 py-3 font-bold ${m.tipo_movimiento === 'venta' ? 'text-red-600' : 'text-green-600'}`}>
-                      {m.tipo_movimiento === 'venta' ? '-' : '+'}{m.cantidad}
-                    </td>
-                    <td className="px-4 py-3">{m.stock_nuevo}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-gray-400">{m.referencia_id || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{m.usuario || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">
-                      {new Date(m.fecha).toLocaleDateString('es-CO')}
-                    </td>
-                  </tr>
-                ))}
+              <tbody>
+                {datos.movimientos.map((m, i) => {
+                  const s = movimientoStyle(m.tipo_movimiento);
+                  return (
+                    <tr key={m.id} className="transition-colors"
+                      style={{ borderBottom:`1px solid ${T.borderSub}`, background: i%2===0 ? T.surface : T.surfaceAlt }}
+                      onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
+                      onMouseLeave={e => e.currentTarget.style.background = i%2===0 ? T.surface : T.surfaceAlt}>
+                      <td className="px-4 py-3 text-xs font-medium" style={{ color:T.text }}>{m.nombre_snap}</td>
+                      <td className="px-4 py-3">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold capitalize"
+                          style={{ background:s.bg, color:s.text, border:`1px solid ${s.border}` }}>
+                          {m.tipo_movimiento}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs tabular-nums" style={{ color:T.textTer }}>{m.stock_anterior}</td>
+                      <td className="px-4 py-3 text-xs font-bold tabular-nums" style={{ color:s.text }}>
+                        {s.signo}{m.cantidad}
+                      </td>
+                      <td className="px-4 py-3 text-xs tabular-nums font-semibold" style={{ color:T.text }}>{m.stock_nuevo}</td>
+                      <td className="px-4 py-3 font-mono text-xs" style={{ color:T.textMuted }}>{m.referencia_id || '—'}</td>
+                      <td className="px-4 py-3 text-xs" style={{ color:T.textSec }}>{m.usuario || '—'}</td>
+                      <td className="px-4 py-3 text-xs" style={{ color:T.textMuted }}>{fdoc(m.fecha)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             {datos.movimientos.length === 0 && (
-              <p className="text-center py-8 text-gray-400">No hay movimientos en el período seleccionado</p>
+              <p className="text-center py-10 text-sm" style={{ color:T.textMuted }}>
+                No hay movimientos en el período seleccionado
+              </p>
             )}
           </div>
         </>

@@ -1,168 +1,152 @@
+// src/pages/Admin.jsx
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, BarChart, Bar, Legend
-} from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Objetivos from "../components/Objetivos.jsx";
 import ReporteVentas from "./admin/ReporteVentas.jsx";
 import ReporteSalidas from "./admin/ReporteSalidas.jsx";
+import { T, shadow, font, fmt, fmtShort, fdoc, estadoStyle } from "../styles/admin.tokens";
 
-// ─── Design tokens premium ───────────────────────────────────
-const T = {
-  sidebar: "#0f1f0f",
-  sidebarBorder: "#1e3a1e",
-  sidebarActive: "#1a3a1a",
-  sidebarText: "#a3c4a3",
-  sidebarActiveText: "#d4edda",
-  gold: "#c9a84c",
-  goldLight: "#e8c97a",
-  goldBg: "#fdf8ee",
-  surface: "#fafaf7",
-  card: "#ffffff",
-  border: "#e8e4d9",
-  text: "#1a1a1a",
-  textMuted: "#6b6b5a",
-  green: "#1a5c1a",
-  greenLight: "#e8f5e8",
-  greenMid: "#2d7a2d",
-};
-
-// ─── Helpers ─────────────────────────────────────────────────
-const fmt   = (n) => `$${Number(n||0).toLocaleString("es-CO")}`;
-const fdoc  = (d) => new Date(d).toLocaleDateString("es-CO",{day:"2-digit",month:"short",year:"numeric"});
-const pct   = (r,m) => m>0 ? Math.min(Math.round((r/m)*100),100) : 0;
-
-const ESTADO_BADGE = {
-  pendiente:  "bg-amber-100 text-amber-800 border border-amber-200",
-  pagada:     "bg-blue-100 text-blue-800 border border-blue-200",
-  procesando: "bg-purple-100 text-purple-800 border border-purple-200",
-  enviada:    "bg-indigo-100 text-indigo-800 border border-indigo-200",
-  entregada:  "bg-emerald-100 text-emerald-800 border border-emerald-200",
-  cancelada:  "bg-red-100 text-red-800 border border-red-200",
-};
+// ─── Constantes ───────────────────────────────────────────────
 const ESTADOS = ["pendiente","pagada","procesando","enviada","entregada","cancelada"];
 
-const Badge = ({ v }) => (
-  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${ESTADO_BADGE[v]||"bg-gray-100 text-gray-600"}`}>{v}</span>
+const NAV = [
+  {id:"dashboard",       label:"Dashboard",     d:"M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"},
+  {id:"usuarios",        label:"Usuarios",       d:"M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"},
+  {id:"productos",       label:"Productos",      d:"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"},
+  {id:"ordenes",         label:"Órdenes",        d:"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"},
+  {id:"factura",         label:"Nueva venta",    d:"M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"},
+  {id:"objetivos",       label:"Objetivos",      d:"M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"},
+  {id:"reporte-ventas",  label:"Rep. ventas",    d:"M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"},
+  {id:"reporte-salidas", label:"Salidas stock",  d:"M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"},
+];
+
+const TITULOS = {
+  dashboard:"Dashboard", usuarios:"Usuarios", productos:"Productos",
+  ordenes:"Órdenes", factura:"Nueva venta", objetivos:"Objetivos",
+  "reporte-ventas":"Reporte de ventas", "reporte-salidas":"Salidas de stock",
+};
+
+// ─── Componentes base ─────────────────────────────────────────
+const NavIcon = ({d}) => (
+  <svg className="w-[15px] h-[15px] flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" d={d}/>
+  </svg>
 );
 
-// ─── Componentes UI premium ───────────────────────────────────
-const GoldDivider = () => (
-  <div className="h-px w-full" style={{ background: `linear-gradient(90deg, transparent, ${T.gold}, transparent)` }} />
-);
+const Badge = ({estado}) => {
+  const s = estadoStyle(estado);
+  return <span className="px-2 py-0.5 rounded-full text-xs font-semibold capitalize"
+    style={{background:s.bg,color:s.text,border:`1px solid ${s.border}`}}>{estado}</span>;
+};
 
-const Card = ({ children, className="" }) => (
-  <div className={`bg-white rounded-2xl border shadow-sm ${className}`} style={{ borderColor: T.border }}>
+const Card = ({children, className=""}) => (
+  <div className={`rounded-2xl ${className}`}
+    style={{background:T.surface,border:`1px solid ${T.border}`,boxShadow:shadow.sm}}>
     {children}
   </div>
 );
 
-const SectionTitle = ({ children, sub }) => (
-  <div className="mb-6">
-    <h2 className="text-lg font-bold" style={{ color: T.text, fontFamily:"Georgia, serif" }}>{children}</h2>
-    {sub && <p className="text-xs mt-0.5" style={{ color: T.textMuted }}>{sub}</p>}
-    <div className="mt-2 h-0.5 w-12 rounded-full" style={{ background: T.gold }} />
+const SecTitle = ({children, sub}) => (
+  <div className="mb-5">
+    <h2 className="text-[15px] font-bold" style={{color:T.text,fontFamily:font.display}}>{children}</h2>
+    {sub && <p className="text-xs mt-0.5" style={{color:T.textMuted}}>{sub}</p>}
+    <div className="mt-2 h-0.5 w-8 rounded-full" style={{background:T.gold}}/>
   </div>
 );
 
-const StatCard = ({ icono, titulo, valor, sub, trend }) => (
-  <Card className="p-5 hover:shadow-md transition-all duration-200 group">
-    <div className="flex items-start justify-between mb-3">
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-        style={{ background: T.goldBg, border: `1px solid ${T.gold}33` }}>
-        {icono}
-      </div>
-      {trend !== undefined && (
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${Number(trend)>=0?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-600"}`}>
-          {Number(trend)>=0?"▲":"▼"} {Math.abs(trend)}%
-        </span>
-      )}
-    </div>
-    <p className="text-2xl font-bold mb-0.5" style={{ color: T.text }}>{valor}</p>
-    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: T.textMuted }}>{titulo}</p>
-    {sub && <p className="text-xs mt-1" style={{ color: T.textMuted }}>{sub}</p>}
-  </Card>
+const Spinner = () => (
+  <div className="flex items-center justify-center py-20">
+    <div className="w-7 h-7 rounded-full animate-spin"
+      style={{border:`2px solid ${T.brandLight}`,borderTopColor:T.brand}}/>
+  </div>
 );
 
-const Btn = ({ onClick, children, variant="primary", size="sm", disabled=false, type="button" }) => {
-  const variants = {
-    primary:  `text-white font-semibold shadow-sm active:scale-95`,
-    outline:  `font-semibold border active:scale-95`,
-    ghost:    `font-medium`,
-    danger:   `text-white font-semibold active:scale-95`,
-  };
-  const sizes = { xs:"px-3 py-1.5 text-xs rounded-lg", sm:"px-4 py-2 text-xs rounded-xl", md:"px-5 py-2.5 text-sm rounded-xl" };
+const Msg = ({texto, tipo="ok"}) => !texto ? null : (
+  <div className="px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2"
+    style={tipo==="ok"
+      ? {background:T.successBg,color:T.success,border:`1px solid ${T.successBorder}`}
+      : {background:T.dangerBg, color:T.danger, border:`1px solid ${T.dangerBorder}`}}>
+    {tipo==="ok"?"✓":"✕"} {texto}
+  </div>
+);
+
+// Errores de campo en modal producto — inline y claro
+const FieldError = ({msg}) => !msg ? null : (
+  <p className="text-xs mt-1 font-medium flex items-center gap-1" style={{color:T.danger}}>
+    <span>⚠</span> {msg}
+  </p>
+);
+
+const Btn = ({onClick,children,variant="primary",size="sm",disabled=false,type="button"}) => {
+  const sizes = {xs:"px-3 py-1.5 text-xs rounded-lg",sm:"px-4 py-2 text-xs rounded-xl",md:"px-5 py-2.5 text-sm rounded-xl"};
   const styles = {
-    primary: { background:`linear-gradient(135deg, ${T.green}, ${T.greenMid})`, color:"white" },
-    outline: { borderColor: T.gold, color: T.gold, background:"transparent" },
-    ghost:   { color: T.textMuted, background:"transparent" },
-    danger:  { background:"#dc2626", color:"white" },
+    primary:{background:T.brand,color:"#fff",boxShadow:shadow.sm},
+    outline:{background:"transparent",color:T.gold,border:`1.5px solid ${T.goldBorder}`},
+    ghost:  {background:"transparent",color:T.textTer},
+    danger: {background:T.danger,color:"#fff"},
   };
   return (
     <button type={type} onClick={onClick} disabled={disabled}
-      className={`${variants[variant]} ${sizes[size]} transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed`}
-      style={styles[variant]}>
-      {children}
-    </button>
+      className={`font-semibold transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 ${sizes[size]}`}
+      style={styles[variant]}>{children}</button>
   );
 };
 
-const Input = ({ label, value, onChange, type="text", placeholder="", required=false }) => (
+const Input = ({label,value,onChange,type="text",placeholder="",required=false,error=""}) => (
   <div>
-    {label && <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: T.textMuted }}>{label}</label>}
+    {label && <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{color:T.textTer}}>{label}</label>}
     <input type={type} value={value} onChange={onChange} placeholder={placeholder} required={required}
-      className="w-full px-3.5 py-2.5 text-sm rounded-xl transition-all outline-none"
-      style={{ border:`1.5px solid ${T.border}`, background:"#fafaf7", color: T.text }}
-      onFocus={e => { e.target.style.borderColor = T.gold; e.target.style.background = "#fff"; }}
-      onBlur={e => { e.target.style.borderColor = T.border; e.target.style.background = "#fafaf7"; }} />
+      className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none transition-all"
+      style={{border:`1.5px solid ${error ? T.dangerBorder : T.border}`,background:T.surfaceAlt,color:T.text}}
+      onFocus={e=>{e.target.style.borderColor=error?T.dangerBorder:T.brand; e.target.style.background=T.surface;}}
+      onBlur={e=>{e.target.style.borderColor=error?T.dangerBorder:T.border; e.target.style.background=T.surfaceAlt;}}/>
+    <FieldError msg={error}/>
   </div>
 );
 
-const Select = ({ label, value, onChange, children }) => (
+const Sel = ({label,value,onChange,children}) => (
   <div>
-    {label && <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: T.textMuted }}>{label}</label>}
+    {label && <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{color:T.textTer}}>{label}</label>}
     <select value={value} onChange={onChange}
       className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none transition-all"
-      style={{ border:`1.5px solid ${T.border}`, background:"#fafaf7", color: T.text }}>
+      style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}>
       {children}
     </select>
   </div>
 );
 
-const Modal = ({ abierto, onClose, titulo, children, ancho="max-w-lg" }) => {
-  if (!abierto) return null;
+const Modal = ({abierto,onClose,titulo,children,ancho="max-w-lg"}) => {
+  if(!abierto) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background:"rgba(0,0,0,0.5)", backdropFilter:"blur(4px)" }}
-      onClick={onClose}>
-      <div className={`bg-white rounded-2xl w-full ${ancho} max-h-[90vh] overflow-y-auto shadow-2xl`}
-        style={{ border:`1px solid ${T.border}` }}
-        onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 sticky top-0 bg-white rounded-t-2xl"
-          style={{ borderBottom:`1px solid ${T.border}` }}>
-          <h3 className="font-bold text-base" style={{ color: T.text, fontFamily:"Georgia,serif" }}>{titulo}</h3>
+      style={{background:"rgba(0,0,0,0.45)",backdropFilter:"blur(4px)"}} onClick={onClose}>
+      <div className={`w-full ${ancho} max-h-[90vh] overflow-y-auto rounded-2xl`}
+        style={{background:T.surface,border:`1px solid ${T.border}`,boxShadow:shadow.modal}}
+        onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 sticky top-0 rounded-t-2xl"
+          style={{borderBottom:`1px solid ${T.border}`,background:T.surface}}>
+          <h3 className="font-bold text-sm" style={{color:T.text,fontFamily:font.display}}>{titulo}</h3>
           <button onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-lg transition-colors"
-            style={{ color: T.textMuted }}
-            onMouseEnter={e => e.target.style.background="#f0f0eb"}
-            onMouseLeave={e => e.target.style.background="transparent"}>×</button>
+            className="w-7 h-7 flex items-center justify-center rounded-full text-lg transition-colors"
+            style={{color:T.textTer}}
+            onMouseEnter={e=>e.target.style.background=T.surfaceAlt}
+            onMouseLeave={e=>e.target.style.background="transparent"}>×</button>
         </div>
-        <GoldDivider />
         <div className="p-6">{children}</div>
       </div>
     </div>
   );
 };
 
-const Paginacion = ({ pagina, total, limite, onChange }) => {
+const Paginacion = ({pagina,total,limite,onChange}) => {
   const tot = Math.ceil(total/limite);
-  if (tot<=1) return null;
+  if(tot<=1) return null;
   return (
-    <div className="flex items-center justify-between pt-4 mt-2" style={{ borderTop:`1px solid ${T.border}` }}>
-      <span className="text-xs" style={{ color: T.textMuted }}>{total} registros · página {pagina} de {tot}</span>
+    <div className="flex items-center justify-between pt-4 mt-2" style={{borderTop:`1px solid ${T.border}`}}>
+      <span className="text-xs" style={{color:T.textMuted}}>{total} registros · pág {pagina}/{tot}</span>
       <div className="flex gap-1.5">
         <Btn variant="outline" size="xs" disabled={pagina===1} onClick={()=>onChange(pagina-1)}>←</Btn>
         <Btn variant="outline" size="xs" disabled={pagina===tot} onClick={()=>onChange(pagina+1)}>→</Btn>
@@ -171,103 +155,154 @@ const Paginacion = ({ pagina, total, limite, onChange }) => {
   );
 };
 
-const THead = ({ cols }) => (
+const THead = ({cols}) => (
   <thead>
-    <tr style={{ borderBottom:`2px solid ${T.border}`, background: T.surface }}>
-      {cols.map(c => (
-        <th key={c} className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap"
-          style={{ color: T.textMuted }}>
-          {c}
-        </th>
+    <tr style={{borderBottom:`1px solid ${T.border}`,background:T.surfaceAlt}}>
+      {cols.map(c=>(
+        <th key={c} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
+          style={{color:T.textTer}}>{c}</th>
       ))}
     </tr>
   </thead>
 );
 
-const Spinner = () => (
-  <div className="flex items-center justify-center py-20">
-    <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-      style={{ borderColor: `${T.gold} transparent transparent transparent` }} />
-  </div>
-);
-
-const Msg = ({ texto, tipo="ok" }) => !texto ? null : (
-  <div className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2 ${
-    tipo==="ok" ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-               : "bg-red-50 text-red-700 border border-red-200"}`}>
-    {tipo==="ok" ? "✓" : "✕"} {texto}
-  </div>
-);
-
-// ─── SECCIÓN: Dashboard ───────────────────────────────────────
+// ─── DASHBOARD ────────────────────────────────────────────────
 function Dashboard() {
-  const [stats, setStats] = useState(null);
-  const [cargando, setCargando] = useState(true);
+  const [stats,setStats]     = useState(null);
+  const [cargando,setCargando] = useState(true);
+  const [error,setError]     = useState(null);
 
-  useEffect(() => {
-    api.get("/admin/stats").then(({data}) => setStats(data)).finally(()=>setCargando(false));
-  },[]);
+  const cargar = () => {
+    setCargando(true); setError(null);
+    api.get("/admin/stats")
+      .then(({data})=>setStats(data))
+      .catch(err=>setError(err.response?.data?.error||"Error al cargar el dashboard"))
+      .finally(()=>setCargando(false));
+  };
 
-  if (cargando) return <Spinner />;
-  if (!stats) return null;
+  useEffect(()=>{cargar();},[]);
 
-  const chartData = stats.ventas_mes?.map(m=>({
+  if(cargando) return <Spinner/>;
+
+  if(error) return (
+    <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl" style={{background:T.dangerBg}}>⚠️</div>
+      <p className="text-sm font-semibold" style={{color:T.danger}}>{error}</p>
+      <p className="text-xs max-w-xs" style={{color:T.textMuted}}>
+        Verifica que el backend esté corriendo y que hayas ejecutado el SQL de migración en phpMyAdmin
+      </p>
+      <Btn onClick={cargar}>Reintentar</Btn>
+    </div>
+  );
+
+  if(!stats) return null;
+
+  const chartData = (stats.ventas_mes||[]).map(m=>({
     mes: m.mes?.slice(5),
-    ventas: Number(m.total),
-    ordenes: Number(m.ordenes),
-  })) || [];
+    ventas: Number(m.total||0),
+    ordenes: Number(m.ordenes||0),
+  }));
+
+  const metrics = [
+    {label:"Clientes",   value:stats.total_usuarios??0,    accent:T.brand,   d:"M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"},
+    {label:"Productos",  value:stats.total_productos??0,   accent:T.brandMid,d:"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"},
+    {label:"Órdenes",    value:stats.total_ordenes??0,     accent:T.gold,    d:"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"},
+    {label:"Ingresos",   value:fmtShort(stats.ingresos),   accent:T.brand,   d:"M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 13v-1"},
+    {label:"Stock bajo", value:stats.stock_bajo??0,        accent:"#dc2626", d:"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"},
+  ];
 
   return (
     <div className="space-y-6">
+      {/* Métricas */}
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
-        <StatCard icono="👥" titulo="Clientes" valor={stats.total_usuarios} />
-        <StatCard icono="📦" titulo="Productos" valor={stats.total_productos} />
-        <StatCard icono="🛒" titulo="Órdenes" valor={stats.total_ordenes} />
-        <StatCard icono="💰" titulo="Ingresos" valor={fmt(stats.ingresos)} />
-        <StatCard icono="⚠️" titulo="Stock bajo" valor={stats.stock_bajo} sub="por reabastecer" />
+        {metrics.map(({label,value,accent,d})=>(
+          <Card key={label} className="p-5 hover:scale-[1.01] transition-transform duration-200">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+              style={{background:`${accent}12`,border:`1px solid ${accent}20`}}>
+              <svg className="w-[15px] h-[15px]" fill="none" stroke={accent} strokeWidth={1.75} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d={d}/>
+              </svg>
+            </div>
+            <p className="text-2xl font-bold tabular-nums" style={{color:T.text,fontFamily:font.mono}}>{value}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider mt-0.5" style={{color:T.textMuted}}>{label}</p>
+          </Card>
+        ))}
       </div>
 
+      {/* Ganancia e IVA del mes — solo si Camilo ya aplicó el SQL */}
+      {(stats.ganancia_mes!=null || stats.iva_mes!=null) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card className="p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{background:T.successBg}}>
+              <svg className="w-4 h-4" fill="none" stroke={T.success} strokeWidth={1.75} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{color:T.textMuted}}>Ganancia este mes</p>
+              <p className="text-xl font-bold tabular-nums" style={{color:T.success,fontFamily:font.mono}}>{fmtShort(stats.ganancia_mes||0)}</p>
+            </div>
+          </Card>
+          <Card className="p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{background:T.infoBg}}>
+              <svg className="w-4 h-4" fill="none" stroke={T.info} strokeWidth={1.75} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{color:T.textMuted}}>IVA recaudado (19%)</p>
+              <p className="text-xl font-bold tabular-nums" style={{color:T.info,fontFamily:font.mono}}>{fmtShort(stats.iva_mes||0)}</p>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Gráfica */}
       <Card className="p-6">
-        <SectionTitle sub="Ingresos de los últimos 6 meses">Tendencia de ventas</SectionTitle>
+        <SecTitle sub="Ingresos de los últimos 6 meses">Tendencia de ventas</SecTitle>
         {chartData.length===0
-          ? <div className="text-center py-12 text-sm" style={{color:T.textMuted}}>Sin datos de ventas aún</div>
-          : <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={chartData}>
+          ? <div className="flex flex-col items-center py-14 gap-2">
+              <p className="text-sm" style={{color:T.textMuted}}>Sin ventas registradas aún</p>
+            </div>
+          : <ResponsiveContainer width="100%" height={210}>
+              <AreaChart data={chartData} margin={{top:4,right:4,bottom:0,left:0}}>
                 <defs>
                   <linearGradient id="gv" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor={T.green} stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor={T.green} stopOpacity={0}/>
+                    <stop offset="5%"  stopColor={T.brand} stopOpacity={0.14}/>
+                    <stop offset="95%" stopColor={T.brand} stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0ede4" />
-                <XAxis dataKey="mes" tick={{fontSize:11,fill:T.textMuted}} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={T.border}/>
+                <XAxis dataKey="mes" tick={{fontSize:11,fill:T.textMuted}} axisLine={false} tickLine={false}/>
                 <YAxis tick={{fontSize:11,fill:T.textMuted}} axisLine={false} tickLine={false}
-                  tickFormatter={v=>`$${(v/1000).toFixed(0)}k`} />
-                <Tooltip formatter={v=>fmt(v)}
-                  contentStyle={{borderRadius:12,border:`1px solid ${T.border}`,fontSize:12,background:"#fff"}} />
-                <Area type="monotone" dataKey="ventas" stroke={T.green} strokeWidth={2.5}
-                  fill="url(#gv)" name="Ingresos" />
+                  tickFormatter={v=>fmtShort(v)}/>
+                <Tooltip formatter={v=>[fmt(v),"Ingresos"]}
+                  contentStyle={{borderRadius:12,border:`1px solid ${T.border}`,fontSize:12,background:T.surface,boxShadow:shadow.md}}/>
+                <Area type="monotone" dataKey="ventas" stroke={T.brand} strokeWidth={2} fill="url(#gv)" name="Ingresos"/>
               </AreaChart>
             </ResponsiveContainer>
         }
       </Card>
 
+      {/* Órdenes recientes + Stock crítico */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <Card className="p-6">
-          <SectionTitle>Órdenes recientes</SectionTitle>
+        <Card className="p-5">
+          <SecTitle>Órdenes recientes</SecTitle>
           {!stats.ordenes_recientes?.length
             ? <p className="text-sm text-center py-8" style={{color:T.textMuted}}>Sin órdenes aún</p>
-            : <div className="space-y-3">
+            : <div className="space-y-2">
                 {stats.ordenes_recientes.map(o=>(
                   <div key={o.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl"
-                    style={{background:T.surface,border:`1px solid ${T.border}`}}>
+                    style={{background:T.surfaceAlt,border:`1px solid ${T.borderSub}`}}>
                     <div>
-                      <p className="text-xs font-bold font-mono" style={{color:T.green}}>{o.codigo}</p>
+                      <p className="text-xs font-bold" style={{color:T.brand,fontFamily:font.mono}}>{o.codigo}</p>
                       <p className="text-xs mt-0.5" style={{color:T.textMuted}}>{o.cliente}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs font-bold mb-1" style={{color:T.text}}>{fmt(o.total)}</p>
-                      <Badge v={o.estado} />
+                    <div className="flex flex-col items-end gap-1">
+                      <p className="text-xs font-bold" style={{color:T.text}}>{fmt(o.total)}</p>
+                      <Badge estado={o.estado}/>
                     </div>
                   </div>
                 ))}
@@ -275,18 +310,21 @@ function Dashboard() {
           }
         </Card>
 
-        <Card className="p-6">
-          <SectionTitle>Stock crítico</SectionTitle>
+        <Card className="p-5">
+          <SecTitle>Stock crítico</SecTitle>
           {!stats.productos_stock_bajo?.length
-            ? <p className="text-sm text-center py-8" style={{color:T.textMuted}}>Todo el stock está bien ✓</p>
-            : <div className="space-y-3">
+            ? <div className="flex flex-col items-center py-8 gap-2">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:T.successBg}}>✓</div>
+                <p className="text-sm font-medium" style={{color:T.success}}>Todo el stock está bien</p>
+              </div>
+            : <div className="space-y-2">
                 {stats.productos_stock_bajo.map(p=>(
                   <div key={p.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl"
-                    style={{background:"#fff8f8",border:"1px solid #fee2e2"}}>
-                    <p className="text-xs font-medium flex-1 line-clamp-1" style={{color:T.text}}>{p.nombre}</p>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-xs font-bold text-red-600">{p.stock} uds.</span>
-                      <span className="text-xs" style={{color:T.textMuted}}>mín {p.stock_minimo}</span>
+                    style={{background:T.dangerBg,border:`1px solid ${T.dangerBorder}`}}>
+                    <p className="text-xs font-medium flex-1 truncate" style={{color:T.text}}>{p.nombre}</p>
+                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                      <span className="text-xs font-bold tabular-nums" style={{color:T.danger}}>{p.stock} uds</span>
+                      <span className="text-xs" style={{color:T.textTer}}>mín {p.stock_minimo}</span>
                     </div>
                   </div>
                 ))}
@@ -298,180 +336,155 @@ function Dashboard() {
   );
 }
 
-// ─── SECCIÓN: Usuarios ────────────────────────────────────────
+// ─── USUARIOS ─────────────────────────────────────────────────
 function Usuarios() {
-  const [lista,setLista]       = useState([]);
-  const [total,setTotal]       = useState(0);
-  const [pagina,setPagina]     = useState(1);
-  const [buscar,setBuscar]     = useState("");
-  const [cargando,setCargando] = useState(true);
-  const [detalle,setDetalle]   = useState(null);
-  const [editando,setEditando] = useState(null);
-  const [formEdit,setFormEdit] = useState({});
-  const [modalPwd,setModalPwd] = useState(null);
-  const [nuevaPwd,setNuevaPwd] = useState("");
-  const [msg,setMsg]           = useState({});
+  const [lista,setLista]=useState([]); const [total,setTotal]=useState(0);
+  const [pagina,setPagina]=useState(1); const [buscar,setBuscar]=useState("");
+  const [cargando,setCargando]=useState(true);
+  const [detalle,setDetalle]=useState(null); const [editando,setEditando]=useState(null);
+  const [formEdit,setFormEdit]=useState({}); const [modalPwd,setModalPwd]=useState(null);
+  const [nuevaPwd,setNuevaPwd]=useState(""); const [msg,setMsg]=useState({});
 
   const cargar = useCallback(async()=>{
     setCargando(true);
-    try{
-      const {data} = await api.get(`/admin/usuarios?pagina=${pagina}&buscar=${buscar}&limite=12`);
-      setLista(data.usuarios); setTotal(data.total);
-    }finally{setCargando(false);}
+    try{ const {data}=await api.get(`/admin/usuarios?pagina=${pagina}&buscar=${buscar}&limite=12`);
+      setLista(data.usuarios); setTotal(data.total); }
+    finally{setCargando(false);}
   },[pagina,buscar]);
 
   useEffect(()=>{cargar();},[cargar]);
-
-  const showMsg = (texto,tipo="ok") => { setMsg({texto,tipo}); setTimeout(()=>setMsg({}),3000); };
-
-  const abrirDetalle = async(id)=>{
-    const {data} = await api.get(`/admin/usuarios/${id}`);
-    setDetalle(data);
-  };
-
-  const abrirEditar = (u)=>{
+  const showMsg=(texto,tipo="ok")=>{setMsg({texto,tipo});setTimeout(()=>setMsg({}),3000);};
+  const abrirDetalle=async(id)=>{const{data}=await api.get(`/admin/usuarios/${id}`);setDetalle(data);};
+  const abrirEditar=(u)=>{
     setFormEdit({nombre:u.nombre,apellido:u.apellido,email:u.email,
       telefono:u.telefono||"",tipo_documento:u.tipo_documento,
       numero_documento:u.numero_documento||"",rol:u.rol});
     setEditando(u);
   };
-
-  const guardarEditar = async()=>{
+  const guardarEditar=async()=>{
     await api.put(`/admin/usuarios/${editando.id}`,formEdit);
-    showMsg("Usuario actualizado correctamente.");
-    setEditando(null); cargar();
+    showMsg("Usuario actualizado."); setEditando(null); cargar();
   };
-
-  const cambiarPwd = async()=>{
+  const cambiarPwd=async()=>{
     if(nuevaPwd.length<6) return;
     await api.patch(`/admin/usuarios/${modalPwd.id}/password`,{nueva_password:nuevaPwd});
     showMsg("Contraseña actualizada."); setModalPwd(null); setNuevaPwd("");
   };
+  const toggleActivo=async(u)=>{await api.put(`/admin/usuarios/${u.id}`,{activo:u.activo?0:1});cargar();};
+  const fe=k=>e=>setFormEdit({...formEdit,[k]:e.target.value});
 
-  const toggleActivo = async(u)=>{
-    await api.put(`/admin/usuarios/${u.id}`,{activo:u.activo?0:1}); cargar();
-  };
-
-  const fe = k => e => setFormEdit({...formEdit,[k]:e.target.value});
+  const rolSt=(rol)=>({
+    superadmin:{bg:"#f3e8ff",text:"#6b21a8",border:"#d8b4fe"},
+    admin:{bg:T.infoBg,text:T.info,border:T.infoBorder},
+    cliente:{bg:T.surfaceAlt,text:T.textTer,border:T.border},
+  }[rol]||{bg:T.surfaceAlt,text:T.textTer,border:T.border});
 
   return (
     <div className="space-y-5">
-      <Msg texto={msg.texto} tipo={msg.tipo} />
+      <Msg texto={msg.texto} tipo={msg.tipo}/>
       <div className="flex gap-3 items-center justify-between flex-wrap">
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{color:T.textMuted}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{color:T.textMuted}}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
           <input value={buscar} placeholder="Buscar nombre, email, documento..."
             onChange={e=>{setBuscar(e.target.value);setPagina(1);}}
-            className="pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none w-72 transition-all"
-            style={{border:`1.5px solid ${T.border}`,background:T.surface,color:T.text}} />
+            className="pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none w-72"
+            style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}/>
         </div>
-        <span className="text-xs font-medium" style={{color:T.textMuted}}>{total} usuarios registrados</span>
+        <span className="text-xs font-medium" style={{color:T.textMuted}}>{total} usuarios</span>
       </div>
-
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <THead cols={["Usuario","Documento","Email","Teléfono","Rol","Estado","Acciones"]} />
+            <THead cols={["Usuario","Documento","Email","Teléfono","Rol","Estado","Acciones"]}/>
             <tbody>
-              {cargando
-                ? <tr><td colSpan={7}><Spinner /></td></tr>
-                : lista.length===0
-                ? <tr><td colSpan={7} className="text-center py-16 text-sm" style={{color:T.textMuted}}>Sin usuarios</td></tr>
-                : lista.map((u,i)=>(
-                  <tr key={u.id}
-                    className="transition-colors"
-                    style={{borderBottom:`1px solid ${T.border}`, background: i%2===0?"#fff":T.surface}}
-                    onMouseEnter={e=>e.currentTarget.style.background=T.goldBg}
-                    onMouseLeave={e=>e.currentTarget.style.background=i%2===0?"#fff":T.surface}>
+              {cargando ? <tr><td colSpan={7}><Spinner/></td></tr>
+              : lista.length===0 ? <tr><td colSpan={7} className="text-center py-16 text-sm" style={{color:T.textMuted}}>Sin usuarios</td></tr>
+              : lista.map((u,i)=>{
+                const rs=rolSt(u.rol);
+                return (
+                  <tr key={u.id} className="transition-colors"
+                    style={{borderBottom:`1px solid ${T.borderSub}`,background:i%2===0?T.surface:T.surfaceAlt}}
+                    onMouseEnter={e=>e.currentTarget.style.background=T.surfaceHover}
+                    onMouseLeave={e=>e.currentTarget.style.background=i%2===0?T.surface:T.surfaceAlt}>
                     <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                          style={{background:`linear-gradient(135deg,${T.green},${T.greenMid})`}}>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                          style={{background:`linear-gradient(135deg,${T.brand},${T.brandMid})`}}>
                           {u.nombre?.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-xs font-bold" style={{color:T.text}}>{u.nombre} {u.apellido}</p>
-                          <p className="text-xs" style={{color:T.textMuted}}>ID #{u.id}</p>
+                          <p className="text-xs font-semibold" style={{color:T.text}}>{u.nombre} {u.apellido}</p>
+                          <p className="text-xs" style={{color:T.textMuted}}>#{u.id}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-xs" style={{color:T.textMuted}}>{u.tipo_documento} {u.numero_documento||"—"}</td>
-                    <td className="py-3.5 px-4 text-xs" style={{color:T.textMuted}}>{u.email}</td>
-                    <td className="py-3.5 px-4 text-xs" style={{color:T.textMuted}}>{u.telefono||"—"}</td>
+                    <td className="py-3.5 px-4 text-xs" style={{color:T.textSec}}>{u.tipo_documento} {u.numero_documento||"—"}</td>
+                    <td className="py-3.5 px-4 text-xs" style={{color:T.textSec}}>{u.email}</td>
+                    <td className="py-3.5 px-4 text-xs" style={{color:T.textTer}}>{u.telefono||"—"}</td>
                     <td className="py-3.5 px-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize
-                        ${u.rol==="superadmin"?"bg-purple-100 text-purple-800 border border-purple-200":
-                          u.rol==="admin"?"bg-blue-100 text-blue-800 border border-blue-200":
-                          "bg-gray-100 text-gray-600 border border-gray-200"}`}>
-                        {u.rol}
-                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold capitalize"
+                        style={{background:rs.bg,color:rs.text,border:`1px solid ${rs.border}`}}>{u.rol}</span>
                     </td>
                     <td className="py-3.5 px-4">
                       <button onClick={()=>toggleActivo(u)}
-                        className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-colors
-                          ${u.activo?"bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                                   :"bg-red-50 text-red-600 border-red-200 hover:bg-red-100"}`}>
+                        className="px-2 py-0.5 rounded-full text-xs font-semibold border transition-colors"
+                        style={u.activo
+                          ?{background:T.successBg,color:T.success,borderColor:T.successBorder}
+                          :{background:T.dangerBg,color:T.danger,borderColor:T.dangerBorder}}>
                         {u.activo?"Activo":"Inactivo"}
                       </button>
                     </td>
                     <td className="py-3.5 px-4">
-                      <div className="flex gap-2">
-                        <button onClick={()=>abrirDetalle(u.id)} className="text-xs font-semibold transition-colors" style={{color:T.green}}>Ver</button>
-                        <button onClick={()=>abrirEditar(u)} className="text-xs font-semibold text-blue-600">Editar</button>
-                        <button onClick={()=>setModalPwd(u)} className="text-xs font-semibold" style={{color:T.gold}}>Pwd</button>
+                      <div className="flex gap-3">
+                        <button onClick={()=>abrirDetalle(u.id)} className="text-xs font-semibold hover:underline" style={{color:T.brand}}>Ver</button>
+                        <button onClick={()=>abrirEditar(u)} className="text-xs font-semibold hover:underline" style={{color:T.info}}>Editar</button>
+                        <button onClick={()=>setModalPwd(u)} className="text-xs font-semibold hover:underline" style={{color:T.gold}}>Pwd</button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
-        <div className="px-6 py-4">
-          <Paginacion pagina={pagina} total={total} limite={12} onChange={setPagina} />
-        </div>
+        <div className="px-6 py-4"><Paginacion pagina={pagina} total={total} limite={12} onChange={setPagina}/></div>
       </Card>
 
-      {/* Modal detalle */}
       <Modal abierto={!!detalle} onClose={()=>setDetalle(null)}
         titulo={detalle?`${detalle.nombre} ${detalle.apellido}`:""} ancho="max-w-xl">
-        {detalle && (
+        {detalle&&(
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-3">
-              {[
-                ["Email",detalle.email],
-                ["Teléfono",detalle.telefono||"—"],
+              {[["Email",detalle.email],["Teléfono",detalle.telefono||"—"],
                 ["Documento",`${detalle.tipo_documento} ${detalle.numero_documento||"—"}`],
-                ["Rol",detalle.rol],
-                ["Estado",detalle.activo?"Activo":"Inactivo"],
+                ["Rol",detalle.rol],["Estado",detalle.activo?"Activo":"Inactivo"],
                 ["Registrado",fdoc(detalle.created_at)],
-                ["Total gastado",fmt(detalle.total_gastado)],
-                ["Órdenes",detalle.ordenes?.length||0],
+                ["Total gastado",fmt(detalle.total_gastado)],["Órdenes",detalle.ordenes?.length||0],
               ].map(([k,v])=>(
-                <div key={k} className="rounded-xl px-4 py-3" style={{background:T.surface,border:`1px solid ${T.border}`}}>
+                <div key={k} className="rounded-xl px-4 py-3" style={{background:T.surfaceAlt,border:`1px solid ${T.borderSub}`}}>
                   <p className="text-xs uppercase tracking-wider font-semibold mb-1" style={{color:T.textMuted}}>{k}</p>
                   <p className="text-sm font-bold capitalize" style={{color:T.text}}>{v}</p>
                 </div>
               ))}
             </div>
             <div>
-              <h4 className="text-sm font-bold mb-3" style={{color:T.text,fontFamily:"Georgia,serif"}}>
-                Historial de órdenes ({detalle.ordenes?.length||0})
-              </h4>
+              <h4 className="text-sm font-bold mb-3" style={{color:T.text}}>Historial ({detalle.ordenes?.length||0})</h4>
               {!detalle.ordenes?.length
                 ? <p className="text-xs text-center py-4" style={{color:T.textMuted}}>Sin órdenes</p>
-                : <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                : <div className="space-y-2 max-h-52 overflow-y-auto">
                     {detalle.ordenes.map(o=>(
                       <div key={o.id} className="flex items-center justify-between rounded-xl px-4 py-3"
-                        style={{background:T.surface,border:`1px solid ${T.border}`}}>
+                        style={{background:T.surfaceAlt,border:`1px solid ${T.borderSub}`}}>
                         <div>
-                          <p className="font-mono text-xs font-bold" style={{color:T.green}}>{o.codigo}</p>
+                          <p className="font-mono text-xs font-bold" style={{color:T.brand}}>{o.codigo}</p>
                           <p className="text-xs mt-0.5" style={{color:T.textMuted}}>{o.items} productos · {fdoc(o.created_at)}</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs font-bold mb-1" style={{color:T.text}}>{fmt(o.total)}</p>
-                          <Badge v={o.estado} />
+                        <div className="flex flex-col items-end gap-1">
+                          <p className="text-xs font-bold" style={{color:T.text}}>{fmt(o.total)}</p>
+                          <Badge estado={o.estado}/>
                         </div>
                       </div>
                     ))}
@@ -482,41 +495,38 @@ function Usuarios() {
         )}
       </Modal>
 
-      {/* Modal editar */}
       <Modal abierto={!!editando} onClose={()=>setEditando(null)} titulo="Editar usuario">
-        {editando && (
+        {editando&&(
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Nombre" value={formEdit.nombre} onChange={fe("nombre")} />
-              <Input label="Apellido" value={formEdit.apellido} onChange={fe("apellido")} />
+              <Input label="Nombre" value={formEdit.nombre} onChange={fe("nombre")}/>
+              <Input label="Apellido" value={formEdit.apellido} onChange={fe("apellido")}/>
             </div>
-            <Input label="Email" type="email" value={formEdit.email} onChange={fe("email")} />
-            <Input label="Teléfono" value={formEdit.telefono} onChange={fe("telefono")} />
+            <Input label="Email" type="email" value={formEdit.email} onChange={fe("email")}/>
+            <Input label="Teléfono" value={formEdit.telefono} onChange={fe("telefono")}/>
             <div className="grid grid-cols-2 gap-3">
-              <Select label="Tipo doc." value={formEdit.tipo_documento} onChange={fe("tipo_documento")}>
+              <Sel label="Tipo doc." value={formEdit.tipo_documento} onChange={fe("tipo_documento")}>
                 {["CC","TI","CE","PASAPORTE"].map(t=><option key={t} value={t}>{t}</option>)}
-              </Select>
-              <Input label="Número doc." value={formEdit.numero_documento} onChange={fe("numero_documento")} />
+              </Sel>
+              <Input label="Número doc." value={formEdit.numero_documento} onChange={fe("numero_documento")}/>
             </div>
-            <Select label="Rol" value={formEdit.rol} onChange={fe("rol")}>
+            <Sel label="Rol" value={formEdit.rol} onChange={fe("rol")}>
               <option value="cliente">Cliente</option>
               <option value="admin">Admin</option>
               <option value="superadmin">Superadmin</option>
-            </Select>
+            </Sel>
             <div className="flex justify-end gap-2 pt-2">
               <Btn variant="ghost" onClick={()=>setEditando(null)}>Cancelar</Btn>
-              <Btn onClick={guardarEditar}>Guardar cambios</Btn>
+              <Btn onClick={guardarEditar}>Guardar</Btn>
             </div>
           </div>
         )}
       </Modal>
 
-      {/* Modal contraseña */}
-      <Modal abierto={!!modalPwd} onClose={()=>{setModalPwd(null);setNuevaPwd("");}}
-        titulo={`Cambiar contraseña — ${modalPwd?.nombre||""}`}>
+      <Modal abierto={!!modalPwd} onClose={()=>{setModalPwd(null);setNuevaPwd("");}}>
         <div className="space-y-4">
           <Input label="Nueva contraseña" type="password" value={nuevaPwd}
-            onChange={e=>setNuevaPwd(e.target.value)} placeholder="Mínimo 6 caracteres" />
+            onChange={e=>setNuevaPwd(e.target.value)} placeholder="Mínimo 6 caracteres"/>
           <div className="flex justify-end gap-2">
             <Btn variant="ghost" onClick={()=>{setModalPwd(null);setNuevaPwd("");}}>Cancelar</Btn>
             <Btn onClick={cambiarPwd} disabled={nuevaPwd.length<6}>Actualizar</Btn>
@@ -527,135 +537,117 @@ function Usuarios() {
   );
 }
 
-// ─── SECCIÓN: Productos ───────────────────────────────────────
+// ─── PRODUCTOS ────────────────────────────────────────────────
 function Productos() {
-  const [lista, setLista]           = useState([]);
-  const [total, setTotal]           = useState(0);
-  const [pagina, setPagina]         = useState(1);
-  const [buscar, setBuscar]         = useState("");
-  const [categoriaFiltro, setCategoriaFiltro] = useState("");
-  const [cargando, setCargando]     = useState(true);
-  const [modal, setModal]           = useState(false);
-  const [editando, setEditando]     = useState(null);
-  const [categorias, setCategorias] = useState([]);
-  const [msg, setMsg]               = useState({});
+  const [lista,setLista]=useState([]); const [total,setTotal]=useState(0);
+  const [pagina,setPagina]=useState(1); const [buscar,setBuscar]=useState("");
+  const [catFiltro,setCatFiltro]=useState(""); const [cargando,setCargando]=useState(true);
+  const [modal,setModal]=useState(false); const [editando,setEditando]=useState(null);
+  const [categorias,setCategorias]=useState([]);
+  const [msg,setMsg]=useState({}); const [fieldErrors,setFieldErrors]=useState({});
 
-  const FORM_VACIO = {
-    nombre:"", slug:"", descripcion:"", descripcion_corta:"", categoria_id:"",
-    precio:"", precio_antes:"", stock:"", stock_minimo:"5", imagen_url:"",
-    marca:"", unidad:"", especie:"", destacado:false, activo:true, requiere_formula:false
-  };
-  const [form, setForm] = useState(FORM_VACIO);
+  const VACIO={nombre:"",slug:"",descripcion:"",descripcion_corta:"",categoria_id:"",
+    precio:"",precio_antes:"",precio_costo:"",stock:"",stock_minimo:"5",imagen_url:"",
+    marca:"",unidad:"",especie:"",destacado:false,activo:true,requiere_formula:false};
+  const [form,setForm]=useState(VACIO);
 
-  const cargar = useCallback(async () => {
+  const cargar=useCallback(async()=>{
     setCargando(true);
-    try {
-      const [rP, rC] = await Promise.all([
-        api.get(`/admin/productos?pagina=${pagina}&buscar=${buscar}&limite=10&categoria_id=${categoriaFiltro}`),
+    try{
+      const[rP,rC]=await Promise.all([
+        api.get(`/admin/productos?pagina=${pagina}&buscar=${buscar}&limite=10&categoria_id=${catFiltro}`),
         api.get("/categorias"),
       ]);
-      setLista(rP.data.productos);
-      setTotal(rP.data.total);
-      setCategorias(rC.data);
-    } finally {
-      setCargando(false);
-    }
-  }, [pagina, buscar, categoriaFiltro]);
+      setLista(rP.data.productos); setTotal(rP.data.total); setCategorias(rC.data);
+    }finally{setCargando(false);}
+  },[pagina,buscar,catFiltro]);
 
-  useEffect(() => { cargar(); }, [cargar]);
-
-  const showMsg = (texto, tipo="ok") => { setMsg({texto,tipo}); setTimeout(()=>setMsg({}),3000); };
-
-  const abrirNuevo = () => { setForm(FORM_VACIO); setEditando(null); setModal(true); };
-
-  const abrirEditar = (p) => {
-    setForm({
-      nombre:p.nombre, slug:p.slug||"", descripcion:p.descripcion||"",
-      descripcion_corta:p.descripcion_corta||"", categoria_id:p.categoria_id||"",
-      precio:p.precio, precio_antes:p.precio_antes||"", stock:p.stock,
-      stock_minimo:p.stock_minimo||5, imagen_url:p.imagen_url||"",
-      marca:p.marca||"", unidad:p.unidad||"", especie:p.especie||"",
-      destacado:!!p.destacado, activo:p.activo!==0, requiere_formula:!!p.requiere_formula
-    });
-    setEditando(p); setModal(true);
+  useEffect(()=>{cargar();},[cargar]);
+  const showMsg=(texto,tipo="ok")=>{setMsg({texto,tipo});setTimeout(()=>setMsg({}),4000);};
+  const abrirNuevo=()=>{setForm(VACIO);setEditando(null);setFieldErrors({});setModal(true);};
+  const abrirEditar=(p)=>{
+    setForm({nombre:p.nombre,slug:p.slug||"",descripcion:p.descripcion||"",
+      descripcion_corta:p.descripcion_corta||"",categoria_id:p.categoria_id||"",
+      precio:p.precio,precio_antes:p.precio_antes||"",precio_costo:p.precio_costo||"",
+      stock:p.stock,stock_minimo:p.stock_minimo||5,imagen_url:p.imagen_url||"",
+      marca:p.marca||"",unidad:p.unidad||"",especie:p.especie||"",
+      destacado:!!p.destacado,activo:p.activo!==0,requiere_formula:!!p.requiere_formula});
+    setEditando(p); setFieldErrors({}); setModal(true);
   };
 
-  const guardar = async () => {
-    try {
-      const payload = {};
-      if (form.nombre)              payload.nombre = form.nombre;
-      if (form.slug)                payload.slug = form.slug;
-      if (form.descripcion)         payload.descripcion = form.descripcion;
-      if (form.descripcion_corta)   payload.descripcion_corta = form.descripcion_corta;
-      if (form.categoria_id)        payload.categoria_id = Number(form.categoria_id);
-      if (form.precio !== "")       payload.precio = Number(form.precio);
-      if (form.precio_antes !== "") payload.precio_antes = Number(form.precio_antes);
-      if (form.stock !== "")        payload.stock = Number(form.stock);
-      if (form.stock_minimo !== "") payload.stock_minimo = Number(form.stock_minimo);
-      if (form.imagen_url)          payload.imagen_url = form.imagen_url;
-      if (form.marca)               payload.marca = form.marca;
-      if (form.unidad)              payload.unidad = form.unidad;
-      if (form.especie)             payload.especie = form.especie;
-      payload.destacado        = form.destacado ? 1 : 0;
-      payload.activo           = form.activo ? 1 : 0;
-      payload.requiere_formula = form.requiere_formula ? 1 : 0;
-      if (!payload.slug && payload.nombre) {
-        payload.slug = payload.nombre.toLowerCase()
-          .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-          .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
-      }
-      if (editando) {
-        await api.put(`/productos/${editando.id}`, payload);
-        showMsg("Producto actualizado correctamente.");
-      } else {
-        await api.post("/productos", payload);
-        showMsg("Producto creado correctamente.");
-      }
+  // Validación con mensajes por campo
+  const validar=()=>{
+    const e={};
+    if(!form.nombre.trim())        e.nombre="El nombre es obligatorio";
+    if(!form.categoria_id)         e.categoria_id="Selecciona una categoría";
+    if(form.precio===""||isNaN(Number(form.precio))||Number(form.precio)<0)
+      e.precio="Ingresa un precio válido (número ≥ 0)";
+    if(form.stock===""||isNaN(Number(form.stock))||Number(form.stock)<0)
+      e.stock="Ingresa un stock válido (número ≥ 0)";
+    if(form.precio_antes!==""&&Number(form.precio_antes)<=Number(form.precio))
+      e.precio_antes="El precio anterior debe ser mayor al precio actual";
+    setFieldErrors(e);
+    return Object.keys(e).length===0;
+  };
+
+  const guardar=async()=>{
+    if(!validar()) return;
+    try{
+      const p={};
+      if(form.nombre)            p.nombre=form.nombre;
+      if(form.slug)              p.slug=form.slug;
+      if(form.descripcion)       p.descripcion=form.descripcion;
+      if(form.descripcion_corta) p.descripcion_corta=form.descripcion_corta;
+      if(form.categoria_id)      p.categoria_id=Number(form.categoria_id);
+      if(form.precio!=="")       p.precio=Number(form.precio);
+      if(form.precio_antes!=="") p.precio_antes=Number(form.precio_antes);
+      if(form.precio_costo!=="") p.precio_costo=Number(form.precio_costo);
+      if(form.stock!=="")        p.stock=Number(form.stock);
+      if(form.stock_minimo!=="") p.stock_minimo=Number(form.stock_minimo);
+      if(form.imagen_url)        p.imagen_url=form.imagen_url;
+      if(form.marca)             p.marca=form.marca;
+      if(form.unidad)            p.unidad=form.unidad;
+      if(form.especie)           p.especie=form.especie;
+      p.destacado=form.destacado?1:0; p.activo=form.activo?1:0; p.requiere_formula=form.requiere_formula?1:0;
+      if(!p.slug&&p.nombre) p.slug=p.nombre.toLowerCase().normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
+      if(editando){await api.put(`/productos/${editando.id}`,p);showMsg("Producto actualizado.");}
+      else{await api.post("/productos",p);showMsg("Producto creado.");}
       setModal(false); cargar();
-    } catch(err) {
-      showMsg(err.response?.data?.error || "Error al guardar.", "err");
+    }catch(err){
+      // Mostrar error del backend de forma legible
+      const msg=err.response?.data?.error||"";
+      if(msg.includes("slug")) setFieldErrors({slug:"Este slug ya existe, cámbialo o déjalo vacío para auto-generar"});
+      else if(msg.includes("categoria")) setFieldErrors({categoria_id:"Categoría inválida"});
+      else showMsg(msg||"Error al guardar el producto","err");
     }
   };
 
-  const toggleActivo = async (p) => {
-    await api.put(`/productos/${p.id}`, {activo: p.activo ? 0 : 1}); cargar();
-  };
-
-  const ff = k => e => setForm({...form, [k]: e.target.value});
-  const fc = k => e => setForm({...form, [k]: e.target.checked});
+  const toggleActivo=async(p)=>{await api.put(`/productos/${p.id}`,{activo:p.activo?0:1});cargar();};
+  const ff=k=>e=>setForm({...form,[k]:e.target.value});
+  const fc=k=>e=>setForm({...form,[k]:e.target.checked});
 
   return (
     <div className="space-y-5">
-      <Msg texto={msg.texto} tipo={msg.tipo} />
-
-      {/* Barra de filtros */}
+      <Msg texto={msg.texto} tipo={msg.tipo}/>
       <div className="flex gap-3 items-center justify-between flex-wrap">
         <div className="flex gap-3 flex-wrap items-center">
-
-          {/* Buscador */}
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
-              style={{color:T.textMuted}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{color:T.textMuted}}
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
             <input value={buscar} placeholder="Buscar producto..."
-              onChange={e => { setBuscar(e.target.value); setPagina(1); }}
-              className="pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none w-56 transition-all"
-              style={{border:`1.5px solid ${T.border}`, background:T.surface, color:T.text}} />
+              onChange={e=>{setBuscar(e.target.value);setPagina(1);}}
+              className="pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none w-56"
+              style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}/>
           </div>
-
-          {/* Filtro por categoría */}
-          <select value={categoriaFiltro}
-            onChange={e => { setCategoriaFiltro(e.target.value); setPagina(1); }}
-            className="px-3.5 py-2.5 text-sm rounded-xl outline-none transition-all"
-            style={{border:`1.5px solid ${T.border}`, background:T.surface, color:T.text}}>
+          <select value={catFiltro} onChange={e=>{setCatFiltro(e.target.value);setPagina(1);}}
+            className="px-3.5 py-2.5 text-sm rounded-xl outline-none"
+            style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}>
             <option value="">Todas las categorías</option>
-            {categorias.map(c => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
+            {categorias.map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
           </select>
-
         </div>
         <Btn onClick={abrirNuevo} size="md">+ Nuevo producto</Btn>
       </div>
@@ -663,119 +655,152 @@ function Productos() {
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <THead cols={["Producto","Categoría","Precio","Stock","Estado","Destacado","Acciones"]} />
+            <THead cols={["Producto","Categoría","Precio","Costo","Stock","Estado","★","Acciones"]}/>
             <tbody>
-              {cargando
-                ? <tr><td colSpan={7}><Spinner /></td></tr>
-                : lista.map((p, i) => (
-                  <tr key={p.id} className="transition-colors"
-                    style={{borderBottom:`1px solid ${T.border}`, background:i%2===0?"#fff":T.surface}}
-                    onMouseEnter={e=>e.currentTarget.style.background=T.goldBg}
-                    onMouseLeave={e=>e.currentTarget.style.background=i%2===0?"#fff":T.surface}>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <img src={p.imagen_url||"https://placehold.co/40x40/e8f5e8/1a5c1a?text=P"}
-                          className="w-10 h-10 rounded-xl object-cover flex-shrink-0"
-                          style={{border:`1px solid ${T.border}`}}
-                          onError={e=>{e.target.src="https://placehold.co/40x40/e8f5e8/1a5c1a?text=P";}} />
-                        <div>
-                          <p className="text-xs font-bold line-clamp-1 max-w-[160px]" style={{color:T.text}}>{p.nombre}</p>
-                          <p className="text-xs mt-0.5" style={{color:T.textMuted}}>{p.marca||""}</p>
-                        </div>
+              {cargando ? <tr><td colSpan={8}><Spinner/></td></tr>
+              : lista.map((p,i)=>(
+                <tr key={p.id} className="transition-colors"
+                  style={{borderBottom:`1px solid ${T.borderSub}`,background:i%2===0?T.surface:T.surfaceAlt}}
+                  onMouseEnter={e=>e.currentTarget.style.background=T.surfaceHover}
+                  onMouseLeave={e=>e.currentTarget.style.background=i%2===0?T.surface:T.surfaceAlt}>
+                  <td className="py-3.5 px-4">
+                    <div className="flex items-center gap-2.5">
+                      <img src={p.imagen_url||"https://placehold.co/40x40/e6f3e6/1a5c1a?text=P"}
+                        className="w-9 h-9 rounded-xl object-cover flex-shrink-0"
+                        style={{border:`1px solid ${T.border}`}}
+                        onError={e=>{e.target.src="https://placehold.co/40x40/e6f3e6/1a5c1a?text=P";}}/>
+                      <div>
+                        <p className="text-xs font-semibold line-clamp-1 max-w-[150px]" style={{color:T.text}}>{p.nombre}</p>
+                        <p className="text-xs" style={{color:T.textMuted}}>{p.marca||""}</p>
                       </div>
-                    </td>
-                    <td className="py-3.5 px-4 text-xs" style={{color:T.textMuted}}>{p.categoria}</td>
-                    <td className="py-3.5 px-4">
-                      <p className="text-xs font-bold" style={{color:T.green}}>{fmt(p.precio)}</p>
-                      {p.precio_antes && <p className="text-xs line-through" style={{color:T.textMuted}}>{fmt(p.precio_antes)}</p>}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className={`text-xs font-bold ${p.stock<=p.stock_minimo?"text-red-600":"text-gray-700"}`}>
-                        {p.stock} {p.stock<=p.stock_minimo&&"⚠️"}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <button onClick={()=>toggleActivo(p)}
-                        className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-colors
-                          ${p.activo?"bg-emerald-50 text-emerald-700 border-emerald-200":"bg-gray-100 text-gray-500 border-gray-200"}`}>
-                        {p.activo?"Activo":"Inactivo"}
-                      </button>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span style={{color:p.destacado?T.gold:T.border}} className="text-lg">{p.destacado?"★":"☆"}</span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <button onClick={()=>abrirEditar(p)} className="text-xs font-semibold" style={{color:T.green}}>Editar</button>
-                    </td>
-                  </tr>
-                ))}
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-4 text-xs" style={{color:T.textTer}}>{p.categoria}</td>
+                  <td className="py-3.5 px-4">
+                    <p className="text-xs font-bold tabular-nums" style={{color:T.brand}}>{fmt(p.precio)}</p>
+                    {p.precio_antes&&<p className="text-xs line-through tabular-nums" style={{color:T.textMuted}}>{fmt(p.precio_antes)}</p>}
+                  </td>
+                  <td className="py-3.5 px-4 text-xs tabular-nums" style={{color:T.textTer}}>{p.precio_costo?fmt(p.precio_costo):"—"}</td>
+                  <td className="py-3.5 px-4">
+                    <span className="text-xs font-bold tabular-nums"
+                      style={{color:p.stock<=p.stock_minimo?T.danger:T.text}}>
+                      {p.stock}{p.stock<=p.stock_minimo?" ⚠️":""}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <button onClick={()=>toggleActivo(p)}
+                      className="px-2 py-0.5 rounded-full text-xs font-semibold border transition-colors"
+                      style={p.activo
+                        ?{background:T.successBg,color:T.success,borderColor:T.successBorder}
+                        :{background:T.surfaceAlt,color:T.textTer,borderColor:T.border}}>
+                      {p.activo?"Activo":"Inactivo"}
+                    </button>
+                  </td>
+                  <td className="py-3.5 px-4 text-center" style={{color:p.destacado?T.gold:T.textMuted}}>
+                    {p.destacado?"★":"☆"}
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <button onClick={()=>abrirEditar(p)} className="text-xs font-semibold hover:underline" style={{color:T.brand}}>Editar</button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
-        <div className="px-6 py-4">
-          <Paginacion pagina={pagina} total={total} limite={10} onChange={p=>{setPagina(p);}} />
-        </div>
+        <div className="px-6 py-4"><Paginacion pagina={pagina} total={total} limite={10} onChange={setPagina}/></div>
       </Card>
 
-      {/* Modal crear / editar — sin cambios */}
+      {/* Modal crear/editar con errores por campo */}
       <Modal abierto={modal} onClose={()=>setModal(false)}
         titulo={editando?"Editar producto":"Nuevo producto"} ancho="max-w-2xl">
         <div className="space-y-4">
+          {/* Error general si hay múltiples */}
+          {Object.keys(fieldErrors).length>0&&(
+            <div className="rounded-xl px-4 py-3 flex items-start gap-2"
+              style={{background:T.dangerBg,border:`1px solid ${T.dangerBorder}`}}>
+              <span style={{color:T.danger}}>⚠</span>
+              <div>
+                <p className="text-xs font-bold" style={{color:T.danger}}>Corrige los siguientes campos:</p>
+                <ul className="mt-1 space-y-0.5">
+                  {Object.values(fieldErrors).map((e,i)=>(
+                    <li key={i} className="text-xs" style={{color:T.danger}}>· {e}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2"><Input label="Nombre del producto *" value={form.nombre} onChange={ff("nombre")} placeholder="ej: Antipulgas Frontline Combo" required /></div>
-            <Input label="Slug URL" value={form.slug} onChange={ff("slug")} placeholder="auto-generado si está vacío" />
-            <Input label="Marca" value={form.marca} onChange={ff("marca")} placeholder="ej: Frontline" />
+            <div className="col-span-2">
+              <Input label="Nombre del producto *" value={form.nombre} onChange={ff("nombre")}
+                placeholder="ej: Antipulgas Frontline Combo" error={fieldErrors.nombre}/>
+            </div>
+            <Input label="Slug URL" value={form.slug} onChange={ff("slug")}
+              placeholder="auto-generado si vacío" error={fieldErrors.slug}/>
+            <Input label="Marca" value={form.marca} onChange={ff("marca")} placeholder="ej: Frontline"/>
           </div>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{color:T.textMuted}}>Descripción corta</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{color:T.textTer}}>Descripción corta</label>
             <textarea value={form.descripcion_corta} onChange={ff("descripcion_corta")} rows={2}
               placeholder="Resumen para la tarjeta de producto..."
-              className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none resize-none transition-all"
-              style={{border:`1.5px solid ${T.border}`, background:"#fafaf7", color:T.text}} />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{color:T.textMuted}}>Descripción completa</label>
-            <textarea value={form.descripcion} onChange={ff("descripcion")} rows={3}
-              placeholder="Descripción detallada del producto..."
-              className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none resize-none transition-all"
-              style={{border:`1.5px solid ${T.border}`, background:"#fafaf7", color:T.text}} />
+              className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none resize-none"
+              style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}/>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Select label="Categoría *" value={form.categoria_id} onChange={ff("categoria_id")}>
-              <option value="">Selecciona categoría</option>
-              {categorias.map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </Select>
-            <Input label="Unidad" value={form.unidad} onChange={ff("unidad")} placeholder="ej: frasco, caja, bolsa" />
+            <div>
+              <Sel label="Categoría *" value={form.categoria_id} onChange={ff("categoria_id")}>
+                <option value="">Selecciona categoría</option>
+                {categorias.map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </Sel>
+              <FieldError msg={fieldErrors.categoria_id}/>
+            </div>
+            <Input label="Unidad" value={form.unidad} onChange={ff("unidad")} placeholder="ej: frasco, caja"/>
           </div>
           <div className="grid grid-cols-3 gap-4">
-            <Input label="Precio *" type="number" value={form.precio} onChange={ff("precio")} placeholder="0" required />
-            <Input label="Precio antes (tachado)" type="number" value={form.precio_antes} onChange={ff("precio_antes")} placeholder="Opcional" />
-            <Input label="Stock *" type="number" value={form.stock} onChange={ff("stock")} placeholder="0" required />
+            <Input label="Precio venta *" type="number" value={form.precio} onChange={ff("precio")}
+              placeholder="0" error={fieldErrors.precio}/>
+            <Input label="Precio antes (tachado)" type="number" value={form.precio_antes}
+              onChange={ff("precio_antes")} placeholder="Opcional" error={fieldErrors.precio_antes}/>
+            <Input label="Costo (precio compra)" type="number" value={form.precio_costo}
+              onChange={ff("precio_costo")} placeholder="Para calcular ganancia"/>
           </div>
+
+          {/* Info IVA — explicación clara */}
+          {form.precio&&Number(form.precio)>0&&(
+            <div className="rounded-xl px-4 py-3 text-xs space-y-0.5"
+              style={{background:T.infoBg,border:`1px solid ${T.infoBorder}`,color:T.info}}>
+              <p className="font-semibold">💡 IVA en Colombia (19%)</p>
+              <p>El IVA se calcula automáticamente al facturar. Sobre este precio de {fmt(form.precio)}:</p>
+              <p>· IVA = <strong>{fmt(Number(form.precio)*0.19)}</strong> · Total con IVA = <strong>{fmt(Number(form.precio)*1.19)}</strong></p>
+              {form.precio_costo&&Number(form.precio_costo)>0&&(
+                <p>· Ganancia bruta = <strong>{fmt(Number(form.precio)-Number(form.precio_costo))}</strong></p>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Stock mínimo (alerta)" type="number" value={form.stock_minimo} onChange={ff("stock_minimo")} placeholder="5" />
-            <Input label="URL imagen" value={form.imagen_url} onChange={ff("imagen_url")} placeholder="/imagenes/producto.jpg" />
+            <Input label="Stock *" type="number" value={form.stock} onChange={ff("stock")}
+              placeholder="0" error={fieldErrors.stock}/>
+            <Input label="Stock mínimo (alerta)" type="number" value={form.stock_minimo}
+              onChange={ff("stock_minimo")} placeholder="5"/>
           </div>
+          <Input label="URL imagen" value={form.imagen_url} onChange={ff("imagen_url")}
+            placeholder="/imagenes/producto.jpg"/>
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{color:T.textMuted}}>Especie (separadas por coma)</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{color:T.textTer}}>Especie (separadas por coma)</label>
             <input value={form.especie} onChange={ff("especie")} placeholder="ej: perros,gatos"
               className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none"
-              style={{border:`1.5px solid ${T.border}`, background:"#fafaf7", color:T.text}} />
+              style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}/>
           </div>
           <div className="flex gap-6 pt-1">
-            {[
-              {key:"activo", label:"Producto activo"},
-              {key:"destacado", label:"Destacado ★"},
-              {key:"requiere_formula", label:"Requiere fórmula"},
-            ].map(({key,label})=>(
+            {[{key:"activo",label:"Activo"},{key:"destacado",label:"Destacado ★"},{key:"requiere_formula",label:"Requiere fórmula"}].map(({key,label})=>(
               <label key={key} className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={!!form[key]} onChange={fc(key)} className="rounded accent-green-700" />
+                <input type="checkbox" checked={!!form[key]} onChange={fc(key)} className="rounded accent-green-700"/>
                 <span className="text-sm" style={{color:T.text}}>{label}</span>
               </label>
             ))}
           </div>
-          <GoldDivider />
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-3 pt-2" style={{borderTop:`1px solid ${T.border}`}}>
             <Btn variant="ghost" onClick={()=>setModal(false)}>Cancelar</Btn>
             <Btn onClick={guardar} size="md">{editando?"Guardar cambios":"Crear producto"}</Btn>
           </div>
@@ -785,150 +810,133 @@ function Productos() {
   );
 }
 
-// ─── SECCIÓN: Órdenes ─────────────────────────────────────────
+// ─── ÓRDENES ──────────────────────────────────────────────────
 function Ordenes() {
-  const [lista,setLista]       = useState([]);
-  const [total,setTotal]       = useState(0);
-  const [pagina,setPagina]     = useState(1);
-  const [filtro,setFiltro]     = useState("");
-  const [cargando,setCargando] = useState(true);
+  const [lista,setLista]=useState([]); const [total,setTotal]=useState(0);
+  const [pagina,setPagina]=useState(1); const [filtro,setFiltro]=useState("");
+  const [cargando,setCargando]=useState(true);
 
-  const cargar = useCallback(async()=>{
+  const cargar=useCallback(async()=>{
     setCargando(true);
-    try{
-      const {data} = await api.get(`/admin/ordenes?pagina=${pagina}&estado=${filtro}&limite=12`);
-      setLista(data.ordenes); setTotal(data.total);
-    }finally{setCargando(false);}
+    try{const{data}=await api.get(`/admin/ordenes?pagina=${pagina}&estado=${filtro}&limite=12`);
+      setLista(data.ordenes); setTotal(data.total);}
+    finally{setCargando(false);}
   },[pagina,filtro]);
 
   useEffect(()=>{cargar();},[cargar]);
-
-  const cambiarEstado = async(id,estado)=>{
-    await api.patch(`/admin/ordenes/${id}/estado`,{estado}); cargar();
-  };
+  const cambiarEstado=async(id,estado)=>{await api.patch(`/admin/ordenes/${id}/estado`,{estado});cargar();};
 
   return (
     <div className="space-y-5">
       <div className="flex gap-3 items-center flex-wrap">
-        <Select value={filtro} onChange={e=>{setFiltro(e.target.value);setPagina(1);}}>
+        <Sel value={filtro} onChange={e=>{setFiltro(e.target.value);setPagina(1);}}>
           <option value="">Todos los estados</option>
           {ESTADOS.map(e=><option key={e} value={e} className="capitalize">{e}</option>)}
-        </Select>
+        </Sel>
         <span className="text-xs font-medium" style={{color:T.textMuted}}>{total} órdenes</span>
       </div>
-
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <THead cols={["Código","Cliente","Total","Método","Estado","Fecha","Cambiar estado"]} />
+            <THead cols={["Código","Cliente","Total","Método","Estado","Fecha","Cambiar estado"]}/>
             <tbody>
-              {cargando
-                ? <tr><td colSpan={7}><Spinner /></td></tr>
-                : lista.length===0
-                ? <tr><td colSpan={7} className="text-center py-16 text-sm" style={{color:T.textMuted}}>Sin órdenes</td></tr>
-                : lista.map((o,i)=>(
-                  <tr key={o.id} className="transition-colors"
-                    style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?"#fff":T.surface}}
-                    onMouseEnter={e=>e.currentTarget.style.background=T.goldBg}
-                    onMouseLeave={e=>e.currentTarget.style.background=i%2===0?"#fff":T.surface}>
-                    <td className="py-3.5 px-4 font-mono text-xs font-bold" style={{color:T.green}}>{o.codigo}</td>
-                    <td className="py-3.5 px-4">
-                      <p className="text-xs font-semibold" style={{color:T.text}}>{o.cliente}</p>
-                      <p className="text-xs" style={{color:T.textMuted}}>{o.email}</p>
-                    </td>
-                    <td className="py-3.5 px-4 text-xs font-bold" style={{color:T.text}}>{fmt(o.total)}</td>
-                    <td className="py-3.5 px-4 text-xs capitalize" style={{color:T.textMuted}}>{o.metodo_pago||"—"}</td>
-                    <td className="py-3.5 px-4"><Badge v={o.estado} /></td>
-                    <td className="py-3.5 px-4 text-xs whitespace-nowrap" style={{color:T.textMuted}}>{fdoc(o.created_at)}</td>
-                    <td className="py-3.5 px-4">
-                      <select value={o.estado} onChange={e=>cambiarEstado(o.id,e.target.value)}
-                        className="text-xs rounded-lg px-2.5 py-1.5 outline-none capitalize"
-                        style={{border:`1.5px solid ${T.border}`,background:T.surface,color:T.text}}>
-                        {ESTADOS.map(e=><option key={e} value={e}>{e}</option>)}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
+              {cargando ? <tr><td colSpan={7}><Spinner/></td></tr>
+              : lista.length===0 ? <tr><td colSpan={7} className="text-center py-16 text-sm" style={{color:T.textMuted}}>Sin órdenes</td></tr>
+              : lista.map((o,i)=>(
+                <tr key={o.id} className="transition-colors"
+                  style={{borderBottom:`1px solid ${T.borderSub}`,background:i%2===0?T.surface:T.surfaceAlt}}
+                  onMouseEnter={e=>e.currentTarget.style.background=T.surfaceHover}
+                  onMouseLeave={e=>e.currentTarget.style.background=i%2===0?T.surface:T.surfaceAlt}>
+                  <td className="py-3.5 px-4 font-mono text-xs font-bold" style={{color:T.brand}}>{o.codigo}</td>
+                  <td className="py-3.5 px-4">
+                    <p className="text-xs font-semibold" style={{color:T.text}}>{o.cliente}</p>
+                    <p className="text-xs" style={{color:T.textMuted}}>{o.email}</p>
+                  </td>
+                  <td className="py-3.5 px-4 text-xs font-bold tabular-nums" style={{color:T.text}}>{fmt(o.total)}</td>
+                  <td className="py-3.5 px-4 text-xs capitalize" style={{color:T.textTer}}>{o.metodo_pago||"—"}</td>
+                  <td className="py-3.5 px-4"><Badge estado={o.estado}/></td>
+                  <td className="py-3.5 px-4 text-xs whitespace-nowrap" style={{color:T.textMuted}}>{fdoc(o.created_at)}</td>
+                  <td className="py-3.5 px-4">
+                    <select value={o.estado} onChange={e=>cambiarEstado(o.id,e.target.value)}
+                      className="text-xs rounded-lg px-2.5 py-1.5 outline-none"
+                      style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}>
+                      {ESTADOS.map(e=><option key={e} value={e}>{e}</option>)}
+                    </select>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
-        <div className="px-6 py-4">
-          <Paginacion pagina={pagina} total={total} limite={12} onChange={setPagina} />
-        </div>
+        <div className="px-6 py-4"><Paginacion pagina={pagina} total={total} limite={12} onChange={setPagina}/></div>
       </Card>
     </div>
   );
 }
 
-// ─── SECCIÓN: Factura manual ──────────────────────────────────
+// ─── FACTURA MANUAL ───────────────────────────────────────────
 function Factura() {
-  const [usuarios,setUsuarios]   = useState([]);
-  const [productos,setProductos] = useState([]);
-  const [buscarU,setBuscarU]     = useState("");
-  const [usuarioSel,setUsuarioSel] = useState(null);
-  const [items,setItems]         = useState([{producto_id:"",cantidad:1}]);
-  const [metodo,setMetodo]       = useState("efectivo");
-  const [direccion,setDireccion] = useState("");
-  const [ciudad,setCiudad]       = useState("");
-  const [notas,setNotas]         = useState("");
-  const [resultado,setResultado] = useState(null);
-  const [error,setError]         = useState("");
-  const [cargando,setCargando]   = useState(false);
+  const [usuarios,setUsuarios]=useState([]); const [productos,setProductos]=useState([]);
+  const [buscarU,setBuscarU]=useState(""); const [usuarioSel,setUsuarioSel]=useState(null);
+  const [items,setItems]=useState([{producto_id:"",cantidad:1}]);
+  const [metodo,setMetodo]=useState("efectivo");
+  const [direccion,setDireccion]=useState(""); const [ciudad,setCiudad]=useState("");
+  const [notas,setNotas]=useState(""); const [resultado,setResultado]=useState(null);
+  const [error,setError]=useState(""); const [cargando,setCargando]=useState(false);
 
   useEffect(()=>{
     api.get("/admin/usuarios?limite=100").then(({data})=>setUsuarios(data.usuarios));
     api.get("/admin/productos?limite=100").then(({data})=>setProductos(data.productos));
   },[]);
 
-  const filtrados = usuarios.filter(u=>
-    `${u.nombre} ${u.apellido} ${u.email}`.toLowerCase().includes(buscarU.toLowerCase())
-  );
+  const filtrados=usuarios.filter(u=>
+    `${u.nombre} ${u.apellido} ${u.email}`.toLowerCase().includes(buscarU.toLowerCase()));
 
-  const total = items.reduce((acc,it)=>{
-    const p = productos.find(p=>p.id==it.producto_id);
+  // Cálculo con IVA 19%
+  const subtotal=items.reduce((acc,it)=>{
+    const p=productos.find(p=>p.id==it.producto_id);
     return acc+(p?p.precio*it.cantidad:0);
   },0);
+  const iva=subtotal*0.19;
+  const total=subtotal+iva;
 
-  const enviar = async()=>{
+  const enviar=async()=>{
     setError(""); setResultado(null);
     if(!usuarioSel) return setError("Selecciona un cliente.");
     if(items.some(i=>!i.producto_id)) return setError("Selecciona producto en cada fila.");
     setCargando(true);
     try{
-      const {data} = await api.post("/admin/facturas",{
-        usuario_id:usuarioSel.id, items, metodo_pago:metodo,
+      const{data}=await api.post("/admin/facturas",{
+        usuario_id:usuarioSel.id,items,metodo_pago:metodo,
         direccion_entrega:direccion||undefined,
-        ciudad_entrega:ciudad||undefined,
-        notas:notas||undefined,
+        ciudad_entrega:ciudad||undefined,notas:notas||undefined,
       });
       setResultado(data);
       setItems([{producto_id:"",cantidad:1}]);
       setUsuarioSel(null); setBuscarU("");
-    }catch(err){
-      setError(err.response?.data?.error||"Error al crear factura.");
-    }finally{setCargando(false);}
+    }catch(err){setError(err.response?.data?.error||"Error al crear factura.");}
+    finally{setCargando(false);}
   };
 
   return (
     <div className="max-w-2xl space-y-5">
-      {resultado&&<Msg texto={`✅ Factura creada: ${resultado.codigo}`} tipo="ok" />}
-      {error&&<Msg texto={error} tipo="err" />}
+      {resultado&&<Msg texto={`✅ Factura creada: ${resultado.codigo}`} tipo="ok"/>}
+      {error&&<Msg texto={error} tipo="err"/>}
 
       <Card className="p-6">
-        <SectionTitle sub="Busca al cliente por nombre o email">1. Seleccionar cliente</SectionTitle>
-        <input value={buscarU} onChange={e=>setBuscarU(e.target.value)}
-          placeholder="Buscar cliente..."
-          className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none mb-2 transition-all"
-          style={{border:`1.5px solid ${T.border}`,background:T.surface,color:T.text}} />
+        <SecTitle sub="Busca al cliente por nombre o email">1. Seleccionar cliente</SecTitle>
+        <input value={buscarU} onChange={e=>setBuscarU(e.target.value)} placeholder="Buscar cliente..."
+          className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none mb-2"
+          style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}/>
         {usuarioSel
           ? <div className="flex items-center justify-between rounded-xl px-4 py-3"
-              style={{background:T.greenLight,border:`1px solid ${T.green}33`}}>
+              style={{background:T.brandLight,border:`1px solid ${T.brandBorder}`}}>
               <div>
-                <p className="text-sm font-bold" style={{color:T.green}}>{usuarioSel.nombre} {usuarioSel.apellido}</p>
+                <p className="text-sm font-bold" style={{color:T.brand}}>{usuarioSel.nombre} {usuarioSel.apellido}</p>
                 <p className="text-xs" style={{color:T.textMuted}}>{usuarioSel.email}</p>
               </div>
               <button onClick={()=>{setUsuarioSel(null);setBuscarU("");}}
-                className="text-xs text-red-500 font-semibold">Cambiar</button>
+                className="text-xs font-semibold" style={{color:T.danger}}>Cambiar</button>
             </div>
           : buscarU&&(
             <div className="rounded-xl overflow-hidden max-h-40 overflow-y-auto"
@@ -936,63 +944,71 @@ function Factura() {
               {filtrados.slice(0,8).map(u=>(
                 <button key={u.id} onClick={()=>{setUsuarioSel(u);setBuscarU("");}}
                   className="w-full text-left px-4 py-3 transition-colors text-sm"
-                  style={{borderBottom:`1px solid ${T.border}`}}
-                  onMouseEnter={e=>e.currentTarget.style.background=T.goldBg}
-                  onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                  style={{borderBottom:`1px solid ${T.borderSub}`}}
+                  onMouseEnter={e=>e.currentTarget.style.background=T.surfaceHover}
+                  onMouseLeave={e=>e.currentTarget.style.background=T.surface}>
                   <p className="font-semibold text-xs" style={{color:T.text}}>{u.nombre} {u.apellido}</p>
                   <p className="text-xs" style={{color:T.textMuted}}>{u.email}</p>
                 </button>
               ))}
             </div>
-          )
-        }
+          )}
       </Card>
 
       <Card className="p-6">
-        <SectionTitle sub="Agrega los productos de la venta">2. Productos</SectionTitle>
+        <SecTitle sub="Agrega los productos de la venta">2. Productos</SecTitle>
         <div className="space-y-2.5">
           {items.map((it,i)=>(
             <div key={i} className="flex gap-2.5 items-center">
-              <select value={it.producto_id} onChange={e=>setItems(items.map((x,idx)=>idx===i?{...x,producto_id:e.target.value}:x))}
+              <select value={it.producto_id}
+                onChange={e=>setItems(items.map((x,idx)=>idx===i?{...x,producto_id:e.target.value}:x))}
                 className="flex-1 px-3.5 py-2.5 text-xs rounded-xl outline-none"
-                style={{border:`1.5px solid ${T.border}`,background:T.surface,color:T.text}}>
+                style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}>
                 <option value="">Selecciona producto</option>
                 {productos.map(p=><option key={p.id} value={p.id}>{p.nombre} — {fmt(p.precio)}</option>)}
               </select>
               <input type="number" min={1} value={it.cantidad}
                 onChange={e=>setItems(items.map((x,idx)=>idx===i?{...x,cantidad:Number(e.target.value)}:x))}
                 className="w-16 px-2.5 py-2.5 text-xs rounded-xl text-center outline-none"
-                style={{border:`1.5px solid ${T.border}`,background:T.surface,color:T.text}} />
+                style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}/>
               <button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))}
                 className="text-xl leading-none transition-colors" style={{color:T.textMuted}}
-                onMouseEnter={e=>e.target.style.color="#dc2626"}
+                onMouseEnter={e=>e.target.style.color=T.danger}
                 onMouseLeave={e=>e.target.style.color=T.textMuted}>×</button>
             </div>
           ))}
         </div>
         <button onClick={()=>setItems([...items,{producto_id:"",cantidad:1}])}
           className="mt-3 text-xs font-semibold" style={{color:T.gold}}>+ Agregar producto</button>
-        {total>0&&(
-          <div className="mt-4 pt-4 flex justify-between items-center" style={{borderTop:`1px solid ${T.border}`}}>
-            <span className="text-sm font-semibold" style={{color:T.text}}>Total</span>
-            <span className="text-xl font-bold" style={{color:T.green}}>{fmt(total)}</span>
+
+        {subtotal>0&&(
+          <div className="mt-4 pt-4 space-y-1.5" style={{borderTop:`1px solid ${T.border}`}}>
+            <div className="flex justify-between text-xs" style={{color:T.textTer}}>
+              <span>Subtotal</span><span className="tabular-nums">{fmt(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-xs" style={{color:T.info}}>
+              <span>IVA (19% — Colombia)</span><span className="tabular-nums">{fmt(iva)}</span>
+            </div>
+            <div className="flex justify-between text-sm font-bold pt-1" style={{borderTop:`1px solid ${T.border}`,color:T.text}}>
+              <span>Total</span><span className="tabular-nums" style={{color:T.brand}}>{fmt(total)}</span>
+            </div>
           </div>
         )}
       </Card>
 
       <Card className="p-6">
-        <SectionTitle sub="Método de pago y datos de entrega">3. Pago y entrega</SectionTitle>
+        <SecTitle sub="Método de pago y datos de entrega">3. Pago y entrega</SecTitle>
         <div className="space-y-4">
-          <Select label="Método de pago" value={metodo} onChange={e=>setMetodo(e.target.value)}>
+          <Sel label="Método de pago" value={metodo} onChange={e=>setMetodo(e.target.value)}>
             {["efectivo","tarjeta","transferencia","pse","contraentrega"].map(m=>(
               <option key={m} value={m} className="capitalize">{m}</option>
             ))}
-          </Select>
+          </Sel>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Dirección entrega" value={direccion} onChange={e=>setDireccion(e.target.value)} placeholder="Opcional" />
-            <Input label="Ciudad" value={ciudad} onChange={e=>setCiudad(e.target.value)} placeholder="Opcional" />
+            <Input label="Dirección entrega" value={direccion} onChange={e=>setDireccion(e.target.value)} placeholder="Opcional"/>
+            <Input label="Ciudad" value={ciudad} onChange={e=>setCiudad(e.target.value)} placeholder="Opcional"/>
           </div>
-          <Input label="Notas" value={notas} onChange={e=>setNotas(e.target.value)} placeholder="Observaciones..." />
+          <Input label="Notas" value={notas} onChange={e=>setNotas(e.target.value)} placeholder="Observaciones..."/>
         </div>
       </Card>
 
@@ -1003,81 +1019,61 @@ function Factura() {
   );
 }
 
-// ─── Layout principal ─────────────────────────────────────────
-const NAV = [
-  {id:"dashboard",label:"Dashboard",  icono:"▦"},
-  {id:"usuarios", label:"Usuarios",   icono:"👥"},
-  {id:"productos",label:"Productos",  icono:"📦"},
-  {id:"ordenes",  label:"Órdenes",    icono:"🛒"},
-  {id:"factura",  label:"Nueva venta",icono:"🧾"},
-  {id:"objetivos",label:"Objetivos",  icono:"🎯"},
-  {id:"reporte-ventas",   label:"Reporte ventas",  icono:"📊"},
-  {id:"reporte-salidas",  label:"Salidas stock",   icono:"📉"}, 
-];
-
-const TITULOS = {
-  dashboard:"Dashboard", usuarios:"Gestión de usuarios",
-  productos:"Gestión de productos", ordenes:"Órdenes",
-  factura:"Nueva venta / Factura", objetivos:"Objetivos y metas",
-  "reporte-ventas":  "Reporte de Ventas", 
-  "reporte-salidas": "Salidas de Stock", 
-};
-
+// ─── LAYOUT PRINCIPAL ─────────────────────────────────────────
 export default function Admin() {
-  const {usuario,esAdmin} = useAuth();
-  const navigate = useNavigate();
-  const [seccion,setSeccion] = useState("dashboard");
-  const [collapsed,setCollapsed] = useState(false);
+  const {usuario,esAdmin}=useAuth();
+  const navigate=useNavigate();
+  const [seccion,setSeccion]=useState("dashboard");
+  const [collapsed,setCollapsed]=useState(false);
 
-  useEffect(()=>{ if(!esAdmin) navigate("/"); },[esAdmin,navigate]);
+  useEffect(()=>{if(!esAdmin) navigate("/");},[esAdmin,navigate]);
 
-  const renderSeccion = () => {
-    if(seccion==="dashboard") return <Dashboard />;
-    if(seccion==="usuarios")  return <Usuarios />;
-    if(seccion==="productos") return <Productos />;
-    if(seccion==="ordenes")   return <Ordenes />;
-    if(seccion==="factura")   return <Factura />;
-    if(seccion==="objetivos") return <Objetivos />;
-    if(seccion==="reporte-ventas")  return <ReporteVentas />; 
-    if(seccion==="reporte-salidas") return <ReporteSalidas />; 
+  const renderSeccion=()=>{
+    if(seccion==="dashboard")       return <Dashboard/>;
+    if(seccion==="usuarios")        return <Usuarios/>;
+    if(seccion==="productos")       return <Productos/>;
+    if(seccion==="ordenes")         return <Ordenes/>;
+    if(seccion==="factura")         return <Factura/>;
+    if(seccion==="objetivos")       return <Objetivos/>;
+    if(seccion==="reporte-ventas")  return <ReporteVentas/>;
+    if(seccion==="reporte-salidas") return <ReporteSalidas/>;
   };
 
   return (
-    <div className="min-h-screen flex" style={{background:T.surface}}>
-
-      {/* Sidebar premium */}
-      <aside className={`${collapsed?"w-16":"w-56"} flex flex-col flex-shrink-0 transition-all duration-200`}
+    <div className="min-h-screen flex" style={{background:T.canvas}}>
+      {/* Sidebar */}
+      <aside className={`${collapsed?"w-14":"w-52"} flex flex-col flex-shrink-0 transition-all duration-200`}
         style={{background:T.sidebar,borderRight:`1px solid ${T.sidebarBorder}`}}>
 
         {/* Logo */}
-        <div className="px-4 py-5" style={{borderBottom:`1px solid ${T.sidebarBorder}`}}>
+        <div className="px-3 py-4" style={{borderBottom:`1px solid ${T.sidebarBorder}`}}>
           {!collapsed
             ? <Link to="/" className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
-                  style={{background:T.gold,color:"#0f1f0f"}}>V</div>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0"
+                  style={{background:T.gold,color:"#0c180c"}}>V</div>
                 <div>
-                  <p className="text-xs font-bold leading-none" style={{color:T.sidebarActiveText}}>Victoria</p>
+                  <p className="text-xs font-bold leading-none" style={{color:T.sidebarTextHi}}>Victoria</p>
                   <p className="text-xs leading-none mt-0.5" style={{color:T.sidebarText}}>Pecuarios</p>
                 </div>
               </Link>
             : <Link to="/" className="flex justify-center">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm"
-                  style={{background:T.gold,color:"#0f1f0f"}}>V</div>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs"
+                  style={{background:T.gold,color:"#0c180c"}}>V</div>
               </Link>
           }
         </div>
 
         {/* Usuario */}
-        {!collapsed && usuario && (
-          <div className="px-4 py-3" style={{borderBottom:`1px solid ${T.sidebarBorder}`}}>
-            <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5"
+        {!collapsed&&usuario&&(
+          <div className="px-3 py-3" style={{borderBottom:`1px solid ${T.sidebarBorder}`}}>
+            <div className="flex items-center gap-2 rounded-xl px-2.5 py-2"
               style={{background:T.sidebarActive}}>
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                style={{background:T.gold,color:"#0f1f0f"}}>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                style={{background:T.gold,color:"#0c180c"}}>
                 {usuario.nombre?.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold truncate" style={{color:T.sidebarActiveText}}>{usuario.nombre}</p>
+                <p className="text-xs font-bold truncate" style={{color:T.sidebarTextHi}}>{usuario.nombre}</p>
                 <p className="text-xs capitalize" style={{color:T.gold}}>{usuario.rol}</p>
               </div>
             </div>
@@ -1085,38 +1081,38 @@ export default function Admin() {
         )}
 
         {/* Nav */}
-        <nav className="flex-1 px-2 py-3 space-y-0.5">
+        <nav className="flex-1 px-2 py-2 space-y-0.5">
           {NAV.map(s=>(
-            <button key={s.id} onClick={()=>setSeccion(s.id)}
-              title={collapsed?s.label:undefined}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all duration-150
-                ${seccion===s.id?"font-bold":"font-medium"}`}
+            <button key={s.id} onClick={()=>setSeccion(s.id)} title={collapsed?s.label:undefined}
+              className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-xs transition-all duration-150 ${seccion===s.id?"font-bold":"font-medium"}`}
               style={{
-                background: seccion===s.id ? T.sidebarActive : "transparent",
-                color: seccion===s.id ? T.sidebarActiveText : T.sidebarText,
-                borderLeft: seccion===s.id ? `2px solid ${T.gold}` : "2px solid transparent",
+                background: seccion===s.id?T.sidebarActive:"transparent",
+                color: seccion===s.id?T.sidebarTextHi:T.sidebarText,
+                borderLeft: seccion===s.id?`2px solid ${T.gold}`:"2px solid transparent",
               }}
-              onMouseEnter={e=>{ if(seccion!==s.id) e.currentTarget.style.background=T.sidebarActive; }}
-              onMouseLeave={e=>{ if(seccion!==s.id) e.currentTarget.style.background="transparent"; }}>
-              <span className="text-base flex-shrink-0">{s.icono}</span>
-              {!collapsed && <span>{s.label}</span>}
+              onMouseEnter={e=>{if(seccion!==s.id)e.currentTarget.style.background=T.sidebarActive;}}
+              onMouseLeave={e=>{if(seccion!==s.id)e.currentTarget.style.background="transparent";}}>
+              <NavIcon d={s.d}/>
+              {!collapsed&&<span>{s.label}</span>}
             </button>
           ))}
         </nav>
 
         {/* Footer sidebar */}
-        <div className="px-2 py-3 space-y-0.5" style={{borderTop:`1px solid ${T.sidebarBorder}`}}>
-          {!collapsed && (
-            <Link to="/"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all"
+        <div className="px-2 py-2 space-y-0.5" style={{borderTop:`1px solid ${T.sidebarBorder}`}}>
+          {!collapsed&&(
+            <Link to="/" className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-xs font-medium transition-all"
               style={{color:T.sidebarText}}
               onMouseEnter={e=>e.currentTarget.style.background=T.sidebarActive}
               onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-              <span>←</span><span>Volver a la tienda</span>
+              <svg className="w-[15px] h-[15px]" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+              </svg>
+              <span>Ir a la tienda</span>
             </Link>
           )}
           <button onClick={()=>setCollapsed(!collapsed)}
-            className="w-full flex items-center justify-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all"
+            className="w-full flex items-center justify-center py-2 rounded-xl text-xs transition-all"
             style={{color:T.sidebarText}}
             onMouseEnter={e=>e.currentTarget.style.background=T.sidebarActive}
             onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
@@ -1127,12 +1123,10 @@ export default function Admin() {
 
       {/* Contenido */}
       <main className="flex-1 min-w-0 flex flex-col">
-
-        {/* Header */}
-        <header className="bg-white px-8 py-4 flex items-center justify-between"
-          style={{borderBottom:`1px solid ${T.border}`}}>
+        <header className="px-8 py-4 flex items-center justify-between"
+          style={{background:T.surface,borderBottom:`1px solid ${T.border}`}}>
           <div>
-            <h1 className="text-lg font-bold" style={{color:T.text,fontFamily:"Georgia,serif"}}>
+            <h1 className="text-base font-bold" style={{color:T.text,fontFamily:font.display}}>
               {TITULOS[seccion]}
             </h1>
             <p className="text-xs mt-0.5" style={{color:T.textMuted}}>
@@ -1140,13 +1134,10 @@ export default function Admin() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{background:T.success}}/>
             <span className="text-xs font-medium" style={{color:T.textMuted}}>Sistema activo</span>
           </div>
         </header>
-
-        {/* Línea dorada decorativa */}
-        <GoldDivider />
 
         <div className="flex-1 p-8 overflow-auto">
           {renderSeccion()}

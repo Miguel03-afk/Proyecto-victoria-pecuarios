@@ -1,121 +1,127 @@
-import { useNavigate } from "react-router-dom";
-import { useCarrito } from "../context/CarritoContext";
+// src/components/ProductCard.jsx
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useCarrito } from "../context/CarritoContext";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
-export default function ProductCard({ producto }) {
-  const { agregar, items } = useCarrito();
-  const navigate = useNavigate();
-  const [agregado, setAgregado] = useState(false);
+const fmt = (n) =>
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(Number(n) || 0);
 
-  const sinStock  = Number(producto.stock) === 0;
-  const inactivo  = producto.activo === 0 || producto.activo === false;
-  const noDisponible = sinStock || inactivo;
-
-  // Cuántas unidades ya hay en el carrito
-  const enCarrito = items.find(i => i.id === producto.id)?.cantidad || 0;
-  const limiteAlcanzado = enCarrito >= Number(producto.stock);
-
-  const descuento = producto.precio_antes
-    ? Math.round(((producto.precio_antes - producto.precio) / producto.precio_antes) * 100)
+const descPct = (precio, antes) =>
+  antes && Number(antes) > Number(precio)
+    ? Math.round(((Number(antes) - Number(precio)) / Number(antes)) * 100)
     : null;
 
+export default function ProductCard({ producto }) {
+  const { agregar }   = useCarrito();
+  const { usuario }   = useAuth();
+  const navigate      = useNavigate();
+  const [agregado, setAgregado] = useState(false);
+
+  const dc = descPct(producto.precio, producto.precio_antes);
+  const hayStock = producto.stock > 0;
+
   const handleAgregar = (e) => {
-    e.stopPropagation();
-    if (noDisponible || limiteAlcanzado) return;
-    agregar(producto);
+    e.preventDefault(); // no navegar al hacer click en el botón
+    if (!usuario) { navigate("/login"); return; }
+    if (!hayStock) return;
+    agregar({
+      id:          producto.id,
+      producto_id: producto.id,
+      variante_id: null,
+      nombre:      producto.nombre,
+      slug:        producto.slug,
+      precio:      Number(producto.precio),
+      imagen_url:  producto.imagen_url,
+      stock:       producto.stock,
+      activo:      1,
+    }, 1);
     setAgregado(true);
     setTimeout(() => setAgregado(false), 2000);
   };
 
   return (
-    <div className={`bg-white rounded-xl border transition-all duration-200 overflow-hidden group flex flex-col
-      ${noDisponible
-        ? "border-gray-100 opacity-70"
-        : "border-gray-100 hover:border-green-200 hover:shadow-md"}`}>
+    <Link
+      to={`/producto/${producto.slug}`}
+      className="group bg-white rounded-2xl overflow-hidden border border-green-100 hover:border-green-300 hover:shadow-lg transition-all duration-300 flex flex-col">
 
       {/* Imagen */}
-      <div
-        className={`relative overflow-hidden bg-gray-50 h-40 ${!noDisponible ? "cursor-pointer" : "cursor-default"}`}
-        onClick={() => !noDisponible && navigate(`/producto/${producto.slug}`)}>
-        {producto.imagen_url
-          ? <img src={producto.imagen_url} alt={producto.nombre}
-              className={`w-full h-full object-cover transition-transform duration-300 ${!noDisponible ? "group-hover:scale-105" : ""}`} />
-          : <div className="w-full h-full flex items-center justify-center text-5xl">🐾</div>
-        }
+      <div className="relative h-44 bg-gradient-to-br from-green-50 to-emerald-50 overflow-hidden flex items-center justify-center">
+        {producto.imagen_url ? (
+          <img
+            src={producto.imagen_url}
+            alt={producto.nombre}
+            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-400"
+            onError={e => { e.target.style.display = "none"; }}
+          />
+        ) : (
+          <span className="text-6xl">🐾</span>
+        )}
 
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {descuento && !noDisponible && (
-            <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-md">-{descuento}%</span>
+          {dc && (
+            <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-lg shadow-sm">
+              -{dc}%
+            </span>
           )}
-          {producto.destacado === 1 && !noDisponible && (
-            <span className="bg-green-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-md">★ Top</span>
-          )}
+          {producto.destacado ? (
+            <span className="bg-amber-400 text-amber-900 text-xs font-bold px-2 py-0.5 rounded-lg shadow-sm">
+              ★ Top
+            </span>
+          ) : null}
         </div>
 
-        {/* Overlay sin disponibilidad */}
-        {noDisponible && (
-          <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-            <span className="text-gray-500 font-semibold text-xs bg-white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
-              {inactivo ? "No disponible" : "Sin stock"}
+        {!hayStock && (
+          <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+            <span className="text-xs font-bold text-gray-500 bg-white px-3 py-1.5 rounded-xl border border-gray-200">
+              Sin stock
             </span>
           </div>
         )}
       </div>
 
-      {/* Contenido */}
-      <div className="p-3 flex flex-col flex-1">
-        {producto.categoria && (
-          <span className="text-xs text-green-600 font-semibold uppercase tracking-wide mb-0.5">{producto.categoria}</span>
-        )}
-        <h3
-          onClick={() => !noDisponible && navigate(`/producto/${producto.slug}`)}
-          className={`text-sm font-semibold text-gray-800 leading-snug mb-0.5 line-clamp-2
-            ${!noDisponible ? "cursor-pointer hover:text-green-700 transition-colors" : ""}`}>
+      {/* Info */}
+      <div className="p-4 flex flex-col flex-1">
+        <span className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">
+          {producto.categoria}
+        </span>
+        <h3 className="text-sm font-semibold text-green-950 line-clamp-2 leading-snug mb-1 group-hover:text-green-700 transition-colors flex-1">
           {producto.nombre}
         </h3>
-        {producto.marca && <p className="text-xs text-gray-400 mb-1.5">{producto.marca}</p>}
+        {producto.marca && (
+          <p className="text-xs text-green-600/50 mb-2">{producto.marca}</p>
+        )}
+        {producto.descripcion_corta && (
+          <p className="text-xs text-gray-400 line-clamp-2 mb-3 leading-relaxed">
+            {producto.descripcion_corta}
+          </p>
+        )}
 
-        <div className="mt-auto pt-2">
-          {/* Precio */}
-          <div className="flex items-end gap-1.5 mb-2.5">
-            <span className={`text-base font-bold ${noDisponible ? "text-gray-400" : "text-green-700"}`}>
-              ${Number(producto.precio).toLocaleString("es-CO")}
-            </span>
-            {producto.precio_antes && (
-              <span className="text-xs text-gray-400 line-through mb-0.5">
-                ${Number(producto.precio_antes).toLocaleString("es-CO")}
-              </span>
+        {/* Precio y CTA */}
+        <div className="mt-auto">
+          <div className="flex items-end gap-1.5 mb-3">
+            <span className="text-base font-bold text-green-700 tabular-nums">{fmt(producto.precio)}</span>
+            {producto.precio_antes && Number(producto.precio_antes) > 0 && (
+              <span className="text-xs text-green-600/40 line-through tabular-nums">{fmt(producto.precio_antes)}</span>
             )}
           </div>
 
-          {/* Indicador en carrito */}
-          {enCarrito > 0 && !noDisponible && (
-            <p className="text-xs text-green-600 font-medium mb-1.5">✓ {enCarrito} en tu carrito</p>
-          )}
-
-          {/* Botón */}
           <button
             onClick={handleAgregar}
-            disabled={noDisponible || limiteAlcanzado}
-            className={`w-full py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 active:scale-95
-              ${noDisponible
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : limiteAlcanzado
-                ? "bg-amber-100 text-amber-700 cursor-not-allowed"
-                : agregado
-                ? "bg-green-500 text-white"
-                : "bg-green-600 hover:bg-green-700 text-white"}`}>
-            {noDisponible
-              ? inactivo ? "No disponible" : "Sin stock"
-              : limiteAlcanzado
-              ? "Stock máximo en carrito"
-              : agregado
-              ? "✓ Agregado"
-              : "Agregar al carrito"}
+            disabled={!hayStock}
+            className={`w-full py-2 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95 ${
+              agregado
+                ? "bg-green-600 text-white"
+                : hayStock
+                ? "bg-green-700 hover:bg-green-800 text-white"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+            }`}>
+            {agregado ? "✓ Agregado" : hayStock ? "Agregar al carrito" : "Sin stock"}
           </button>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

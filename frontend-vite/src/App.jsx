@@ -1,23 +1,30 @@
+// src/App.jsx
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider }    from "./context/AuthContext";
 import { CarritoProvider } from "./context/CarritoContext";
 import { RutaProtegida, RutaAdmin } from "./components/RutaProtegida";
 import CarritoPanel from "./components/CarritoPanel";
-import Navbar from "./components/Navbar";
-import Landing from "./pages/Landing";
-import Home from "./pages/Home";
-import { Login, Registro } from "./pages/Auth";
-import Admin from "./pages/Admin";
-import Carrito from "./pages/Carrito";
+import Navbar       from "./components/Navbar";
 
-const Perfil      = () => <div className="p-8 text-center text-gray-500">Perfil — próximamente</div>;
-const MisOrdenes  = () => <div className="p-8 text-center text-gray-500">Mis órdenes — próximamente</div>;
-const Producto    = () => <div className="p-8 text-center text-gray-500">Detalle producto — próximamente</div>;
+// Páginas
+import Landing    from "./pages/Landing";
+import Home       from "./pages/Home";
+import { Login, Registro } from "./pages/Auth";
+import Admin      from "./pages/Admin";
+import Carrito    from "./pages/Carrito";
+import Producto   from "./pages/Producto";
+import Perfil     from "./pages/Perfil";
+import MisOrdenes from "./pages/MisOrdenes";
+
 const NoEncontrado = () => (
-  <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-4">
-    <div className="text-7xl">🐾</div>
-    <h1 className="text-3xl font-bold text-gray-800">Página no encontrada</h1>
-    <a href="/" className="bg-green-600 text-white px-6 py-2.5 rounded-full font-medium hover:bg-green-700 transition-colors">
+  <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-4"
+    style={{ background: "#f6f7f4" }}>
+    <div className="text-7xl select-none">🐾</div>
+    <h1 className="text-3xl font-bold" style={{ color: "#191c18" }}>Página no encontrada</h1>
+    <p className="text-sm" style={{ color: "#788078" }}>La página que buscas no existe o fue movida.</p>
+    <a href="/"
+      className="mt-2 px-6 py-2.5 rounded-2xl font-semibold text-sm text-white transition-colors"
+      style={{ background: "#1a5c1a" }}>
       Volver al inicio
     </a>
   </div>
@@ -37,27 +44,37 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <CarritoProvider>
-          {/* Panel carrito global — disponible en toda la app */}
+          {/* Panel carrito global */}
           <CarritoPanel />
 
           <Routes>
-            {/* Landing — sin Navbar del carrito */}
+            {/* Landing — sin Navbar */}
             <Route path="/"         element={<Landing />} />
 
-            {/* Auth */}
+            {/* Auth — sin Navbar */}
             <Route path="/login"    element={<Login />} />
             <Route path="/registro" element={<Registro />} />
 
-            {/* Admin */}
+            {/* Admin — ruta protegida por rol */}
             <Route path="/admin/*"  element={<RutaAdmin><Admin /></RutaAdmin>} />
 
             {/* Tienda y páginas con Navbar */}
-            <Route path="/tienda"         element={<LayoutConNav><Home /></LayoutConNav>} />
-            <Route path="/producto/:slug" element={<LayoutConNav><Producto /></LayoutConNav>} />
-            <Route path="/carrito" element={<LayoutConNav><Carrito /></LayoutConNav>} />
-            <Route path="/perfil"         element={<RutaProtegida><LayoutConNav><Perfil /></LayoutConNav></RutaProtegida>} />
-            <Route path="/mis-ordenes"    element={<RutaProtegida><LayoutConNav><MisOrdenes /></LayoutConNav></RutaProtegida>} />
+            <Route path="/tienda"
+              element={<LayoutConNav><Home /></LayoutConNav>} />
 
+            <Route path="/producto/:slug"
+              element={<LayoutConNav><Producto /></LayoutConNav>} />
+
+            <Route path="/carrito"
+              element={<LayoutConNav><Carrito /></LayoutConNav>} />
+
+            <Route path="/perfil"
+              element={<RutaProtegida><LayoutConNav><Perfil /></LayoutConNav></RutaProtegida>} />
+
+            <Route path="/mis-ordenes"
+              element={<RutaProtegida><LayoutConNav><MisOrdenes /></LayoutConNav></RutaProtegida>} />
+
+            {/* 404 */}
             <Route path="*" element={<NoEncontrado />} />
           </Routes>
         </CarritoProvider>
