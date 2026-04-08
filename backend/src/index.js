@@ -7,7 +7,9 @@ import categoriasRoutes from "./routes/categorias.routes.js";
 import adminRoutes      from "./routes/admin.routes.js";
 import metasRoutes      from "./routes/metas.routes.js";
 import reportesRoutes from './routes/reportes.routes.js';
-
+import citasRouter          from "./routes/citas.routes.js";
+import veterinarioRouter    from "./routes/veterinario.routes.js";
+import adminVetsRouter      from "./routes/admin.veterinarios.routes.js";
 
 
 dotenv.config();
@@ -19,6 +21,9 @@ app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use("/api/citas",                  citasRouter);
+app.use("/api/veterinario",            veterinarioRouter);
+app.use("/api/admin/veterinarios",     adminVetsRouter);
 app.use("/api/auth",       authRoutes);
 app.use("/api/productos",  productosRoutes);
 app.use("/api/categorias", categoriasRoutes);

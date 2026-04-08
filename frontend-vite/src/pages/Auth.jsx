@@ -4,81 +4,259 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
-// ── Componentes base ──────────────────────────────────────────
-const InputField = ({ label, type = "text", value, onChange, placeholder, required, hint }) => {
-  const [mostrar, setMostrar] = useState(false);
-  const esPassword = type === "password";
+/* ─── Tokens ─────────────────────────────────────────────────────────────── */
+const C = {
+  brand:      "#1a5c1a",
+  brandMid:   "#2d7a2d",
+  brandDark:  "#0c180c",
+  brandLight: "#e6f3e6",
+  brandBorder:"#b8d9b8",
+  lime:       "#a3e635",
+  canvas:     "#f6f7f4",
+  surface:    "#ffffff",
+  surfaceAlt: "#f2f3ef",
+  text:       "#111827",
+  textSec:    "#374151",
+  textTer:    "#6b7280",
+  textMuted:  "#9ca3af",
+  border:     "rgba(0,0,0,0.09)",
+  danger:     "#dc2626",
+  dangerBg:   "#fef2f2",
+  dangerBorder:"#fecaca",
+};
+
+/* ─── Campo de entrada ────────────────────────────────────────────────────── */
+function Campo({ label, type = "text", value, onChange, placeholder, required, hint, disabled }) {
+  const [verPass, setVerPass] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const esPass = type === "password";
+
   return (
     <div>
-      <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">{label}</label>
-      <div className="relative">
+      <label style={{
+        display:"block", fontSize:11, fontWeight:700,
+        textTransform:"uppercase", letterSpacing:0.8,
+        color: focused ? C.brand : C.textTer,
+        marginBottom:6, transition:"color 0.15s",
+      }}>
+        {label}
+      </label>
+      <div style={{ position:"relative" }}>
         <input
-          type={esPassword ? (mostrar ? "text" : "password") : type}
-          value={value} onChange={onChange} placeholder={placeholder} required={required}
-          className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent transition-all placeholder-gray-300 bg-gray-50 focus:bg-white" />
-        {esPassword && (
-          <button type="button" onClick={() => setMostrar(!mostrar)} tabIndex={-1}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-green-600 transition-colors">
-            {mostrar ? (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-              </svg>
-            )}
+          type={esPass ? (verPass ? "text" : "password") : type}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          required={required}
+          disabled={disabled}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{
+            width:"100%",
+            padding: esPass ? "11px 44px 11px 14px" : "11px 14px",
+            borderRadius:12,
+            border:`1.5px solid ${focused ? C.brand : C.border}`,
+            background: disabled ? C.surfaceAlt : focused ? C.surface : C.surfaceAlt,
+            color: disabled ? C.textMuted : C.text,
+            fontSize:14,
+            outline:"none",
+            transition:"all 0.15s",
+            cursor: disabled ? "not-allowed" : "text",
+            boxShadow: focused ? `0 0 0 3px rgba(26,92,26,0.08)` : "none",
+          }}
+        />
+        {esPass && (
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => setVerPass(v => !v)}
+            style={{
+              position:"absolute", right:12, top:"50%",
+              transform:"translateY(-50%)",
+              background:"none", border:"none",
+              cursor:"pointer", color:C.textMuted,
+              fontSize:16, padding:2,
+              transition:"color 0.15s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = C.brand; }}
+            onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; }}
+          >
+            {verPass ? "🙈" : "👁"}
           </button>
         )}
       </div>
-      {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+      {hint && (
+        <p style={{ margin:"5px 0 0", fontSize:11, color:C.textMuted, lineHeight:1.4 }}>{hint}</p>
+      )}
     </div>
   );
-};
+}
 
-const Logo = () => (
-  <Link to="/" className="inline-flex flex-col items-center gap-1.5">
-    <div className="w-12 h-12 bg-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-200">
-      <span className="text-white text-xl font-bold">V</span>
+/* ─── Select ──────────────────────────────────────────────────────────────── */
+function Sel({ label, value, onChange, children }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div>
+      <label style={{
+        display:"block", fontSize:11, fontWeight:700,
+        textTransform:"uppercase", letterSpacing:0.8,
+        color: focused ? C.brand : C.textTer, marginBottom:6, transition:"color 0.15s",
+      }}>
+        {label}
+      </label>
+      <select
+        value={value}
+        onChange={onChange}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{
+          width:"100%", padding:"11px 14px", borderRadius:12,
+          border:`1.5px solid ${focused ? C.brand : C.border}`,
+          background: focused ? C.surface : C.surfaceAlt,
+          color:C.text, fontSize:14, outline:"none",
+          cursor:"pointer", transition:"all 0.15s",
+          boxShadow: focused ? `0 0 0 3px rgba(26,92,26,0.08)` : "none",
+        }}
+      >
+        {children}
+      </select>
     </div>
-    <span className="text-green-800 font-bold text-lg">Victoria Pecuarios</span>
-  </Link>
-);
+  );
+}
 
-const ErrorBox = ({ mensaje }) => !mensaje ? null : (
-  <div className="px-3.5 py-2.5 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs flex items-center gap-2">
-    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
-    </svg>
-    {mensaje}
-  </div>
-);
+/* ─── Error box ───────────────────────────────────────────────────────────── */
+function ErrorBox({ msg }) {
+  if (!msg) return null;
+  return (
+    <div style={{
+      display:"flex", alignItems:"flex-start", gap:10,
+      padding:"12px 14px", borderRadius:12,
+      background:C.dangerBg, border:`1px solid ${C.dangerBorder}`,
+      color:C.danger, fontSize:13,
+    }}>
+      <span style={{fontSize:16, flexShrink:0}}>⚠️</span>
+      <span>{msg}</span>
+    </div>
+  );
+}
 
-const BtnSubmit = ({ cargando, texto, textoCargando }) => (
-  <button type="submit" disabled={cargando}
-    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-semibold py-2.5 rounded-xl transition-all duration-200 active:scale-95 shadow-sm shadow-green-200 text-sm">
-    {cargando ? (
-      <span className="flex items-center justify-center gap-2">
-        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-        </svg>
-        {textoCargando}
-      </span>
-    ) : texto}
-  </button>
-);
+/* ─── Botón submit ────────────────────────────────────────────────────────── */
+function BtnSubmit({ cargando, texto, textoCargando }) {
+  return (
+    <button
+      type="submit"
+      disabled={cargando}
+      style={{
+        width:"100%", padding:"13px 0", borderRadius:12, border:"none",
+        background: cargando ? C.brandMid : C.brand,
+        color:"#fff", fontSize:14, fontWeight:800,
+        cursor: cargando ? "default" : "pointer",
+        transition:"all 0.2s", letterSpacing:0.3,
+        boxShadow:`0 4px 16px rgba(26,92,26,0.25)`,
+        opacity: cargando ? 0.8 : 1,
+      }}
+      onMouseEnter={e => { if (!cargando) { e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow="0 6px 20px rgba(26,92,26,0.35)"; }}}
+      onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="0 4px 16px rgba(26,92,26,0.25)"; }}
+    >
+      {cargando ? (
+        <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          <span style={{
+            width:14, height:14, borderRadius:"50%",
+            border:`2px solid rgba(255,255,255,0.3)`,
+            borderTopColor:"#fff",
+            display:"inline-block",
+            animation:"spin 0.8s linear infinite",
+          }}/>
+          {textoCargando}
+        </span>
+      ) : texto}
+    </button>
+  );
+}
 
-// ── LOGIN ─────────────────────────────────────────────────────
+/* ─── Panel izquierdo decorativo ──────────────────────────────────────────── */
+function PanelIzquierdo({ titulo, subtitulo, items }) {
+  return (
+    <div style={{
+      background:`linear-gradient(160deg, ${C.brandDark} 0%, ${C.brand} 100%)`,
+      padding:"48px 40px",
+      display:"flex", flexDirection:"column", justifyContent:"space-between",
+      position:"relative", overflow:"hidden",
+    }}>
+      {/* Decorativos */}
+      <div style={{ position:"absolute", top:-60, right:-60, width:220, height:220, background:"rgba(163,230,53,0.07)", borderRadius:"50%" }}/>
+      <div style={{ position:"absolute", bottom:-40, left:-40, width:180, height:180, background:"rgba(255,255,255,0.04)", borderRadius:"50%" }}/>
+      <div style={{ position:"absolute", top:"40%", left:-20, width:80, height:80, background:"rgba(163,230,53,0.05)", borderRadius:"50%" }}/>
+
+      {/* Logo top */}
+      <div style={{ position:"relative" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{
+            width:36, height:36, borderRadius:10,
+            background:"rgba(255,255,255,0.15)",
+            border:"1px solid rgba(255,255,255,0.2)",
+            display:"flex", alignItems:"center", justifyContent:"center",
+            fontSize:18,
+          }}>🐾</div>
+          <div>
+            <div style={{ fontSize:14, fontWeight:700, color:"#fff", fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>Victoria Pecuarios</div>
+            <div style={{ fontSize:10, color:"rgba(255,255,255,0.5)", letterSpacing:1.2, textTransform:"uppercase" }}>Veterinaria</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Contenido central */}
+      <div style={{ position:"relative" }}>
+        <div style={{ fontSize:52, marginBottom:20 }}>🐾</div>
+        <h2 style={{
+          margin:"0 0 10px",
+          fontFamily:"'Playfair Display',Georgia,serif",
+          fontStyle:"italic", fontWeight:600,
+          fontSize:"clamp(20px,2.5vw,28px)",
+          color:"#fff", lineHeight:1.25,
+        }}>
+          {titulo}
+        </h2>
+        <p style={{ margin:"0 0 28px", fontSize:13, color:"rgba(255,255,255,0.6)", lineHeight:1.65, maxWidth:300 }}>
+          {subtitulo}
+        </p>
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {items.map((it, i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{
+                width:22, height:22, borderRadius:6,
+                background:"rgba(163,230,53,0.2)",
+                border:"1px solid rgba(163,230,53,0.3)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                flexShrink:0,
+              }}>
+                <span style={{ fontSize:11, color:C.lime }}>✓</span>
+              </div>
+              <span style={{ fontSize:13, color:"rgba(255,255,255,0.75)" }}>{it}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ position:"relative" }}>
+        <p style={{ fontSize:11, color:"rgba(255,255,255,0.3)" }}>© 2026 Victoria Pecuarios · Bogotá, Colombia</p>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   LOGIN
+   ════════════════════════════════════════════════════════════════════════════ */
 export function Login() {
-  const { login } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const desde = location.state?.desde || "/";
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [error, setError] = useState("");
-  const [cargando, setCargando] = useState(false);
+  const { login }  = useAuth();
+  const navigate   = useNavigate();
+  const location   = useLocation();
+  const desde      = location.state?.desde || "/";
+  const [form, setForm] = useState({ email:"", password:"" });
+  const [error,    setError]   = useState("");
+  const [cargando, setCargando]= useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const handleSubmit = async (e) => {
@@ -89,84 +267,164 @@ export function Login() {
       login(data.token, data.usuario);
       navigate(desde, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.error || "Error al iniciar sesión.");
+      setError(err.response?.data?.error || "Correo o contraseña incorrectos.");
     } finally { setCargando(false); }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex">
-      <div className="hidden lg:flex lg:w-5/12 bg-gradient-to-br from-green-700 to-green-500 flex-col justify-between p-10">
-        <div className="text-white/70 text-sm font-medium">Victoria Pecuarios</div>
-        <div>
-          <div className="text-6xl mb-5 select-none">🐾</div>
-          <h2 className="text-white text-3xl font-bold leading-tight mb-3">
-            Cuidamos a tus animales como si fueran nuestros
-          </h2>
-          <p className="text-green-100 text-sm leading-relaxed mb-8">
-            Productos veterinarios de calidad, atención profesional y el amor que tus mascotas merecen.
-          </p>
-          {["Más de 500 productos disponibles", "Entregas a domicilio", "Atención veterinaria profesional"].map(t => (
-            <div key={t} className="flex items-center gap-2.5 text-green-100 text-sm mb-2.5">
-              <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                </svg>
-              </div>
-              {t}
-            </div>
-          ))}
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&display=swap');
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        * { box-sizing:border-box; }
+      `}</style>
+
+      <div style={{ minHeight:"100vh", display:"flex", background:C.canvas }}>
+        {/* Panel izquierdo — solo visible en desktop */}
+        <div style={{ display:"none", width:"45%", flexShrink:0 }} className="auth-left">
+          <PanelIzquierdo
+            titulo="Cuidamos a tus animales como si fueran nuestros"
+            subtitulo="Productos veterinarios de calidad, atención profesional y el amor que tus mascotas merecen."
+            items={["Más de 500 productos disponibles","Entregas a domicilio en Bogotá","Atención veterinaria profesional","IVA transparente en cada compra"]}
+          />
         </div>
-        <div className="text-green-200 text-xs">© 2026 Victoria Pecuarios</div>
+
+        {/* Formulario */}
+        <div style={{
+          flex:1, display:"flex", alignItems:"center", justifyContent:"center",
+          padding:"40px 24px",
+        }}>
+          <div style={{
+            width:"100%", maxWidth:400,
+            animation:"fadeUp 0.4s ease",
+          }}>
+            {/* Logo móvil */}
+            <div style={{ textAlign:"center", marginBottom:32 }}>
+              <Link to="/" style={{ textDecoration:"none", display:"inline-flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+                <div style={{
+                  width:52, height:52, borderRadius:16,
+                  background:C.brand, display:"flex",
+                  alignItems:"center", justifyContent:"center",
+                  fontSize:24,
+                  boxShadow:"0 8px 24px rgba(26,92,26,0.25)",
+                }}>🐾</div>
+                <span style={{
+                  fontFamily:"'Playfair Display',serif", fontStyle:"italic",
+                  fontWeight:600, fontSize:18, color:C.brand,
+                }}>Victoria Pecuarios</span>
+              </Link>
+              <p style={{ margin:"6px 0 0", fontSize:13, color:C.textMuted }}>
+                Inicia sesión para continuar
+              </p>
+            </div>
+
+            {/* Card */}
+            <div style={{
+              background:C.surface,
+              border:`1px solid ${C.border}`,
+              borderRadius:20,
+              padding:"28px 28px 24px",
+              boxShadow:"0 4px 24px rgba(0,0,0,0.06)",
+            }}>
+              <h2 style={{
+                margin:"0 0 20px",
+                fontSize:20, fontWeight:800, color:C.text,
+                fontFamily:"'Playfair Display',serif", fontStyle:"italic",
+              }}>
+                Bienvenido de vuelta
+              </h2>
+
+              <form onSubmit={handleSubmit} style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                <ErrorBox msg={error}/>
+
+                <Campo
+                  label="Correo electrónico"
+                  type="email"
+                  value={form.email}
+                  onChange={set("email")}
+                  placeholder="tucorreo@ejemplo.com"
+                  required
+                />
+                <Campo
+                  label="Contraseña"
+                  type="password"
+                  value={form.password}
+                  onChange={set("password")}
+                  placeholder="••••••••"
+                  required
+                />
+
+                <div style={{ paddingTop:4 }}>
+                  <BtnSubmit cargando={cargando} texto="Iniciar sesión →" textoCargando="Ingresando..."/>
+                </div>
+              </form>
+
+              <div style={{
+                marginTop:20, paddingTop:16,
+                borderTop:`1px solid ${C.border}`,
+                textAlign:"center",
+              }}>
+                <p style={{ fontSize:13, color:C.textMuted, margin:0 }}>
+                  ¿No tienes cuenta?{" "}
+                  <Link to="/registro" style={{ color:C.brand, fontWeight:700, textDecoration:"none" }}>
+                    Regístrate gratis
+                  </Link>
+                </p>
+              </div>
+            </div>
+
+            <div style={{ textAlign:"center", marginTop:20 }}>
+              <Link to="/" style={{ fontSize:12, color:C.textMuted, textDecoration:"none" }}
+                onMouseEnter={e => { e.target.style.color = C.brand; }}
+                onMouseLeave={e => { e.target.style.color = C.textMuted; }}
+              >
+                ← Volver a la tienda
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center px-6 py-10">
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-6">
-            <Logo />
-            <p className="text-gray-400 text-xs mt-2">Inicia sesión para continuar</p>
-          </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-5">Bienvenido de vuelta</h2>
-            <form onSubmit={handleSubmit} className="space-y-3.5">
-              <ErrorBox mensaje={error} />
-              <InputField label="Correo electrónico" type="email" value={form.email} onChange={set("email")} placeholder="tucorreo@ejemplo.com" required />
-              <InputField label="Contraseña" type="password" value={form.password} onChange={set("password")} placeholder="••••••••" required />
-              <BtnSubmit cargando={cargando} texto="Iniciar sesión" textoCargando="Ingresando..." />
-            </form>
-            <p className="text-center text-xs text-gray-400 mt-4">
-              ¿No tienes cuenta?{" "}
-              <Link to="/registro" className="text-green-600 hover:text-green-800 font-semibold">Regístrate</Link>
-            </p>
-          </div>
-          <p className="text-center mt-4">
-            <Link to="/" className="text-xs text-gray-400 hover:text-green-600 transition-colors">← Volver a la tienda</Link>
-          </p>
-        </div>
-      </div>
-    </div>
+      <style>{`
+        @media (min-width: 768px) {
+          .auth-left { display: flex !important; }
+        }
+      `}</style>
+    </>
   );
 }
 
-// ── REGISTRO ──────────────────────────────────────────────────
+/* ════════════════════════════════════════════════════════════════════════════
+   REGISTRO
+   ════════════════════════════════════════════════════════════════════════════ */
 export function Registro() {
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const { login }  = useAuth();
+  const navigate   = useNavigate();
   const [form, setForm] = useState({
-    nombre: "", apellido: "", email: "", password: "", confirmar: "",
-    telefono: "", tipo_documento: "CC", numero_documento: "",
-    fecha_nacimiento: "",
+    nombre:"", apellido:"", email:"", password:"", confirmar:"",
+    telefono:"", tipo_documento:"CC", numero_documento:"", fecha_nacimiento:"",
   });
-  const [error, setError] = useState("");
+  const [error,    setError]    = useState("");
   const [cargando, setCargando] = useState(false);
+  const [paso,     setPaso]     = useState(1); // 1 = datos básicos, 2 = seguridad
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
-  // Edad mínima 13 años
   const edadValida = () => {
     if (!form.fecha_nacimiento) return true;
     const hoy = new Date();
     const nac = new Date(form.fecha_nacimiento);
-    const edad = hoy.getFullYear() - nac.getFullYear();
-    return edad >= 13;
+    return hoy.getFullYear() - nac.getFullYear() - (
+      hoy < new Date(hoy.getFullYear(), nac.getMonth(), nac.getDate()) ? 1 : 0
+    ) >= 13;
+  };
+
+  const avanzar = (e) => {
+    e.preventDefault();
+    setError("");
+    if (!form.nombre || !form.apellido || !form.email) return setError("Completa los campos obligatorios.");
+    if (!edadValida()) return setError("Debes tener al menos 13 años para registrarte.");
+    setPaso(2);
   };
 
   const handleSubmit = async (e) => {
@@ -174,101 +432,288 @@ export function Registro() {
     setError("");
     if (form.password !== form.confirmar) return setError("Las contraseñas no coinciden.");
     if (form.password.length < 6) return setError("La contraseña debe tener al menos 6 caracteres.");
-    if (!edadValida()) return setError("Debes tener al menos 13 años para registrarte.");
     setCargando(true);
     try {
       const { data } = await api.post("/auth/registro", {
-        nombre: form.nombre, apellido: form.apellido, email: form.email,
-        password: form.password, telefono: form.telefono || undefined,
-        tipo_documento: form.tipo_documento,
+        nombre:           form.nombre,
+        apellido:         form.apellido,
+        email:            form.email,
+        password:         form.password,
+        telefono:         form.telefono    || undefined,
+        tipo_documento:   form.tipo_documento,
         numero_documento: form.numero_documento || undefined,
-        fecha_nacimiento: form.fecha_nacimiento || undefined,
+        fecha_nacimiento: form.fecha_nacimiento  || undefined,
       });
       login(data.token, data.usuario);
       navigate("/");
     } catch (err) {
-      setError(err.response?.data?.error || "Error al registrarse.");
+      setError(err.response?.data?.error || "Error al crear la cuenta.");
+      setPaso(1);
     } finally { setCargando(false); }
   };
 
+  const fechaMaxNac = new Date(new Date().setFullYear(new Date().getFullYear()-13)).toISOString().split("T")[0];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center px-6 py-10">
-      <div className="w-full max-w-lg">
-        <div className="text-center mb-6">
-          <Logo />
-          <p className="text-gray-400 text-xs mt-2">Crea tu cuenta gratis · Es rápido y seguro</p>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&display=swap');
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes slideLeft { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+        * { box-sizing:border-box; }
+      `}</style>
+
+      <div style={{ minHeight:"100vh", display:"flex", background:C.canvas }}>
+        {/* Panel izquierdo */}
+        <div style={{ display:"none", width:"40%", flexShrink:0 }} className="auth-left">
+          <PanelIzquierdo
+            titulo="Tu mascota merece lo mejor"
+            subtitulo="Únete a miles de clientes que confían en Victoria Pecuarios para el cuidado de sus animales."
+            items={["Cuenta gratis, sin complicaciones","Historial de compras organizado","Acceso a ofertas exclusivas","Citas veterinarias desde tu perfil"]}
+          />
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-1">Crear cuenta</h2>
-          <p className="text-xs text-gray-400 mb-5">Los campos marcados con * son obligatorios</p>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <ErrorBox mensaje={error} />
 
-            {/* Nombre y apellido */}
-            <div className="grid grid-cols-2 gap-3">
-              <InputField label="Nombre *" value={form.nombre} onChange={set("nombre")} placeholder="Juan" required />
-              <InputField label="Apellido *" value={form.apellido} onChange={set("apellido")} placeholder="Pérez" required />
+        {/* Formulario */}
+        <div style={{
+          flex:1, display:"flex", alignItems:"center", justifyContent:"center",
+          padding:"40px 24px", overflowY:"auto",
+        }}>
+          <div style={{ width:"100%", maxWidth:480, animation:"fadeUp 0.4s ease" }}>
+
+            {/* Logo */}
+            <div style={{ textAlign:"center", marginBottom:28 }}>
+              <Link to="/" style={{ textDecoration:"none", display:"inline-flex", flexDirection:"column", alignItems:"center", gap:8 }}>
+                <div style={{
+                  width:52, height:52, borderRadius:16, background:C.brand,
+                  display:"flex", alignItems:"center", justifyContent:"center", fontSize:24,
+                  boxShadow:"0 8px 24px rgba(26,92,26,0.25)",
+                }}>🐾</div>
+                <span style={{ fontFamily:"'Playfair Display',serif", fontStyle:"italic", fontWeight:600, fontSize:18, color:C.brand }}>Victoria Pecuarios</span>
+              </Link>
+              <p style={{ margin:"6px 0 0", fontSize:13, color:C.textMuted }}>Crea tu cuenta · Rápido y seguro</p>
             </div>
 
-            {/* Email */}
-            <InputField label="Correo electrónico *" type="email" value={form.email} onChange={set("email")} placeholder="tucorreo@ejemplo.com" required hint="El correo no se puede cambiar después del registro" />
+            {/* Indicador de pasos */}
+            <div style={{
+              display:"flex", alignItems:"center", gap:8, marginBottom:24,
+              justifyContent:"center",
+            }}>
+              {[1,2].map(n => (
+                <div key={n} style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <div style={{
+                    width:28, height:28, borderRadius:"50%",
+                    background: n <= paso ? C.brand : C.border,
+                    color: n <= paso ? "#fff" : C.textMuted,
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    fontSize:12, fontWeight:700, transition:"all 0.3s",
+                  }}>
+                    {n < paso ? "✓" : n}
+                  </div>
+                  <span style={{ fontSize:12, color: n === paso ? C.brand : C.textMuted, fontWeight: n === paso ? 700 : 400 }}>
+                    {n === 1 ? "Tus datos" : "Seguridad"}
+                  </span>
+                  {n < 2 && <div style={{ width:32, height:1, background: paso > 1 ? C.brand : C.border, transition:"background 0.3s" }}/>}
+                </div>
+              ))}
+            </div>
 
-            {/* Teléfono y fecha de nacimiento */}
-            <div className="grid grid-cols-2 gap-3">
-              <InputField label="Teléfono" type="tel" value={form.telefono} onChange={set("telefono")} placeholder="300 000 0000" />
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Fecha de nacimiento</label>
-                <input
-                  type="date"
-                  value={form.fecha_nacimiento}
-                  onChange={set("fecha_nacimiento")}
-                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 13)).toISOString().split("T")[0]}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-gray-50 focus:bg-white transition-all"/>
+            {/* Card */}
+            <div style={{
+              background:C.surface, border:`1px solid ${C.border}`,
+              borderRadius:20, padding:"28px 28px 24px",
+              boxShadow:"0 4px 24px rgba(0,0,0,0.06)",
+            }}>
+              <ErrorBox msg={error}/>
+
+              {/* ── PASO 1: Datos personales ── */}
+              {paso === 1 && (
+                <form onSubmit={avanzar} style={{ display:"flex", flexDirection:"column", gap:14, animation:"fadeUp 0.3s ease" }}>
+                  <div style={{ marginBottom:4 }}>
+                    <h2 style={{ margin:"0 0 4px", fontSize:18, fontWeight:800, color:C.text, fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>
+                      Información personal
+                    </h2>
+                    <p style={{ margin:0, fontSize:12, color:C.textMuted }}>Los campos con * son obligatorios</p>
+                  </div>
+
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                    <Campo label="Nombre *"   value={form.nombre}   onChange={set("nombre")}   placeholder="Juan"  required />
+                    <Campo label="Apellido *"  value={form.apellido} onChange={set("apellido")} placeholder="Pérez" required />
+                  </div>
+
+                  <Campo
+                    label="Correo electrónico *"
+                    type="email"
+                    value={form.email}
+                    onChange={set("email")}
+                    placeholder="tucorreo@ejemplo.com"
+                    required
+                    hint="El correo no podrá modificarse después del registro"
+                  />
+
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                    <Campo label="Teléfono" type="tel" value={form.telefono} onChange={set("telefono")} placeholder="300 000 0000"/>
+                    <div>
+                      <label style={{ display:"block", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8, color:C.textTer, marginBottom:6 }}>
+                        Fecha nacimiento
+                      </label>
+                      <input
+                        type="date"
+                        value={form.fecha_nacimiento}
+                        onChange={set("fecha_nacimiento")}
+                        max={fechaMaxNac}
+                        style={{
+                          width:"100%", padding:"11px 14px", borderRadius:12,
+                          border:`1.5px solid ${C.border}`,
+                          background:C.surfaceAlt, color:C.text,
+                          fontSize:13, outline:"none",
+                        }}
+                        onFocus={e => { e.target.style.borderColor=C.brand; e.target.style.boxShadow="0 0 0 3px rgba(26,92,26,0.08)"; }}
+                        onBlur={e => { e.target.style.borderColor=C.border; e.target.style.boxShadow="none"; }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Separador documento */}
+                  <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:14 }}>
+                    <p style={{ margin:"0 0 12px", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8, color:C.textTer }}>
+                      Documento de identidad
+                    </p>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                      <Sel label="Tipo" value={form.tipo_documento} onChange={set("tipo_documento")}>
+                        <option value="CC">C.C. — Cédula</option>
+                        <option value="TI">T.I. — Tarjeta identidad</option>
+                        <option value="CE">C.E. — Extranjería</option>
+                        <option value="PASAPORTE">Pasaporte</option>
+                      </Sel>
+                      <Campo label="Número" value={form.numero_documento} onChange={set("numero_documento")} placeholder="123456789"/>
+                    </div>
+                  </div>
+
+                  <div style={{ paddingTop:4 }}>
+                    <button
+                      type="submit"
+                      style={{
+                        width:"100%", padding:"13px 0", borderRadius:12, border:"none",
+                        background:C.brand, color:"#fff", fontSize:14, fontWeight:800,
+                        cursor:"pointer", transition:"all 0.2s",
+                        boxShadow:"0 4px 16px rgba(26,92,26,0.25)",
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.transform="translateY(-1px)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; }}
+                    >
+                      Continuar →
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* ── PASO 2: Seguridad ── */}
+              {paso === 2 && (
+                <form onSubmit={handleSubmit} style={{ display:"flex", flexDirection:"column", gap:14, animation:"slideLeft 0.3s ease" }}>
+                  <div style={{ marginBottom:4 }}>
+                    <h2 style={{ margin:"0 0 4px", fontSize:18, fontWeight:800, color:C.text, fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>
+                      Crea tu contraseña
+                    </h2>
+                    <p style={{ margin:0, fontSize:12, color:C.textMuted }}>Mínimo 6 caracteres</p>
+                  </div>
+
+                  {/* Resumen del usuario */}
+                  <div style={{
+                    display:"flex", alignItems:"center", gap:12,
+                    padding:"12px 14px", borderRadius:12,
+                    background:C.brandLight, border:`1px solid ${C.brandBorder}`,
+                  }}>
+                    <div style={{
+                      width:36, height:36, borderRadius:10,
+                      background:C.brand, color:"#fff",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      fontSize:14, fontWeight:800, flexShrink:0,
+                    }}>
+                      {form.nombre.charAt(0).toUpperCase()}{form.apellido.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p style={{ margin:0, fontSize:13, fontWeight:700, color:C.brand }}>
+                        {form.nombre} {form.apellido}
+                      </p>
+                      <p style={{ margin:0, fontSize:11, color:C.textTer }}>{form.email}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPaso(1)}
+                      style={{
+                        marginLeft:"auto", fontSize:12, color:C.brand,
+                        background:"none", border:"none", cursor:"pointer",
+                        textDecoration:"underline", fontWeight:600,
+                      }}
+                    >
+                      Editar
+                    </button>
+                  </div>
+
+                  <Campo label="Contraseña *"         type="password" value={form.password}  onChange={set("password")}  placeholder="Mínimo 6 caracteres" required/>
+                  <Campo label="Confirmar contraseña *" type="password" value={form.confirmar} onChange={set("confirmar")} placeholder="Repite tu contraseña"  required/>
+
+                  {/* Indicador fuerza contraseña */}
+                  {form.password && (
+                    <div>
+                      <div style={{ display:"flex", gap:4 }}>
+                        {[
+                          { ok: form.password.length >= 6,   label:"6+ chars" },
+                          { ok: /[A-Z]/.test(form.password), label:"Mayúscula" },
+                          { ok: /[0-9]/.test(form.password), label:"Número" },
+                        ].map((f,i) => (
+                          <div key={i} style={{ flex:1 }}>
+                            <div style={{
+                              height:3, borderRadius:2,
+                              background: f.ok ? C.brand : C.border,
+                              transition:"background 0.3s",
+                            }}/>
+                            <span style={{ fontSize:9, color: f.ok ? C.brand : C.textMuted, marginTop:3, display:"block" }}>{f.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ paddingTop:4 }}>
+                    <BtnSubmit cargando={cargando} texto="Crear mi cuenta gratis →" textoCargando="Creando cuenta..."/>
+                  </div>
+
+                  <p style={{ fontSize:11, color:C.textMuted, textAlign:"center", lineHeight:1.6, margin:0 }}>
+                    Al registrarte aceptas nuestros{" "}
+                    <span style={{ color:C.brand, cursor:"pointer" }}>Términos de servicio</span>
+                    {" "}y{" "}
+                    <span style={{ color:C.brand, cursor:"pointer" }}>Política de privacidad</span>
+                  </p>
+                </form>
+              )}
+
+              <div style={{ marginTop:20, paddingTop:16, borderTop:`1px solid ${C.border}`, textAlign:"center" }}>
+                <p style={{ fontSize:13, color:C.textMuted, margin:0 }}>
+                  ¿Ya tienes cuenta?{" "}
+                  <Link to="/login" style={{ color:C.brand, fontWeight:700, textDecoration:"none" }}>Inicia sesión</Link>
+                </p>
               </div>
             </div>
 
-            {/* Documento */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Tipo doc.</label>
-                <select value={form.tipo_documento} onChange={set("tipo_documento")}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-gray-50 focus:bg-white">
-                  <option value="CC">C.C.</option>
-                  <option value="TI">T.I.</option>
-                  <option value="CE">C.E.</option>
-                  <option value="PASAPORTE">Pasaporte</option>
-                </select>
-              </div>
-              <InputField label="Número doc." value={form.numero_documento} onChange={set("numero_documento")} placeholder="123456789" />
+            <div style={{ textAlign:"center", marginTop:20 }}>
+              <Link to="/" style={{ fontSize:12, color:C.textMuted, textDecoration:"none" }}
+                onMouseEnter={e => { e.target.style.color = C.brand; }}
+                onMouseLeave={e => { e.target.style.color = C.textMuted; }}
+              >
+                ← Volver a la tienda
+              </Link>
             </div>
-
-            {/* Contraseñas */}
-            <div className="pt-1 border-t border-gray-100">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Seguridad</p>
-              <div className="space-y-3">
-                <InputField label="Contraseña *" type="password" value={form.password} onChange={set("password")} placeholder="Mínimo 6 caracteres" required />
-                <InputField label="Confirmar contraseña *" type="password" value={form.confirmar} onChange={set("confirmar")} placeholder="Repite tu contraseña" required />
-              </div>
-            </div>
-
-            <BtnSubmit cargando={cargando} texto="Crear cuenta gratis" textoCargando="Creando cuenta..." />
-
-            <p className="text-xs text-gray-400 text-center leading-relaxed">
-              Al registrarte aceptas nuestros{" "}
-              <span className="text-green-600 cursor-pointer hover:underline">Términos de servicio</span>
-              {" "}y{" "}
-              <span className="text-green-600 cursor-pointer hover:underline">Política de privacidad</span>
-            </p>
-          </form>
-          <p className="text-center text-xs text-gray-400 mt-4">
-            ¿Ya tienes cuenta?{" "}
-            <Link to="/login" className="text-green-600 hover:text-green-800 font-semibold">Inicia sesión</Link>
-          </p>
+          </div>
         </div>
-        <p className="text-center mt-4">
-          <Link to="/" className="text-xs text-gray-400 hover:text-green-600 transition-colors">← Volver a la tienda</Link>
-        </p>
       </div>
-    </div>
+
+      <style>{`
+        @media (min-width: 768px) {
+          .auth-left { display: flex !important; }
+        }
+      `}</style>
+    </>
   );
 }

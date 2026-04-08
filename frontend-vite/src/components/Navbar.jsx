@@ -80,16 +80,45 @@ export default function Navbar() {
                       <p className="text-xs font-semibold text-gray-800 truncate">{usuario.nombre} {usuario.apellido}</p>
                       <p className="text-xs text-gray-400 truncate">{usuario.email}</p>
                     </div>
-                    {[
-                      { to:"/perfil",      label:"Mi perfil" },
-                      { to:"/mis-ordenes", label:"Mis órdenes" },
-                      ...(esAdmin ? [{ to:"/admin", label:"Panel admin" }] : []),
-                    ].map(({ to, label }) => (
-                      <Link key={to} to={to} onClick={() => setMenuAbierto(false)}
+                    
+                    {/* Lista dinámica de links */}
+                    <div className="flex flex-col">
+                      <Link to="/perfil" onClick={() => setMenuAbierto(false)}
                         className="block px-3 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-800 transition-colors">
-                        {label}
+                        Mi perfil
                       </Link>
-                    ))}
+                      <Link to="/mis-ordenes" onClick={() => setMenuAbierto(false)}
+                        className="block px-3 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-800 transition-colors">
+                        Mis órdenes
+                      </Link>
+
+                      {/* Nuevos links de Citas para cualquier usuario autenticado */}
+                      <Link to="/mis-citas" onClick={() => setMenuAbierto(false)}
+                        className="block px-3 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-800 transition-colors">
+                        Mis citas
+                      </Link>
+                      <Link to="/agendar-cita" onClick={() => setMenuAbierto(false)}
+                        className="block px-3 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-800 transition-colors">
+                        Agendar cita
+                      </Link>
+
+                      {/* Link condicional para Veterinarios */}
+                      {usuario?.rol === "veterinario" && (
+                        <Link to="/veterinario" onClick={() => setMenuAbierto(false)}
+                          className="block px-3 py-2 text-xs text-green-700 font-semibold hover:bg-green-100 transition-colors">
+                          Panel Veterinario
+                        </Link>
+                      )}
+
+                      {/* Link condicional para Admin */}
+                      {esAdmin && (
+                        <Link to="/admin" onClick={() => setMenuAbierto(false)}
+                          className="block px-3 py-2 text-xs text-blue-700 font-semibold hover:bg-blue-50 transition-colors">
+                          Panel admin
+                        </Link>
+                      )}
+                    </div>
+
                     <hr className="my-1 border-gray-50" />
                     <button onClick={handleLogout}
                       className="block w-full text-left px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors">

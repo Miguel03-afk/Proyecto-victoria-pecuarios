@@ -1,567 +1,783 @@
-// src/pages/Landing.jsx
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
 
-import img0 from "../assets/carrusel_proyecto2.jpg";
-import img1 from "../assets/carrusel1_proyecto2.jpg";
-import img2 from "../assets/carrusel2_proyecto2.jpg";
-import img3 from "../assets/carrusel3_proyecto2.jpg";
+/* ─── Importar imágenes locales ──────────────────────────────────────────── */
+import img1 from "../assets/carrusel_proyecto2.jpg";
+import img2 from "../assets/carrusel1_proyecto2.jpg";
+import img3 from "../assets/carrusel2_proyecto2.jpg";
+import img4 from "../assets/carrusel3_proyecto2.jpg";
 import imgDesinfectante from "../assets/desinfectante.png";
 import imgMeloxican from "../assets/meloxican.jpg";
 
-// ── Datos ─────────────────────────────────────────────────────
+/* ─── Tokens ─────────────────────────────────────────────────────────────── */
+const C = {
+  brand: "#1a5c1a",
+  brandMid: "#2d7a2d",
+  brandDark: "#0c180c",
+  brandLight: "#e6f3e6",
+  brandBorder: "#b8d9b8",
+  lime: "#a3e635",
+  limeDeep: "#84cc16",
+  canvas: "#f6f7f4",
+  surface: "#ffffff",
+  surfaceAlt: "#f2f3ef",
+  text: "#111827",
+  textSec: "#374151",
+  textTer: "#6b7280",
+  textMuted: "#9ca3af",
+  border: "rgba(0,0,0,0.08)",
+};
+
 const SLIDES = [
-  { img:img1, label:"Tienda veterinaria online",
-    h1:"Todo para el bienestar de tus", em:"animales",
-    p:"Medicamentos certificados, alimentos premium y accesorios. Compra desde casa y recíbelo en tu puerta.",
-    btn1:"Ver productos", btn1href:"/tienda", btn2:"Conocer más", btn2href:"#servicios" },
-  { img:img2, label:"Farmacología veterinaria",
-    h1:"Medicamentos con", em:"respaldo profesional",
-    p:"Antiparasitarios, antibióticos y vitaminas con registro Invima. Asesoría veterinaria incluida.",
-    btn1:"Ver medicamentos", btn1href:"/tienda?categoria=farmacologia", btn2:"Crear cuenta", btn2href:"/registro" },
-  { img:img3, label:"Nutrición especializada",
-    h1:"Alimentación que", em:"transforma su vida",
-    p:"Royal Canin, Purina Pro Plan y las mejores marcas. Nutrición especializada por especie y etapa de vida.",
-    btn1:"Ver alimentos", btn1href:"/tienda?categoria=alimentos", btn2:"Explorar", btn2href:"#categorias" },
-  { img:img0, label:"Equipo profesional",
-    h1:"Atendidos por", em:"expertos veterinarios",
-    p:"Nuestro equipo de profesionales está listo para orientarte y agendar tu cita veterinaria.",
-    btn1:"Contáctanos", btn1href:"#contacto", btn2:"Ver servicios", btn2href:"#servicios" },
+  { img: img1, titulo: "Salud Animal de Primera", sub: "Medicamentos y vacunas certificadas para tu mascota", cta: "Explorar farmacología" },
+  { img: img2, titulo: "Nutrición que Cuida", sub: "Alimentos balanceados para todas las especies", cta: "Ver alimentos" },
+  { img: img3, titulo: "Higiene y Bienestar", sub: "Productos de aseo profesional para mascotas", cta: "Ver higiene" },
+  { img: img4, titulo: "Equipo Veterinario", sub: "Instrumentos y equipos para profesionales", cta: "Ver equipos" },
 ];
 
 const SERVICIOS = [
-  { icono:"🚚", titulo:"Envío a domicilio",
-    desc:"Despachos a todo Colombia. Gratis en compras mayores a $80.000.",
-    stat:"24h", statLabel:"tiempo promedio", color:"#166534", bg:"#dcfce7" },
-  { icono:"💊", titulo:"Medicamentos certificados",
-    desc:"Todos nuestros productos cuentan con registro Invima y cadena de frío garantizada.",
-    stat:"100%", statLabel:"certificados", color:"#1e40af", bg:"#dbeafe" },
-  { icono:"👨‍⚕️", titulo:"Asesoría veterinaria",
-    desc:"Nuestro equipo de profesionales te orienta en la selección del producto adecuado.",
-    stat:"Gratis", statLabel:"incluida", color:"#78350f", bg:"#fef3c7" },
-  { icono:"🔒", titulo:"Compra 100% segura",
-    desc:"Garantía de devolución en 15 días. Pagos protegidos y datos cifrados.",
-    stat:"15 días", statLabel:"garantía", color:"#6b21a8", bg:"#f3e8ff" },
-  { icono:"📱", titulo:"Seguimiento de pedidos",
-    desc:"Rastrea tu orden desde tu perfil. Notificaciones de estado directo a tu correo.",
-    stat:"Real time", statLabel:"tracking", color:"#0e7490", bg:"#cffafe" },
-  { icono:"🎁", titulo:"Descuentos exclusivos",
-    desc:"Regístrate y obtén 10% en tu primera compra. Beneficios para clientes frecuentes.",
-    stat:"10%", statLabel:"primera compra", color:"#b91c1c", bg:"#fee2e2" },
+  { icon: "🏥", titulo: "Consulta Veterinaria", desc: "Atención profesional con veterinarios especializados", stat: "24h", statLabel: "tiempo promedio" },
+  { icon: "💊", titulo: "Farmacología Animal", desc: "Medicamentos con fórmula y de venta libre", stat: "200+", statLabel: "productos" },
+  { icon: "🥩", titulo: "Nutrición Especializada", desc: "Dietas personalizadas según raza y edad", stat: "50+", statLabel: "marcas" },
+  { icon: "🔬", titulo: "Laboratorio Clínico", desc: "Exámenes y diagnóstico veterinario completo", stat: "48h", statLabel: "resultados" },
+  { icon: "🐾", titulo: "Peluquería Canina", desc: "Baño, corte y cuidado estético profesional", stat: "5★", statLabel: "calificación" },
+  { icon: "🚚", titulo: "Domicilio Express", desc: "Entrega en Bogotá y área metropolitana", stat: "Free", statLabel: "+$80.000" },
 ];
 
-const GALERIA = [
-  { img:imgDesinfectante, span:"col-span-2 row-span-2", label:"Desinfectante Olimpia" },
-  { img:imgMeloxican,     span:"",                      label:"Meloxic Provet" },
-  { emoji:"🐕", bg:"from-green-100 to-emerald-200", span:"", label:"Perros" },
-  { emoji:"🐈", bg:"from-teal-100 to-green-200",   span:"", label:"Gatos" },
-  { emoji:"🐾", bg:"from-lime-100 to-green-200",   span:"", label:"Mascotas" },
+const CATEGORIAS_TIENDA = [
+  { icon: "💊", nombre: "Farmacología", desc: "Medicamentos, vacunas y antiparasitarios", color: "#166534", bg: "#dcfce7", q: "farmacologia" },
+  { icon: "🍖", nombre: "Alimentos", desc: "Concentrados, snacks y dietas especiales", color: "#92400e", bg: "#fef3c7", q: "alimentos" },
+  { icon: "🧴", nombre: "Higiene", desc: "Shampoos, desinfectantes y cuidado dental", color: "#1e40af", bg: "#dbeafe", q: "higiene" },
+  { icon: "🎀", nombre: "Accesorios", desc: "Collares, correas y juguetes", color: "#6b21a8", bg: "#f3e8ff", q: "accesorios" },
+  { icon: "🔬", nombre: "Equipos", desc: "Instrumentación y diagnóstico", color: "#0e7490", bg: "#cffafe", q: "equipos" },
+  { icon: "🛁", nombre: "Peluquería", desc: "Tijeras, cepillos y accesorios de grooming", color: "#be185d", bg: "#fce7f3", q: "peluqueria" },
 ];
 
 const BLOG = [
-  { cat:"Nutrición",  fecha:"10 Mar 2026", titulo:"¿Cuántas veces al día debe comer tu perro?",       desc:"La frecuencia varía según la edad, tamaño y condición médica.", emoji:"🐕‍🦺", bg:"from-green-100 to-emerald-100" },
-  { cat:"Cuidado",    fecha:"2 Mar 2026",  titulo:"Señales de que tu gato podría estar enfermo",       desc:"Los gatos son expertos ocultando el dolor. Aprende a identificar las señales.", emoji:"🐈", bg:"from-teal-100 to-green-100" },
-  { cat:"Prevención", fecha:"22 Feb 2026", titulo:"Guía completa de vacunas para perros en Colombia",  desc:"Todo sobre el esquema de vacunación según el Ministerio de Salud.", emoji:"💉", bg:"from-lime-100 to-green-100" },
+  { cat: "Salud", titulo: "¿Cada cuánto debe vacunarse mi mascota?", desc: "Guía completa del calendario de vacunación para perros y gatos en Colombia.", fecha: "02 abr 2026", emoji: "💉" },
+  { cat: "Nutrición", titulo: "Cómo elegir el mejor alimento para tu perro", desc: "Factores clave: raza, tamaño, edad y condición de salud.", fecha: "28 mar 2026", emoji: "🥩" },
+  { cat: "Cuidado", titulo: "Señales de que tu mascota necesita al veterinario", desc: "10 síntomas que no debes ignorar en perros y gatos.", fecha: "20 mar 2026", emoji: "🐾" },
 ];
 
-// ── Helpers ───────────────────────────────────────────────────
-const fmt = (n) => `$${Number(n).toLocaleString("es-CO")}`;
-const descPct = (p) => p.precio_antes ? Math.round(((p.precio_antes - p.precio) / p.precio_antes) * 100) : null;
-
-const Chip = ({ children }) => (
-  <span className="inline-flex items-center gap-2 bg-green-100 text-green-700 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest mb-3">
-    <span className="w-1.5 h-1.5 bg-green-600 rounded-full" />{children}
-  </span>
-);
-
-const SectionTitle = ({ children, center=false }) => (
-  <h2 className={`text-3xl sm:text-4xl font-bold leading-tight tracking-tight mb-4 text-green-950 ${center?"text-center":""}`}
-    style={{ fontFamily:"'Playfair Display','Georgia',serif" }}>
-    {children}
-  </h2>
-);
-
-function FadeUp({ children, delay=0 }) {
-  const ref=useRef(null); const [vis,setVis]=useState(false);
-  useEffect(()=>{
-    const obs=new IntersectionObserver(([e])=>{if(e.isIntersecting){setVis(true);obs.disconnect();}},{threshold:0.1});
-    if(ref.current) obs.observe(ref.current);
-    return ()=>obs.disconnect();
-  },[]);
-  return (
-    <div ref={ref} style={{transitionDelay:`${delay}ms`}}
-      className={`transition-all duration-700 ${vis?"opacity-100 translate-y-0":"opacity-0 translate-y-8"}`}>
-      {children}
-    </div>
-  );
-}
-
-// ── Navbar ────────────────────────────────────────────────────
+/* ─── Navbar Landing ─────────────────────────────────────────────────────── */
 function NavLanding() {
-  const { usuario, logout }=useAuth(); const navigate=useNavigate();
-  const [scrolled,setScrolled]=useState(false); const [menuUsuario,setMenuUsuario]=useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const { usuario, logout } = useAuth() || {};
+  const navigate = useNavigate();
 
-  useEffect(()=>{
-    const fn=()=>setScrolled(window.scrollY>20);
-    window.addEventListener("scroll",fn); return ()=>window.removeEventListener("scroll",fn);
-  },[]);
-
-  const handleLogout=()=>{logout();setMenuUsuario(false);navigate("/");};
-  const linkCls=scrolled?"text-green-700 hover:text-green-900":"text-white/80 hover:text-white";
-  const logoCls=scrolled?"text-green-900":"text-white";
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 40);
+    window.addEventListener("scroll", fn);
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300
-      ${scrolled?"bg-white/95 backdrop-blur shadow-sm border-b border-green-100":"bg-transparent"}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-sm">🐾</div>
-          <span className={`font-bold text-base transition-colors ${logoCls}`}>Victoria Pecuarios</span>
+    <nav style={{
+      position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+      background: scrolled ? "rgba(255,255,255,0.97)" : "transparent",
+      backdropFilter: scrolled ? "blur(12px)" : "none",
+      borderBottom: scrolled ? `1px solid ${C.border}` : "none",
+      transition: "all 0.3s",
+    }}>
+      <div style={{
+        maxWidth: 1280, margin: "0 auto",
+        padding: "0 24px",
+        height: 68,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        {/* Logo */}
+        <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: 10,
+            background: scrolled ? C.brand : "rgba(255,255,255,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 20, transition: "all 0.3s",
+          }}>🐾</div>
+          <div>
+            <div style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontWeight: 600, fontSize: 17,
+              color: scrolled ? C.brand : "#fff",
+              lineHeight: 1.1, transition: "color 0.3s",
+            }}>Victoria</div>
+            <div style={{
+              fontSize: 10, fontWeight: 600,
+              color: scrolled ? C.textTer : "rgba(255,255,255,0.7)",
+              letterSpacing: 1.5, textTransform: "uppercase",
+              transition: "color 0.3s",
+            }}>Pecuarios</div>
+          </div>
         </Link>
-        <div className="hidden md:flex items-center gap-6">
-          {[["#servicios","Servicios"],["#productos","Productos"],["#galeria","Galería"],["#blog","Blog"],["#contacto","Contacto"]].map(([href,label])=>(
-            <a key={href} href={href} className={`text-sm font-medium transition-colors ${linkCls}`}>{label}</a>
+
+        {/* Links desktop */}
+        <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
+          {[
+            { href: "#tienda", label: "Tienda" },
+            { href: "#servicios", label: "Servicios" },
+            { href: "#galeria", label: "Galería" },
+            { href: "#blog", label: "Blog" },
+            { href: "#contacto", label: "Contacto" },
+          ].map(l => (
+            <a
+              key={l.href}
+              href={l.href}
+              style={{
+                padding: "8px 14px", borderRadius: 8, textDecoration: "none",
+                fontSize: 14, fontWeight: 500,
+                color: scrolled ? C.textSec : "rgba(255,255,255,0.85)",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => {
+                e.target.style.background = scrolled ? C.surfaceAlt : "rgba(255,255,255,0.12)";
+                e.target.style.color = scrolled ? C.text : "#fff";
+              }}
+              onMouseLeave={e => {
+                e.target.style.background = "transparent";
+                e.target.style.color = scrolled ? C.textSec : "rgba(255,255,255,0.85)";
+              }}
+            >
+              {l.label}
+            </a>
           ))}
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* CTA + auth */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {usuario ? (
-            <div className="relative">
-              <button onClick={()=>setMenuUsuario(!menuUsuario)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all text-sm font-semibold
-                  ${scrolled?"border-green-200 text-green-800 hover:bg-green-50":"border-white/30 text-white hover:bg-white/10"}`}>
-                <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                  {usuario.nombre?.charAt(0).toUpperCase()}
-                </div>
-                <span className="hidden sm:block">{usuario.nombre}</span>
-                <svg className={`w-3 h-3 transition-transform ${menuUsuario?"rotate-180":""}`} fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/>
-                </svg>
-              </button>
-              {menuUsuario&&(
-                <>
-                  <div className="fixed inset-0 z-40" onClick={()=>setMenuUsuario(false)}/>
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50">
-                    <div className="px-4 py-2.5 border-b border-gray-50">
-                      <p className="text-xs font-bold text-gray-800 truncate">{usuario.nombre} {usuario.apellido}</p>
-                      <p className="text-xs text-gray-400 truncate">{usuario.email}</p>
-                    </div>
-                    <Link to="/tienda"      onClick={()=>setMenuUsuario(false)} className="block px-4 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-800">🛒 Ir a la tienda</Link>
-                    <Link to="/perfil"      onClick={()=>setMenuUsuario(false)} className="block px-4 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-800">👤 Mi perfil</Link>
-                    <Link to="/mis-ordenes" onClick={()=>setMenuUsuario(false)} className="block px-4 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-800">📦 Mis órdenes</Link>
-                    {(usuario.rol==="admin"||usuario.rol==="superadmin")&&(
-                      <Link to="/admin"    onClick={()=>setMenuUsuario(false)} className="block px-4 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-800">⚙️ Panel admin</Link>
-                    )}
-                    <hr className="my-1 border-gray-50"/>
-                    <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-xs text-red-500 hover:bg-red-50">Cerrar sesión</button>
-                  </div>
-                </>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontSize: 13, color: scrolled ? C.textSec : "rgba(255,255,255,0.8)" }}>
+                Hola, {usuario.nombre}
+              </span>
+              {usuario.rol === "admin" || usuario.rol === "superadmin" ? (
+                <Link to="/admin" style={ctaSecStyle(scrolled)}>Panel Admin</Link>
+              ) : (
+                <Link to="/perfil" style={ctaSecStyle(scrolled)}>Mi perfil</Link>
               )}
+              <button onClick={logout} style={ctaSecStyle(scrolled)}>Salir</button>
             </div>
           ) : (
             <>
-              <Link to="/login"
-                className={`hidden sm:block text-sm font-semibold px-3.5 py-2 rounded-xl transition-all ${scrolled?"text-green-700 hover:bg-green-50":"text-white hover:bg-white/10"}`}>
-                Iniciar sesión
-              </Link>
-              <Link to="/registro"
-                className="text-sm font-bold bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl transition-all shadow-sm">
-                Registrarse
-              </Link>
+              <Link to="/login" style={ctaSecStyle(scrolled)}>Iniciar sesión</Link>
             </>
           )}
+          <Link
+            to="/tienda"
+            style={{
+              padding: "9px 20px", borderRadius: 10,
+              background: C.lime, color: C.brandDark,
+              textDecoration: "none", fontSize: 13, fontWeight: 700,
+              transition: "all 0.15s",
+              boxShadow: "0 2px 8px rgba(163,230,53,0.35)",
+            }}
+            onMouseEnter={e => { e.target.style.background = C.limeDeep; e.target.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={e => { e.target.style.background = C.lime; e.target.style.transform = "translateY(0)"; }}
+          >
+            Ir a la tienda →
+          </Link>
         </div>
       </div>
     </nav>
   );
 }
 
-// ── Hero ──────────────────────────────────────────────────────
-function Hero() {
-  const [cur,setCur]=useState(0); const [fade,setFade]=useState(true);
-  const timerRef=useRef(null);
-
-  const go=useCallback((n)=>{
-    setFade(false);
-    setTimeout(()=>{setCur(n);setFade(true);},350);
-    clearInterval(timerRef.current);
-    timerRef.current=setInterval(()=>go((n+1)%SLIDES.length),5500);
-  },[]);
-
-  useEffect(()=>{
-    timerRef.current=setInterval(()=>{
-      setCur(p=>{const next=(p+1)%SLIDES.length;setFade(false);setTimeout(()=>setFade(true),350);return next;});
-    },5500);
-    return ()=>clearInterval(timerRef.current);
-  },[]);
-
-  const s=SLIDES[cur];
-  return (
-    <section className="relative min-h-screen overflow-hidden">
-      <div className={`absolute inset-0 transition-opacity duration-500 ${fade?"opacity-100":"opacity-0"}`}>
-        <img src={s.img} alt="" className="w-full h-full object-cover"/>
-        <div className="absolute inset-0 bg-gradient-to-r from-green-950/90 via-green-900/70 to-green-800/40"/>
-      </div>
-      <div className={`relative z-10 min-h-screen flex items-center transition-opacity duration-500 ${fade?"opacity-100":"opacity-0"}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-28">
-          <span className="inline-flex items-center gap-2 bg-white/10 backdrop-blur border border-white/20 text-white rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest mb-6">
-            <span className="w-1.5 h-1.5 bg-lime-400 rounded-full animate-pulse"/>{s.label}
-          </span>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight mb-5 max-w-2xl"
-            style={{fontFamily:"'Playfair Display','Georgia',serif"}}>
-            {s.h1}<br/><span className="text-lime-400 italic">{s.em}</span>
-          </h1>
-          <p className="text-white/80 text-lg leading-relaxed mb-8 max-w-xl">{s.p}</p>
-          <div className="flex flex-wrap gap-3">
-            <Link to={s.btn1href}
-              className="inline-flex items-center gap-2 bg-lime-400 hover:bg-lime-300 text-green-950 font-bold px-7 py-3.5 rounded-full transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-lime-400/30 text-sm">
-              🛒 {s.btn1}
-            </Link>
-            <a href={s.btn2href}
-              className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur border border-white/25 text-white font-semibold px-7 py-3.5 rounded-full transition-all text-sm">
-              {s.btn2}
-            </a>
-          </div>
-        </div>
-      </div>
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-6 z-20">
-        <button onClick={()=>go((cur-1+SLIDES.length)%SLIDES.length)}
-          className="w-10 h-10 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white flex items-center justify-center transition-all backdrop-blur">←</button>
-        <div className="flex gap-2">
-          {SLIDES.map((_,i)=>(
-            <button key={i} onClick={()=>go(i)}
-              className={`h-2 rounded-full transition-all duration-300 ${i===cur?"w-8 bg-white":"w-2 bg-white/40"}`}/>
-          ))}
-        </div>
-        <button onClick={()=>go((cur+1)%SLIDES.length)}
-          className="w-10 h-10 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white flex items-center justify-center transition-all backdrop-blur">→</button>
-      </div>
-      <div className="absolute bottom-8 right-6 z-20 text-white/50 text-xs font-mono">
-        {String(cur+1).padStart(2,"0")} / {String(SLIDES.length).padStart(2,"0")}
-      </div>
-    </section>
-  );
+function ctaSecStyle(scrolled) {
+  return {
+    padding: "8px 14px", borderRadius: 8,
+    background: "transparent",
+    color: scrolled ? C.textSec : "rgba(255,255,255,0.8)",
+    border: `1px solid ${scrolled ? C.border : "rgba(255,255,255,0.25)"}`,
+    textDecoration: "none", fontSize: 13, fontWeight: 500,
+    cursor: "pointer", transition: "all 0.15s",
+  };
 }
 
-// ── Ticker ────────────────────────────────────────────────────
-function Ticker() {
-  const items=["🐾 Envío gratis +$80.000","💊 Medicamentos con Invima","⭐ +1.200 clientes","🚚 Despachos todo Colombia","👨‍⚕️ Asesoría gratis","🔒 Compra segura"];
-  const doubled=[...items,...items];
+/* ─── Carrusel Hero ───────────────────────────────────────────────────────── */
+function HeroCarrusel() {
+  const [actual, setActual] = useState(0);
+  const timer = useRef(null);
+  const navigate = useNavigate();
+
+  const resetTimer = () => {
+    clearInterval(timer.current);
+    timer.current = setInterval(() => setActual(a => (a + 1) % SLIDES.length), 5500);
+  };
+
+  useEffect(() => {
+    resetTimer();
+    return () => clearInterval(timer.current);
+  }, []);
+
+  const ir = (i) => { setActual(i); resetTimer(); };
+
   return (
-    <div className="bg-green-700 py-3 overflow-hidden">
-      <div className="flex whitespace-nowrap" style={{animation:"ticker 28s linear infinite"}}>
-        {doubled.map((t,i)=>(
-          <span key={i} className="inline-flex items-center gap-3 px-8 text-white text-sm font-medium flex-shrink-0">
-            <span className="text-lime-300">·</span>{t}
-          </span>
+    <div style={{ position: "relative", height: "100vh", minHeight: 560, overflow: "hidden" }}>
+      {SLIDES.map((s, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute", inset: 0,
+            opacity: i === actual ? 1 : 0,
+            transition: "opacity 0.8s ease",
+            background: `linear-gradient(135deg, ${C.brandDark}ee 0%, ${C.brand}99 100%), url(${s.img}) center/cover`,
+          }}
+        />
+      ))}
+
+      {/* Overlay degradado bottom */}
+      <div style={{
+        position: "absolute", inset: 0,
+        background: "linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 60%)",
+      }} />
+
+      {/* Contenido */}
+      <div style={{
+        position: "absolute", inset: 0,
+        display: "flex", flexDirection: "column",
+        justifyContent: "center", alignItems: "flex-start",
+        padding: "80px 10vw",
+        maxWidth: 700,
+      }}>
+        <div style={{
+          display: "inline-block", background: "rgba(163,230,53,0.2)",
+          border: "1px solid rgba(163,230,53,0.4)",
+          borderRadius: 999, padding: "4px 14px",
+          fontSize: 11, fontWeight: 700, color: C.lime,
+          letterSpacing: 1.5, textTransform: "uppercase",
+          marginBottom: 16,
+        }}>
+          {String(actual + 1).padStart(2, "0")} / {String(SLIDES.length).padStart(2, "0")}
+        </div>
+        <h1 style={{
+          fontFamily: "'Playfair Display', Georgia, serif",
+          fontStyle: "italic", fontWeight: 600,
+          fontSize: "clamp(32px,5vw,60px)",
+          color: "#fff", lineHeight: 1.15,
+          margin: "0 0 16px",
+          textShadow: "0 2px 20px rgba(0,0,0,0.3)",
+        }}>
+          {SLIDES[actual].titulo}
+        </h1>
+        <p style={{
+          fontSize: "clamp(15px,2vw,18px)",
+          color: "rgba(255,255,255,0.78)",
+          margin: "0 0 32px", lineHeight: 1.6,
+          maxWidth: 500,
+        }}>
+          {SLIDES[actual].sub}
+        </p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <Link
+            to="/tienda"
+            style={{
+              padding: "14px 32px", borderRadius: 12,
+              background: C.lime, color: C.brandDark,
+              textDecoration: "none", fontSize: 15, fontWeight: 700,
+              boxShadow: "0 4px 20px rgba(163,230,53,0.4)",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={e => { e.target.style.transform = "translateY(-2px)"; e.target.style.boxShadow = "0 8px 28px rgba(163,230,53,0.5)"; }}
+            onMouseLeave={e => { e.target.style.transform = "translateY(0)"; e.target.style.boxShadow = "0 4px 20px rgba(163,230,53,0.4)"; }}
+          >
+            Ver tienda →
+          </Link>
+          <a
+            href="#servicios"
+            style={{
+              padding: "14px 28px", borderRadius: 12,
+              background: "rgba(255,255,255,0.12)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              color: "#fff", textDecoration: "none",
+              fontSize: 15, fontWeight: 500, transition: "all 0.2s",
+            }}
+            onMouseEnter={e => { e.target.style.background = "rgba(255,255,255,0.2)"; }}
+            onMouseLeave={e => { e.target.style.background = "rgba(255,255,255,0.12)"; }}
+          >
+            Nuestros servicios
+          </a>
+        </div>
+      </div>
+
+      {/* Dots */}
+      <div style={{
+        position: "absolute", bottom: 32, left: "10vw",
+        display: "flex", gap: 8,
+      }}>
+        {SLIDES.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => ir(i)}
+            style={{
+              width: i === actual ? 28 : 8, height: 8, borderRadius: 999,
+              background: i === actual ? C.lime : "rgba(255,255,255,0.35)",
+              border: "none", cursor: "pointer", transition: "all 0.3s", padding: 0,
+            }}
+          />
         ))}
       </div>
-      <style>{`@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}`}</style>
+
+      {/* Flechas */}
+      {[{ dir: -1, pos: "left: 24px", sym: "‹" }, { dir: 1, pos: "right: 24px", sym: "›" }].map(f => (
+        <button
+          key={f.sym}
+          onClick={() => ir((actual + f.dir + SLIDES.length) % SLIDES.length)}
+          style={{
+            position: "absolute", top: "50%", [f.dir === -1 ? "left" : "right"]: 24,
+            transform: "translateY(-50%)",
+            background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)",
+            border: "1px solid rgba(255,255,255,0.2)",
+            color: "#fff", fontSize: 28, width: 48, height: 48,
+            borderRadius: "50%", cursor: "pointer", transition: "all 0.2s",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.25)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.15)"; }}
+        >
+          {f.sym}
+        </button>
+      ))}
     </div>
   );
 }
 
-// ── Stats ─────────────────────────────────────────────────────
-function Stats() {
-  const data=[{num:500,suffix:"+",label:"Productos disponibles"},{num:1200,suffix:"+",label:"Clientes satisfechos"},{num:8,suffix:" años",label:"De experiencia"},{num:24,suffix:"/7",label:"Soporte disponible"}];
-  const [counts,setCounts]=useState(data.map(()=>0)); const ref=useRef(null);
-  useEffect(()=>{
-    const obs=new IntersectionObserver(([e])=>{
-      if(!e.isIntersecting) return;
-      data.forEach((d,i)=>{
-        let c=0; const step=d.num/60;
-        const t=setInterval(()=>{c+=step;if(c>=d.num){c=d.num;clearInterval(t);}
-          setCounts(prev=>{const n=[...prev];n[i]=Math.floor(c);return n;});},25);
-      });
-      obs.disconnect();
-    },{threshold:0.5});
-    if(ref.current) obs.observe(ref.current);
-    return ()=>obs.disconnect();
-  },[]);
+/* ─── Ticker de beneficios ───────────────────────────────────────────────── */
+function Ticker() {
+  const items = ["🚚 Envío gratis desde $80.000", "💊 Medicamentos certificados", "⭐ Atención veterinaria 24h", "🐾 +500 productos en stock", "🎁 Descuentos para clientes frecuentes", "🔬 Laboratorio clínico propio"];
   return (
-    <section ref={ref} className="bg-white py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-green-100 rounded-2xl overflow-hidden shadow-sm">
-          {data.map((d,i)=>(
-            <div key={i} className="bg-green-50 hover:bg-green-100 transition-colors px-8 py-10 text-center">
-              <div className="text-4xl font-bold text-green-700 mb-1" style={{fontFamily:"'Playfair Display','Georgia',serif"}}>
-                {counts[i]}{d.suffix}
-              </div>
-              <div className="text-sm text-green-600 font-medium">{d.label}</div>
-            </div>
-          ))}
-        </div>
+    <div style={{ background: C.brand, color: "#fff", overflow: "hidden", padding: "10px 0" }}>
+      <div style={{
+        display: "flex", gap: 48,
+        animation: "ticker 28s linear infinite",
+        whiteSpace: "nowrap",
+      }}>
+        {[...items, ...items].map((it, i) => (
+          <span key={i} style={{ fontSize: 13, fontWeight: 500 }}>{it}</span>
+        ))}
       </div>
-    </section>
+    </div>
   );
 }
 
-// ── Carrusel de productos destacados ─────────────────────────
-function ProductosDestacados() {
-  const [productos, setProductos] = useState([]);
-  const [idx, setIdx]             = useState(0);
-  const [arrastrando, setArrastrando] = useState(false);
-  const [startX, setStartX]       = useState(0);
-  const trackRef                  = useRef(null);
-  const autoRef                   = useRef(null);
+/* ─── Stats animados ─────────────────────────────────────────────────────── */
+function Stats() {
+  const [vis, setVis] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVis(true); }, { threshold: 0.3 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
 
-  useEffect(()=>{
-    api.get("/productos/destacados/lista").then(({data})=>setProductos(data)).catch(()=>{});
-  },[]);
-
-  // Cuántas cards visibles según ancho
-  const visibles = typeof window !== "undefined" && window.innerWidth >= 1024 ? 4
-    : typeof window !== "undefined" && window.innerWidth >= 640 ? 3 : 2;
-
-  const maxIdx = Math.max(0, productos.length - visibles);
-
-  const avanzar = useCallback(()=>{
-    setIdx(p => p >= maxIdx ? 0 : p + 1);
-  },[maxIdx]);
-
-  const retroceder = ()=>{
-    setIdx(p => p <= 0 ? maxIdx : p - 1);
-  };
-
-  // Autoplay
-  useEffect(()=>{
-    if(productos.length <= visibles) return;
-    autoRef.current = setInterval(avanzar, 3500);
-    return ()=>clearInterval(autoRef.current);
-  },[productos.length, avanzar, visibles]);
-
-  const resetAuto = ()=>{
-    clearInterval(autoRef.current);
-    autoRef.current = setInterval(avanzar, 3500);
-  };
-
-  const irA = (i)=>{ setIdx(i); resetAuto(); };
-  const prev = ()=>{ retroceder(); resetAuto(); };
-  const next = ()=>{ avanzar(); resetAuto(); };
-
-  // Swipe touch/mouse
-  const onDragStart = (clientX)=>{ setArrastrando(true); setStartX(clientX); };
-  const onDragEnd   = (clientX)=>{
-    if(!arrastrando) return;
-    setArrastrando(false);
-    const diff = startX - clientX;
-    if(Math.abs(diff) > 50) diff > 0 ? next() : prev();
-  };
-
-  if(productos.length === 0) return (
-    <section id="productos" className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <FadeUp>
-          <div className="flex items-end justify-between mb-12 flex-wrap gap-4">
-            <div><Chip>Destacados</Chip>
-              <SectionTitle>Productos más <em className="text-green-600 not-italic">populares</em></SectionTitle>
-            </div>
-          </div>
-        </FadeUp>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
-          {[...Array(4)].map((_,i)=>(
-            <div key={i} className="bg-green-50 rounded-2xl overflow-hidden animate-pulse">
-              <div className="h-44 bg-green-100"/>
-              <div className="p-4 space-y-2">
-                <div className="h-3 bg-green-100 rounded w-1/3"/>
-                <div className="h-4 bg-green-100 rounded w-3/4"/>
-                <div className="h-8 bg-green-100 rounded-xl mt-3"/>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+  const items = [
+    { val: "2.500+", label: "Clientes satisfechos" },
+    { val: "500+", label: "Productos disponibles" },
+    { val: "8", label: "Años de experiencia" },
+    { val: "98%", label: "Calificación de servicio" },
+  ];
 
   return (
-    <section id="productos" className="py-20 bg-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <FadeUp>
-          <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
-            <div>
-              <Chip>Destacados</Chip>
-              <SectionTitle>Productos más <em className="text-green-600 not-italic">populares</em></SectionTitle>
-              <p className="text-green-700/70 max-w-md">Los favoritos de nuestros clientes. Calidad garantizada con asesoría veterinaria.</p>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* Flechas manuales */}
-              <button onClick={prev}
-                className="w-10 h-10 rounded-xl border border-green-200 flex items-center justify-center text-green-700 hover:bg-green-50 hover:border-green-400 transition-all">
-                ←
-              </button>
-              <button onClick={next}
-                className="w-10 h-10 rounded-xl border border-green-200 flex items-center justify-center text-green-700 hover:bg-green-50 hover:border-green-400 transition-all">
-                →
-              </button>
-              <Link to="/tienda"
-                className="flex items-center gap-2 text-sm font-semibold text-green-700 hover:text-green-900 border border-green-200 hover:border-green-500 px-4 py-2 rounded-xl transition-all">
-                Ver todo →
-              </Link>
+    <div ref={ref} style={{
+      background: C.brandDark,
+      padding: "52px 24px",
+    }}>
+      <div style={{
+        maxWidth: 1000, margin: "0 auto",
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+        gap: 32, textAlign: "center",
+      }}>
+        {items.map((it, i) => (
+          <div
+            key={i}
+            style={{
+              opacity: vis ? 1 : 0,
+              transform: vis ? "translateY(0)" : "translateY(20px)",
+              transition: `all 0.5s ${i * 0.1}s`,
+            }}
+          >
+            <div style={{
+              fontSize: "clamp(28px,4vw,42px)", fontWeight: 800,
+              fontFamily: "'JetBrains Mono', monospace",
+              color: C.lime,
+              marginBottom: 6,
+            }}>{it.val}</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: 0.8 }}>
+              {it.label}
             </div>
           </div>
-        </FadeUp>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-        {/* Track del carrusel */}
-        <div className="relative"
-          onMouseDown={e=>onDragStart(e.clientX)}
-          onMouseUp={e=>onDragEnd(e.clientX)}
-          onMouseLeave={()=>setArrastrando(false)}
-          onTouchStart={e=>onDragStart(e.touches[0].clientX)}
-          onTouchEnd={e=>onDragEnd(e.changedTouches[0].clientX)}
-          style={{cursor:arrastrando?"grabbing":"grab"}}>
-          <div ref={trackRef} className="overflow-hidden">
+
+/* ─── Sección Tienda ─────────────────────────────────────────────────────── */
+function SeccionTienda() {
+  const [destacados, setDestacados] = useState([]);
+  const [cargando,   setCargando]   = useState(true);
+  const [idx,        setIdx]        = useState(0);
+  const autoRef = useRef(null);
+  const VISIBLE = 4;
+
+  useEffect(() => {
+    api.get("/productos/destacados/lista")
+      .then(r => setDestacados(r.data || []))
+      .catch(() => {})
+      .finally(() => setCargando(false));
+  }, []);
+
+  const maxIdx = Math.max(0, destacados.length - VISIBLE);
+
+  const mover = (dir) => {
+    setIdx(prev => Math.max(0, Math.min(maxIdx, prev + dir)));
+    clearInterval(autoRef.current);
+    autoRef.current = setInterval(() => setIdx(p => p >= maxIdx ? 0 : p + 1), 2800);
+  };
+
+  useEffect(() => {
+    if (destacados.length > VISIBLE) {
+      autoRef.current = setInterval(() => setIdx(p => p >= maxIdx ? 0 : p + 1), 2800);
+    }
+    return () => clearInterval(autoRef.current);
+  }, [destacados.length, maxIdx]);
+
+  return (
+    <section id="tienda" style={{ padding: "72px 24px", background: C.canvas }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+
+        {/* ── Encabezado ── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 32, flexWrap: "wrap", gap: 16 }}>
+          <div>
+            <p style={{ margin: "0 0 6px", fontSize: 12, color: C.brand, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2 }}>
+              🛒 Nuestra Tienda
+            </p>
+            <h2 style={{
+              margin: "0 0 8px",
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontStyle: "italic", fontWeight: 600,
+              fontSize: "clamp(26px,4vw,40px)",
+              color: C.text, lineHeight: 1.2,
+            }}>
+              Productos destacados
+            </h2>
+            <p style={{ margin: 0, fontSize: 15, color: C.textTer, maxWidth: 460 }}>
+              Selección de los mejores productos para el cuidado y salud de tu mascota
+            </p>
+          </div>
+          <Link
+            to="/tienda"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "11px 24px", borderRadius: 12,
+              background: C.brand, color: "#fff",
+              textDecoration: "none", fontSize: 14, fontWeight: 700,
+              boxShadow: "0 4px 16px rgba(26,92,26,0.25)",
+              transition: "all 0.2s", whiteSpace: "nowrap",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(26,92,26,0.35)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(26,92,26,0.25)"; }}
+          >
+            Ver catálogo completo →
+          </Link>
+        </div>
+
+        {/* ── CARRUSEL DE DESTACADOS — va primero ── */}
+        {cargando ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 32 }}>
+            {[1,2,3,4].map(i => (
+              <div key={i} style={{
+                height: 240, borderRadius: 14,
+                background: `linear-gradient(90deg,${C.surfaceAlt} 25%,#e9ebe6 50%,${C.surfaceAlt} 75%)`,
+                backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite",
+              }}/>
+            ))}
+          </div>
+        ) : destacados.length > 0 ? (
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 14 }}>
+              {[{ d: -1, s: "‹" }, { d: 1, s: "›" }].map(b => (
+                <button
+                  key={b.s}
+                  onClick={() => mover(b.d)}
+                  disabled={b.d === -1 ? idx === 0 : idx === maxIdx}
+                  style={{
+                    width: 36, height: 36, borderRadius: "50%",
+                    border: `1.5px solid ${C.border}`,
+                    background: C.surface, cursor: "pointer",
+                    fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center",
+                    color: (b.d === -1 ? idx === 0 : idx === maxIdx) ? C.textMuted : C.brand,
+                    transition: "all 0.15s",
+                  }}
+                  onMouseEnter={e => { if (!(b.d === -1 ? idx === 0 : idx === maxIdx)) { e.currentTarget.style.background = C.brandLight; e.currentTarget.style.borderColor = C.brandBorder; }}}
+                  onMouseLeave={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.border; }}
+                >{b.s}</button>
+              ))}
+            </div>
+
             <div
-              className="flex transition-transform duration-500 ease-out gap-5"
-              style={{transform:`translateX(calc(-${idx * (100/visibles)}% - ${idx * 20/visibles}px))`}}>
-              {productos.map((p)=>{
-                const dc=descPct(p);
-                return (
-                  <div key={p.id} className="flex-shrink-0 select-none"
-                    style={{width:`calc(${100/visibles}% - ${(visibles-1)*20/visibles}px)`}}>
-                    <Link to={`/producto/${p.slug}`}
-                      className="group bg-white rounded-2xl overflow-hidden border border-green-100 hover:border-green-300 hover:shadow-xl transition-all duration-300 flex flex-col block"
-                      draggable={false}>
-                      {/* Imagen */}
-                      <div className="relative h-52 bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center overflow-hidden">
-                        {p.imagen_url
-                          ? <img src={p.imagen_url} alt={p.nombre} draggable={false}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                              onError={e=>{e.target.style.display="none";}}/>
-                          : <span className="text-6xl">🐾</span>}
-                        {/* Badge descuento */}
-                        {dc && (
-                          <span className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-xl shadow-sm">
-                            -{dc}%
-                          </span>
+              style={{ overflow: "hidden" }}
+              onMouseEnter={() => clearInterval(autoRef.current)}
+              onMouseLeave={() => { autoRef.current = setInterval(() => setIdx(p => p >= maxIdx ? 0 : p + 1), 2800); }}
+            >
+              <div style={{
+                display: "flex", gap: 16,
+                transform: `translateX(calc(-${idx} * (100% / ${VISIBLE} + ${16 / VISIBLE}px)))`,
+                transition: "transform 0.4s cubic-bezier(0.4,0,0.2,1)",
+              }}>
+                {destacados.map(p => {
+                  const precio = Number(p.variantes?.[0]?.precio ?? p.precio ?? 0);
+                  const precioAntes = Number(p.variantes?.[0]?.precio_antes ?? p.precio_antes ?? 0);
+                  const descuento = precioAntes > precio && precioAntes > 0
+                    ? Math.round((1 - precio / precioAntes) * 100) : null;
+                  return (
+                    <Link
+                      key={p.id}
+                      to={`/producto/${p.slug}`}
+                      style={{
+                        flex: `0 0 calc(${100 / VISIBLE}% - ${16 * (VISIBLE - 1) / VISIBLE}px)`,
+                        minWidth: 0, textDecoration: "none",
+                      }}
+                    >
+                      <div
+                        style={{
+                          background: C.surface, border: `1px solid ${C.border}`,
+                          borderRadius: 16, overflow: "hidden",
+                          transition: "all 0.2s", position: "relative",
+                          display: "flex", flexDirection: "column",
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 28px rgba(26,92,26,0.12)"; e.currentTarget.style.borderColor = C.brandBorder; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = C.border; }}
+                      >
+                        {descuento && (
+                          <div style={{ position:"absolute",top:8,left:8,zIndex:2,background:"#dc2626",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:6 }}>
+                            -{descuento}%
+                          </div>
                         )}
-                        {/* Badge destacado */}
-                        <span className="absolute top-3 right-3 bg-amber-400 text-amber-900 text-xs font-bold px-2.5 py-1 rounded-xl shadow-sm">
-                          ★ Top
-                        </span>
-                        {/* Overlay hover */}
-                        <div className="absolute inset-0 bg-green-950/0 group-hover:bg-green-950/10 transition-colors duration-300"/>
-                      </div>
-
-                      {/* Info */}
-                      <div className="p-4 flex flex-col flex-1">
-                        <span className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">{p.categoria}</span>
-                        <h3 className="text-sm font-semibold text-green-950 line-clamp-2 mb-1 group-hover:text-green-700 transition-colors leading-snug">
-                          {p.nombre}
-                        </h3>
-                        {p.marca && <p className="text-xs text-green-600/50 mb-3">{p.marca}</p>}
-                        {p.descripcion_corta && (
-                          <p className="text-xs text-gray-500 line-clamp-2 mb-3 leading-relaxed">{p.descripcion_corta}</p>
-                        )}
-                        <div className="mt-auto flex items-center justify-between">
-                          <div>
-                            <span className="text-base font-bold text-green-700">{fmt(p.precio)}</span>
-                            {p.precio_antes && (
-                              <span className="text-xs text-green-600/40 line-through ml-1.5">{fmt(p.precio_antes)}</span>
+                        <div style={{ height: 168, background: C.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                          {p.imagen_url
+                            ? <img src={p.imagen_url} alt={p.nombre}
+                                style={{ width:"100%",height:"100%",objectFit:"contain",padding:10,transition:"transform 0.3s" }}
+                                onError={e => { e.target.style.display = "none"; }}
+                                onMouseEnter={e => { e.target.style.transform = "scale(1.05)"; }}
+                                onMouseLeave={e => { e.target.style.transform = "scale(1)"; }}
+                              />
+                            : <span style={{ fontSize: 40 }}>🐾</span>}
+                        </div>
+                        <div style={{ padding: "12px 14px 16px", flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                          {p.marca && <p style={{ margin:0,fontSize:10,color:C.textMuted,textTransform:"uppercase",letterSpacing:0.5,fontWeight:700 }}>{p.marca}</p>}
+                          <p style={{ margin:0,fontSize:13,fontWeight:600,color:C.text,lineHeight:1.35,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden" }}>
+                            {p.nombre}
+                          </p>
+                          <div style={{ display:"flex",alignItems:"baseline",gap:6,marginTop:"auto",paddingTop:6 }}>
+                            <span style={{ fontSize:16,fontWeight:800,color:C.brand,fontFamily:"'JetBrains Mono',monospace" }}>
+                              ${precio.toLocaleString("es-CO")}
+                            </span>
+                            {precioAntes > precio && (
+                              <span style={{ fontSize:11,color:C.textMuted,textDecoration:"line-through",fontFamily:"monospace" }}>
+                                ${precioAntes.toLocaleString("es-CO")}
+                              </span>
                             )}
                           </div>
-                          <span className="text-xs bg-green-700 group-hover:bg-green-800 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors">
-                            Ver →
-                          </span>
+                          <span style={{ fontSize:10,color:C.textMuted }}>+ IVA 19%</span>
                         </div>
                       </div>
                     </Link>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Dots de navegación */}
-        {maxIdx > 0 && (
-          <div className="flex justify-center gap-2 mt-8">
-            {Array.from({length:maxIdx+1}).map((_,i)=>(
-              <button key={i} onClick={()=>irA(i)}
-                className={`rounded-full transition-all duration-300 ${i===idx?"w-6 h-2 bg-green-600":"w-2 h-2 bg-green-200 hover:bg-green-400"}`}/>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-// ── Servicios dinámicos ───────────────────────────────────────
-function Servicios() {
-  const [activo, setActivo] = useState(null);
-
-  return (
-    <section id="servicios" className="py-20 bg-green-950 relative overflow-hidden">
-      {/* Fondo decorativo */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-0 left-0 w-96 h-96 rounded-full bg-lime-400" style={{filter:"blur(80px)",transform:"translate(-50%,-50%)"}}/>
-        <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full bg-green-400" style={{filter:"blur(80px)",transform:"translate(50%,50%)"}}/>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <FadeUp>
-          <div className="text-center mb-14">
-            <span className="inline-flex items-center gap-2 bg-lime-400/10 text-lime-400 border border-lime-400/20 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-widest mb-3">
-              <span className="w-1.5 h-1.5 bg-lime-400 rounded-full"/>Servicios
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 leading-tight"
-              style={{fontFamily:"'Playfair Display','Georgia',serif"}}>
-              Más que una tienda, un <em className="text-lime-400 not-italic">aliado veterinario</em>
-            </h2>
-            <p className="text-white/50 max-w-lg mx-auto">Todo lo que tu mascota necesita con el respaldo de profesionales.</p>
-          </div>
-        </FadeUp>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {SERVICIOS.map((s,i)=>(
-            <FadeUp key={s.titulo} delay={i*70}>
-              <div
-                className="rounded-2xl p-6 cursor-pointer transition-all duration-300 group relative overflow-hidden"
-                style={{
-                  background: activo===i ? `${s.color}18` : "rgba(255,255,255,0.04)",
-                  border: activo===i ? `1px solid ${s.color}40` : "1px solid rgba(255,255,255,0.08)",
-                  transform: activo===i ? "translateY(-4px)" : "none",
-                  boxShadow: activo===i ? `0 12px 32px ${s.color}20` : "none",
-                }}
-                onMouseEnter={()=>setActivo(i)}
-                onMouseLeave={()=>setActivo(null)}>
-
-                {/* Stat flotante — solo en hover */}
-                <div className={`absolute top-4 right-4 transition-all duration-300 ${activo===i?"opacity-100":"opacity-0"}`}>
-                  <div className="rounded-xl px-3 py-1.5 text-center"
-                    style={{background:`${s.color}20`,border:`1px solid ${s.color}30`}}>
-                    <p className="text-sm font-bold leading-none" style={{color:s.color}}>{s.stat}</p>
-                    <p className="text-xs mt-0.5" style={{color:`${s.color}99`}}>{s.statLabel}</p>
-                  </div>
-                </div>
-
-                {/* Icono */}
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4 transition-all duration-300"
-                  style={{
-                    background: activo===i ? `${s.color}15` : "rgba(255,255,255,0.06)",
-                    border: activo===i ? `1px solid ${s.color}25` : "1px solid transparent",
-                  }}>
-                  {s.icono}
-                </div>
-
-                <h3 className="font-bold text-white mb-2 text-sm transition-colors duration-200"
-                  style={{color: activo===i ? "#fff" : "rgba(255,255,255,0.9)"}}>
-                  {s.titulo}
-                </h3>
-                <p className="text-sm leading-relaxed" style={{color:"rgba(255,255,255,0.45)"}}>
-                  {s.desc}
-                </p>
-
-                {/* Línea inferior animada */}
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 transition-all duration-300 origin-left"
-                  style={{
-                    background:`linear-gradient(90deg,${s.color},transparent)`,
-                    transform: activo===i ? "scaleX(1)" : "scaleX(0)",
+            {maxIdx > 0 && (
+              <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 18 }}>
+                {Array.from({ length: maxIdx + 1 }).map((_, i) => (
+                  <button key={i} onClick={() => setIdx(i)} style={{
+                    width: i === idx ? 20 : 7, height: 7, borderRadius: 999, border: "none",
+                    background: i === idx ? C.brand : C.border,
+                    cursor: "pointer", padding: 0, transition: "all 0.3s",
                   }}/>
+                ))}
               </div>
-            </FadeUp>
+            )}
+          </div>
+        ) : null}
+
+        {/* ── CHIPS de categoría — pequeños y horizontales ── */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 36 }}>
+          {CATEGORIAS_TIENDA.map(cat => (
+            <Link
+              key={cat.q}
+              to={`/tienda?categoria=${cat.q}`}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 7,
+                padding: "8px 16px", borderRadius: 999,
+                background: cat.bg, border: `1.5px solid ${cat.color}33`,
+                textDecoration: "none", transition: "all 0.18s", whiteSpace: "nowrap",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 4px 14px ${cat.color}22`; e.currentTarget.style.borderColor = `${cat.color}66`; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = `${cat.color}33`; }}
+            >
+              <span style={{ fontSize: 15 }}>{cat.icon}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: cat.color }}>{cat.nombre}</span>
+            </Link>
+          ))}
+          <Link
+            to="/tienda"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 7,
+              padding: "8px 16px", borderRadius: 999,
+              background: C.brandLight, border: `1.5px solid ${C.brandBorder}`,
+              textDecoration: "none", transition: "all 0.18s", whiteSpace: "nowrap",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.brand; e.currentTarget.style.borderColor = C.brand; }}
+            onMouseLeave={e => { e.currentTarget.style.background = C.brandLight; e.currentTarget.style.borderColor = C.brandBorder; }}
+          >
+            <span style={{ fontSize: 15 }}>🏪</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.brand }}>Ver todo</span>
+          </Link>
+        </div>
+
+        {/* ── BANNER CTA — protagonismo total ── */}
+        <div style={{
+          background: `linear-gradient(135deg, ${C.brandDark} 0%, ${C.brand} 100%)`,
+          borderRadius: 24, padding: "40px 44px",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          flexWrap: "wrap", gap: 28,
+          position: "relative", overflow: "hidden",
+        }}>
+          <div style={{ position:"absolute",right:-30,top:-30,width:180,height:180,background:"rgba(163,230,53,0.09)",borderRadius:"50%",pointerEvents:"none" }}/>
+          <div style={{ position:"absolute",left:340,bottom:-40,width:130,height:130,background:"rgba(255,255,255,0.04)",borderRadius:"50%",pointerEvents:"none" }}/>
+          <div style={{ position:"relative" }}>
+            <p style={{ margin:"0 0 6px",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1.5,color:"rgba(163,230,53,0.8)" }}>
+              Victoria Pecuarios
+            </p>
+            <h3 style={{
+              margin:"0 0 10px",
+              fontFamily:"'Playfair Display',Georgia,serif",
+              fontStyle:"italic",fontWeight:600,
+              fontSize:"clamp(22px,3vw,32px)",
+              color:"#fff",lineHeight:1.2,
+            }}>
+              Todo lo que tu mascota necesita
+            </h3>
+            <p style={{ margin:0,fontSize:14,color:"rgba(255,255,255,0.65)",maxWidth:420,lineHeight:1.65 }}>
+              Más de 500 productos disponibles. Medicamentos, alimentos, accesorios y equipos veterinarios con envío a toda Bogotá.
+            </p>
+          </div>
+          <div style={{ display:"flex",flexDirection:"column",gap:10,alignItems:"stretch",position:"relative",minWidth:200 }}>
+            <Link
+              to="/tienda"
+              style={{
+                padding:"15px 36px",borderRadius:14,
+                background:C.lime,color:C.brandDark,
+                textDecoration:"none",fontSize:16,fontWeight:800,
+                boxShadow:"0 6px 20px rgba(163,230,53,0.45)",
+                transition:"all 0.2s",whiteSpace:"nowrap",
+                textAlign:"center",letterSpacing:0.2,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform="scale(1.04) translateY(-2px)"; e.currentTarget.style.boxShadow="0 10px 28px rgba(163,230,53,0.55)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform="scale(1) translateY(0)"; e.currentTarget.style.boxShadow="0 6px 20px rgba(163,230,53,0.45)"; }}
+            >
+              🛒 Ir a la tienda
+            </Link>
+            <Link
+              to="/registro"
+              style={{
+                padding:"10px 20px",borderRadius:10,
+                background:"rgba(255,255,255,0.1)",
+                border:"1px solid rgba(255,255,255,0.2)",
+                color:"rgba(255,255,255,0.85)",textDecoration:"none",
+                fontSize:13,fontWeight:500,transition:"all 0.2s",
+                textAlign:"center",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background="rgba(255,255,255,0.18)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background="rgba(255,255,255,0.1)"; }}
+            >
+              Crear cuenta gratis →
+            </Link>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  );
+}
+
+/* ─── Sección Servicios ───────────────────────────────────────────────────── */
+function SeccionServicios() {
+  return (
+    <section id="servicios" style={{ background: C.brandDark, padding: "72px 24px" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: C.lime, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5 }}>
+            Nuestros servicios
+          </p>
+          <h2 style={{
+            margin: "0 0 12px",
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontStyle: "italic", fontWeight: 600,
+            fontSize: "clamp(26px,4vw,40px)",
+            color: "#fff",
+          }}>
+            Todo para el bienestar animal
+          </h2>
+          <p style={{ margin: 0, fontSize: 15, color: "rgba(255,255,255,0.55)", maxWidth: 480, marginInline: "auto" }}>
+            Atención veterinaria integral con el respaldo de profesionales especializados
+          </p>
+        </div>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 20,
+        }}>
+          {SERVICIOS.map((s, i) => (
+            <div
+              key={i}
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 16, padding: "28px 24px",
+                transition: "all 0.25s",
+                position: "relative", overflow: "hidden",
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                e.currentTarget.style.borderColor = `${C.lime}33`;
+                e.currentTarget.style.transform = "translateY(-4px)";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+              {/* Línea inferior animada */}
+              <div style={{
+                position: "absolute", bottom: 0, left: 0, right: 0,
+                height: 2, background: `linear-gradient(90deg, ${C.lime}, transparent)`,
+                transform: "scaleX(0)", transformOrigin: "left",
+                transition: "transform 0.3s",
+              }} />
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+                <span style={{ fontSize: 32 }}>{s.icon}</span>
+                <div style={{
+                  background: "rgba(163,230,53,0.1)",
+                  border: "1px solid rgba(163,230,53,0.2)",
+                  borderRadius: 8, padding: "4px 10px",
+                  textAlign: "center",
+                }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: C.lime, fontFamily: "monospace" }}>{s.stat}</div>
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 0.5 }}>{s.statLabel}</div>
+                </div>
+              </div>
+              <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#fff" }}>{s.titulo}</h3>
+              <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{s.desc}</p>
+            </div>
           ))}
         </div>
       </div>
@@ -569,207 +785,373 @@ function Servicios() {
   );
 }
 
-// ── Galería ───────────────────────────────────────────────────
-function Galeria() {
+/* ─── Helpers de video para la landing ──────────────────────── */
+function esVideoLanding(url = "") {
+  const u = url.toLowerCase();
+  return u.includes("youtube.com") || u.includes("youtu.be") ||
+         u.includes("vimeo.com")   ||
+         u.endsWith(".mp4") || u.endsWith(".webm") || u.startsWith("data:video/");
+}
+function ytIdLanding(url) {
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([^&?/\s]+)/);
+  return m ? m[1] : null;
+}
+function ytThumbLanding(url) {
+  const id = ytIdLanding(url); return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
+}
+function ytEmbedLanding(url) {
+  const id = ytIdLanding(url); return id ? `https://www.youtube.com/embed/${id}` : null;
+}
+function vmEmbedLanding(url) {
+  const m = url.match(/vimeo\.com\/(\d+)/); return m ? `https://player.vimeo.com/video/${m[1]}` : null;
+}
+
+/* ─── Sección Galería — soporta imágenes y videos ───────────── */
+function SeccionGaleria({ imagenes }) {
+  const [modalVideo, setModalVideo] = useState(null);
+
+  const defaultItems = [
+    { url: imgDesinfectante, titulo: "Desinfectante veterinario", categoria: "Higiene",      esVideo: false },
+    { url: imgMeloxican,     titulo: "Meloxicam — analgésico",   categoria: "Farmacología", esVideo: false },
+  ];
+
+  const items = imagenes && imagenes.length > 0 ? imagenes : defaultItems;
+
   return (
-    <section id="galeria" className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <FadeUp>
-          <div className="text-center mb-12">
-            <Chip>Galería</Chip>
-            <SectionTitle center>Nuestros productos y <em className="text-green-600 not-italic">mascotas</em></SectionTitle>
-            <p className="text-green-700/70 max-w-lg mx-auto">Un vistazo a los productos que manejamos y las mascotas que amamos atender.</p>
+    <section id="galeria" style={{ background: C.canvas, padding: "72px 24px" }}>
+      {/* Modal video */}
+      {modalVideo && (
+        <div style={{ position:"fixed", inset:0, zIndex:300, background:"rgba(0,0,0,0.85)", backdropFilter:"blur(8px)", display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}
+          onClick={() => setModalVideo(null)}>
+          <div style={{ width:"100%", maxWidth:720, borderRadius:16, overflow:"hidden", boxShadow:"0 24px 80px rgba(0,0,0,0.6)" }}
+            onClick={e => e.stopPropagation()}>
+            {ytEmbedLanding(modalVideo) ? (
+              <iframe src={ytEmbedLanding(modalVideo) + "?autoplay=1"} width="100%" height={400}
+                style={{ border:"none", display:"block" }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen/>
+            ) : vmEmbedLanding(modalVideo) ? (
+              <iframe src={vmEmbedLanding(modalVideo) + "?autoplay=1"} width="100%" height={400}
+                style={{ border:"none", display:"block" }}
+                allow="autoplay; fullscreen; picture-in-picture" allowFullScreen/>
+            ) : (
+              <video src={modalVideo} controls autoPlay style={{ width:"100%", maxHeight:400, background:"#000", display:"block" }}/>
+            )}
+            <div style={{ background:"#0a0a0a", padding:"12px 16px", display:"flex", justifyContent:"flex-end" }}>
+              <button onClick={() => setModalVideo(null)}
+                style={{ padding:"7px 16px", borderRadius:8, border:"none", background:"rgba(255,255,255,0.15)", color:"#fff", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                Cerrar ×
+              </button>
+            </div>
           </div>
-        </FadeUp>
-        <FadeUp delay={100}>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" style={{gridTemplateRows:"220px 220px"}}>
-            {GALERIA.map((g,i)=>(
-              <div key={i}
-                className={`rounded-2xl overflow-hidden flex items-center justify-center cursor-pointer hover:scale-[1.02] transition-transform duration-300 ${g.span} ${g.bg?`bg-gradient-to-br ${g.bg}`:""}`}>
-                {g.img
-                  ? <img src={g.img} alt={g.label} className="w-full h-full object-cover"/>
-                  : <span className="text-5xl">{g.emoji}</span>}
+        </div>
+      )}
+
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: C.brand, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2 }}>Galería</p>
+          <h2 style={{
+            margin: "0 0 10px",
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontStyle: "italic", fontWeight: 600,
+            fontSize: "clamp(26px,4vw,38px)", color: C.text,
+          }}>
+            Nuestros productos en acción
+          </h2>
+          <p style={{ margin: 0, fontSize: 14, color: C.textTer }}>
+            Imágenes y videos del equipo, productos e instalaciones de Victoria Pecuarios
+          </p>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
+          {items.map((im, i) => {
+            const esVid = im.esVideo || esVideoLanding(im.url || "");
+            const thumb = esVid ? ytThumbLanding(im.url || "") : null;
+
+            return (
+              <div
+                key={i}
+                onClick={() => esVid ? setModalVideo(im.url) : null}
+                style={{
+                  borderRadius: 16, overflow: "hidden",
+                  border: `1px solid ${C.border}`,
+                  background: esVid ? "#0f0f0f" : C.surface,
+                  transition: "all 0.2s",
+                  cursor: esVid ? "pointer" : "default",
+                  position: "relative",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 28px rgba(26,92,26,0.1)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+              >
+                {/* Media */}
+                <div style={{ height: 200, overflow: "hidden", background: esVid ? "#1a1a1a" : C.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                  {esVid ? (
+                    <>
+                      {thumb
+                        ? <img src={thumb} alt={im.titulo} style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e => { e.target.style.display="none"; }}/>
+                        : <span style={{ fontSize:48, opacity:0.5 }}>🎥</span>
+                      }
+                      {/* Overlay play */}
+                      <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.35)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <div style={{ width:52, height:52, borderRadius:"50%", background:"rgba(255,255,255,0.9)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>▶</div>
+                      </div>
+                      {/* Badge video */}
+                      <div style={{ position:"absolute", top:8, left:8, background:"rgba(0,0,0,0.7)", color:"#fff", fontSize:9, fontWeight:700, padding:"3px 8px", borderRadius:6, textTransform:"uppercase", letterSpacing:0.8, backdropFilter:"blur(4px)" }}>
+                        {(im.url||"").includes("youtube") ? "YouTube" : (im.url||"").includes("vimeo") ? "Vimeo" : "Video"}
+                      </div>
+                    </>
+                  ) : (
+                    <img
+                      src={im.url}
+                      alt={im.titulo || "Victoria Pecuarios"}
+                      style={{ width:"100%", height:"100%", objectFit:"cover", transition:"transform 0.35s" }}
+                      onError={e => { e.target.style.display = "none"; }}
+                      onMouseEnter={e => { e.target.style.transform = "scale(1.05)"; }}
+                      onMouseLeave={e => { e.target.style.transform = "scale(1)"; }}
+                    />
+                  )}
+                </div>
+
+                {/* Info */}
+                {(im.categoria || im.titulo) && (
+                  <div style={{ padding: "12px 14px", background: esVid ? "#0a0a0a" : C.surface }}>
+                    {im.categoria && (
+                      <span style={{ fontSize: 10, color: esVid ? "#6ee7b7" : C.brand, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        {im.categoria}
+                      </span>
+                    )}
+                    <p style={{ margin: "3px 0 0", fontSize: 13, color: esVid ? "rgba(255,255,255,0.7)" : C.textSec, fontWeight: 500, lineHeight: 1.3 }}>
+                      {im.titulo || "Victoria Pecuarios"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Blog ───────────────────────────────────────────────────────────────── */
+function SeccionBlog() {
+  return (
+    <section id="blog" style={{ background: C.surfaceAlt, padding: "72px 24px" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: C.brand, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2 }}>Blog</p>
+          <h2 style={{
+            margin: "0 0 10px",
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontStyle: "italic", fontWeight: 600,
+            fontSize: "clamp(26px,4vw,38px)", color: C.text,
+          }}>Consejos veterinarios</h2>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px,1fr))", gap: 20 }}>
+          {BLOG.map((b, i) => (
+            <article
+              key={i}
+              style={{
+                background: C.surface, border: `1px solid ${C.border}`,
+                borderRadius: 16, overflow: "hidden",
+                transition: "all 0.2s", cursor: "pointer",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.06)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <div style={{ height: 120, background: C.brandLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 }}>
+                {b.emoji}
+              </div>
+              <div style={{ padding: "20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, color: C.brand, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>{b.cat}</span>
+                  <span style={{ fontSize: 11, color: C.textMuted }}>{b.fecha}</span>
+                </div>
+                <h3 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: C.text, lineHeight: 1.3 }}>{b.titulo}</h3>
+                <p style={{ margin: 0, fontSize: 13, color: C.textTer, lineHeight: 1.6 }}>{b.desc}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Contacto ───────────────────────────────────────────────────────────── */
+function SeccionContacto() {
+  const [form, setForm] = useState({ nombre: "", email: "", mensaje: "" });
+  const [enviado, setEnviado] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setEnviado(true);
+    setTimeout(() => setEnviado(false), 4000);
+    setForm({ nombre: "", email: "", mensaje: "" });
+  };
+
+  return (
+    <section id="contacto" style={{ background: C.canvas, padding: "72px 24px" }}>
+      <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: C.brand, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2 }}>Contáctanos</p>
+          <h2 style={{
+            margin: "0 0 10px",
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontStyle: "italic", fontWeight: 600,
+            fontSize: "clamp(26px,4vw,38px)", color: C.text,
+          }}>¿Tienes alguna pregunta?</h2>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, flexWrap: "wrap" }}>
+          <div>
+            {[
+              { icon: "📍", label: "Dirección", val: "Bogotá, Colombia" },
+              { icon: "📞", label: "Teléfono", val: "+57 300 000 0000" },
+              { icon: "📧", label: "Correo", val: "info@victoriapecuarios.com" },
+              { icon: "🕐", label: "Horario", val: "Lun–Sáb 8am – 6pm" },
+            ].map(it => (
+              <div key={it.label} style={{ display: "flex", gap: 16, marginBottom: 24, alignItems: "flex-start" }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12,
+                  background: C.brandLight, display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                  fontSize: 20, flexShrink: 0,
+                }}>
+                  {it.icon}
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: C.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>{it.label}</div>
+                  <div style={{ fontSize: 15, color: C.text, fontWeight: 500 }}>{it.val}</div>
+                </div>
               </div>
             ))}
           </div>
-        </FadeUp>
-      </div>
-    </section>
-  );
-}
-
-// ── Blog ──────────────────────────────────────────────────────
-function Blog() {
-  return (
-    <section id="blog" className="py-20 bg-green-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <FadeUp>
-          <div className="text-center mb-12">
-            <Chip>Blog</Chip>
-            <SectionTitle center>Consejos para tu <em className="text-green-600 not-italic">mascota</em></SectionTitle>
-            <p className="text-green-700/70 max-w-lg mx-auto">Artículos de nuestros veterinarios para el bienestar de tu compañero.</p>
-          </div>
-        </FadeUp>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {BLOG.map((b,i)=>(
-            <FadeUp key={b.titulo} delay={i*80}>
-              <div className="bg-white rounded-2xl overflow-hidden border border-green-100 hover:border-green-300 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group">
-                <div className={`h-44 bg-gradient-to-br ${b.bg} flex items-center justify-center text-6xl`}>{b.emoji}</div>
-                <div className="p-5">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="bg-green-100 text-green-700 text-xs font-bold px-3 py-0.5 rounded-full">{b.cat}</span>
-                    <span className="text-xs text-green-600/60">{b.fecha}</span>
-                  </div>
-                  <h4 className="font-bold text-green-950 mb-2 text-sm leading-snug group-hover:text-green-700 transition-colors">{b.titulo}</h4>
-                  <p className="text-xs text-green-700/70 leading-relaxed mb-4">{b.desc}</p>
-                  <span className="text-xs font-bold text-green-600 hover:text-green-800 cursor-pointer">Leer más →</span>
-                </div>
-              </div>
-            </FadeUp>
-          ))}
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {[
+              { key: "nombre", placeholder: "Tu nombre", type: "text" },
+              { key: "email", placeholder: "Tu correo electrónico", type: "email" },
+            ].map(f => (
+              <input
+                key={f.key}
+                type={f.type}
+                placeholder={f.placeholder}
+                value={form[f.key]}
+                onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                style={{
+                  padding: "12px 16px", borderRadius: 12, fontSize: 14,
+                  border: `1.5px solid ${C.border}`, background: C.surface,
+                  color: C.text, outline: "none", transition: "border 0.15s",
+                }}
+                onFocus={e => { e.target.style.borderColor = C.brand; }}
+                onBlur={e => { e.target.style.borderColor = C.border; }}
+              />
+            ))}
+            <textarea
+              placeholder="¿En qué podemos ayudarte?"
+              value={form.mensaje}
+              onChange={e => setForm(p => ({ ...p, mensaje: e.target.value }))}
+              rows={4}
+              style={{
+                padding: "12px 16px", borderRadius: 12, fontSize: 14,
+                border: `1.5px solid ${C.border}`, background: C.surface,
+                color: C.text, outline: "none", resize: "vertical", transition: "border 0.15s",
+              }}
+              onFocus={e => { e.target.style.borderColor = C.brand; }}
+              onBlur={e => { e.target.style.borderColor = C.border; }}
+            />
+            <button
+              type="submit"
+              style={{
+                padding: "13px 0", borderRadius: 12, border: "none",
+                background: enviado ? C.brandMid : C.brand,
+                color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              {enviado ? "✓ Mensaje enviado" : "Enviar mensaje"}
+            </button>
+          </form>
         </div>
       </div>
     </section>
   );
 }
 
-// ── Contacto ──────────────────────────────────────────────────
-function Contacto() {
-  const [form,setForm]=useState({nombre:"",email:"",asunto:"",mensaje:""});
-  const [enviado,setEnviado]=useState(false);
-  const set=k=>e=>setForm({...form,[k]:e.target.value});
-  const handleSubmit=e=>{
-    e.preventDefault(); setEnviado(true);
-    setForm({nombre:"",email:"",asunto:"",mensaje:""});
-    setTimeout(()=>setEnviado(false),4000);
-  };
-  return (
-    <section id="contacto" className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <FadeUp>
-          <div className="mb-12">
-            <Chip>Contacto</Chip>
-            <SectionTitle>Estamos para <em className="text-green-600 not-italic">ayudarte</em></SectionTitle>
-            <p className="text-green-700/70 max-w-md">¿Tienes preguntas o quieres agendar una cita? Escríbenos.</p>
-          </div>
-        </FadeUp>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-          <FadeUp>
-            <div className="space-y-4">
-              {[
-                {icono:"📍",titulo:"Dirección",texto:"Cra. 15 #85-23, Chapinero\nBogotá, Colombia"},
-                {icono:"📞",titulo:"Teléfono / WhatsApp",texto:"(601) 234-5678\nWhatsApp: 310 123 4567"},
-                {icono:"✉️",titulo:"Correo",texto:"info@victoriapecuarios.com"},
-                {icono:"🕐",titulo:"Horario",texto:"Lun–Vie: 8AM–8PM · Sáb: 9AM–5PM\nUrgencias: 24/7"},
-              ].map(({icono,titulo,texto})=>(
-                <div key={titulo} className="flex gap-4 items-start p-4 rounded-2xl border border-green-100 hover:border-green-300 hover:bg-green-50 transition-all">
-                  <div className="w-11 h-11 bg-green-100 rounded-xl flex items-center justify-center text-xl flex-shrink-0">{icono}</div>
-                  <div>
-                    <h4 className="font-bold text-green-950 text-sm mb-0.5">{titulo}</h4>
-                    <p className="text-sm text-green-700/70 leading-relaxed whitespace-pre-line">{texto}</p>
-                  </div>
-                </div>
-              ))}
-              <div className="bg-green-700 rounded-2xl p-5 text-white">
-                <p className="font-bold mb-1 text-sm">¿Quieres agendar una cita veterinaria?</p>
-                <p className="text-sm text-white/80">Contáctanos por WhatsApp al 310 123 4567. Nuestro equipo te atenderá de inmediato.</p>
-              </div>
-            </div>
-          </FadeUp>
-          <FadeUp delay={100}>
-            <div className="bg-green-50 rounded-2xl p-7 border border-green-100">
-              <h3 className="font-bold text-green-950 text-lg mb-6">Envíanos un mensaje</h3>
-              {enviado&&<div className="mb-4 px-4 py-3 bg-green-100 border border-green-300 rounded-xl text-green-800 text-sm font-medium">✅ Mensaje enviado. Te responderemos pronto.</div>}
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  {[["Tu nombre","nombre","text","María López"],["Correo","email","email","correo@ejemplo.com"]].map(([label,key,type,ph])=>(
-                    <div key={key}>
-                      <label className="block text-xs font-semibold text-green-800 uppercase tracking-wide mb-1">{label}</label>
-                      <input type={type} value={form[key]} onChange={set(key)} placeholder={ph} required
-                        className="w-full px-3.5 py-2.5 border border-green-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"/>
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-green-800 uppercase tracking-wide mb-1">Asunto</label>
-                  <input type="text" value={form.asunto} onChange={set("asunto")} placeholder="¿En qué podemos ayudarte?" required
-                    className="w-full px-3.5 py-2.5 border border-green-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"/>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-green-800 uppercase tracking-wide mb-1">Mensaje</label>
-                  <textarea value={form.mensaje} onChange={set("mensaje")} placeholder="Escribe tu mensaje..." required rows={4}
-                    className="w-full px-3.5 py-2.5 border border-green-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white resize-none"/>
-                </div>
-                <button type="submit" className="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-3 rounded-xl transition-all active:scale-95 text-sm">
-                  Enviar mensaje
-                </button>
-              </form>
-            </div>
-          </FadeUp>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ── Footer ────────────────────────────────────────────────────
+/* ─── Footer ─────────────────────────────────────────────────────────────── */
 function Footer() {
   return (
-    <footer className="bg-green-950 text-white/70">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+    <footer style={{ background: C.brandDark, color: "rgba(255,255,255,0.6)", padding: "52px 24px 28px" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 32, marginBottom: 48 }}>
           <div>
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 bg-green-600 rounded-xl flex items-center justify-center text-lg">🐾</div>
-              <span className="font-bold text-white text-lg">Victoria Pecuarios</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <span style={{ fontSize: 24 }}>🐾</span>
+              <div>
+                <div style={{ fontFamily: "'Playfair Display', serif", fontWeight: 600, fontSize: 16, color: "#fff", fontStyle: "italic" }}>Victoria Pecuarios</div>
+                <div style={{ fontSize: 10, color: C.lime, letterSpacing: 1.5, textTransform: "uppercase" }}>Veterinaria</div>
+              </div>
             </div>
-            <p className="text-sm leading-relaxed mb-5">Tu tienda veterinaria de confianza. Productos de calidad y asesoría profesional.</p>
-            <div className="flex gap-2">
-              {["f","ig","wa","yt"].map(s=>(
-                <div key={s} className="w-9 h-9 rounded-xl bg-white/8 border border-white/10 hover:bg-green-600 flex items-center justify-center text-xs font-bold cursor-pointer transition-all">{s}</div>
-              ))}
-            </div>
+            <p style={{ fontSize: 13, lineHeight: 1.7, margin: 0 }}>Cuidado veterinario de calidad para tu mascota en Bogotá, Colombia.</p>
           </div>
           {[
-            {titulo:"Productos",links:["Farmacología","Alimentos","Higiene","Accesorios","Equipos"]},
-            {titulo:"Información",links:["Sobre nosotros","Cómo comprar","Envíos","Devoluciones","Preguntas frecuentes"]},
-            {titulo:"Contacto",links:["📞 (601) 234-5678","💬 310 123 4567","✉️ info@victoriapecuarios.com","📍 Bogotá, Colombia","🕐 Lun–Sab 8am–8pm"]},
-          ].map(({titulo,links})=>(
-            <div key={titulo}>
-              <h5 className="text-white font-bold text-sm uppercase tracking-wider mb-4">{titulo}</h5>
-              <ul className="space-y-2.5">
-                {links.map(l=><li key={l}><span className="text-sm hover:text-green-400 transition-colors cursor-pointer">{l}</span></li>)}
+            { titulo: "Tienda", links: ["Farmacología", "Alimentos", "Higiene", "Accesorios", "Equipos"] },
+            { titulo: "Empresa", links: ["Nosotros", "Servicios", "Blog", "Contacto"] },
+            { titulo: "Mi cuenta", links: ["Iniciar sesión", "Crear cuenta", "Mis pedidos", "Mi perfil"] },
+          ].map(col => (
+            <div key={col.titulo}>
+              <h4 style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: 0.8 }}>{col.titulo}</h4>
+              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                {col.links.map(l => (
+                  <li key={l}><a href="#" style={{ fontSize: 13, color: "inherit", textDecoration: "none", transition: "color 0.15s" }} onMouseEnter={e => { e.target.style.color = C.lime; }} onMouseLeave={e => { e.target.style.color = "rgba(255,255,255,0.6)"; }}>{l}</a></li>
+                ))}
               </ul>
             </div>
           ))}
         </div>
-        <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-white/40">© 2026 Victoria Pecuarios. Todos los derechos reservados.</p>
-          <div className="flex gap-5">
-            {["Privacidad","Términos","Cookies"].map(l=>(
-              <span key={l} className="text-xs text-white/40 hover:text-white cursor-pointer transition-colors">{l}</span>
-            ))}
-          </div>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 24, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <span style={{ fontSize: 12 }}>© 2026 Victoria Pecuarios. Todos los derechos reservados.</span>
+          <span style={{ fontSize: 12 }}>Bogotá, Colombia 🇨🇴</span>
         </div>
       </div>
     </footer>
   );
 }
 
-// ── Página completa ───────────────────────────────────────────
+/* ─── Componente principal Landing ───────────────────────────────────────── */
 export default function Landing() {
+  const [galeriaImagenes, setGaleriaImagenes] = useState([]);
+
+  useEffect(() => {
+    // Intentar cargar imágenes de galería desde localStorage (admin las guarda aquí)
+    try {
+      const guardadas = JSON.parse(localStorage.getItem("galeria_victoria") || "[]");
+      setGaleriaImagenes(guardadas);
+    } catch {}
+  }, []);
+
   return (
-    <div className="min-h-screen">
-      <NavLanding/>
-      <Hero/>
-      <Ticker/>
-      <Stats/>
-      <ProductosDestacados/>
-      <Servicios/>
-      <Galeria/>
-      <Blog/>
-      <Contacto/>
-      <Footer/>
-    </div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,600&display=swap');
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: ${C.canvas}; }
+        ::-webkit-scrollbar-thumb { background: ${C.brandBorder}; border-radius: 3px; }
+      `}</style>
+
+      <NavLanding />
+      <HeroCarrusel />
+      <Ticker />
+      <Stats />
+      <SeccionTienda />
+      <SeccionServicios />
+      <SeccionGaleria imagenes={galeriaImagenes} />
+      <SeccionBlog />
+      <SeccionContacto />
+      <Footer />
+    </>
   );
 }

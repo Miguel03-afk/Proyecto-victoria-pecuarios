@@ -1,13 +1,34 @@
+// src/components/CarritoPanel.jsx
 import { useNavigate } from "react-router-dom";
 import { useCarrito } from "../context/CarritoContext";
 
-const fmt = (n) => `$${Number(n).toLocaleString("es-CO")}`;
+const C = {
+  brand:      "#1a5c1a",
+  brandMid:   "#2d7a2d",
+  brandDark:  "#0c180c",
+  brandLight: "#e6f3e6",
+  brandBorder:"#b8d9b8",
+  lime:       "#a3e635",
+  canvas:     "#f6f7f4",
+  surface:    "#ffffff",
+  surfaceAlt: "#f2f3ef",
+  text:       "#111827",
+  textSec:    "#374151",
+  textTer:    "#6b7280",
+  textMuted:  "#9ca3af",
+  border:     "rgba(0,0,0,0.08)",
+  danger:     "#dc2626",
+  dangerBg:   "#fef2f2",
+  dangerBorder:"#fecaca",
+};
+
+const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
 
 export default function CarritoPanel() {
   const {
-    items, abierto, setAbierto, quitar, cambiarCantidad,
-    vaciar, quitarNoDisponibles, totalItems, totalPrecio,
-    hayNoDisponibles, validando,
+    items, abierto, setAbierto,
+    quitar, cambiarCantidad, vaciar, quitarNoDisponibles,
+    totalItems, totalPrecio, hayNoDisponibles, validando,
   } = useCarrito();
   const navigate = useNavigate();
 
@@ -16,118 +37,325 @@ export default function CarritoPanel() {
     navigate("/carrito");
   };
 
+  const irAProducto = (slug) => {
+    setAbierto(false);
+    navigate(`/producto/${slug}`);
+  };
+
   return (
     <>
+      {/* Overlay */}
       {abierto && (
         <div
           onClick={() => setAbierto(false)}
-          style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.3)", zIndex:998 }}
+          style={{
+            position:"fixed", inset:0, zIndex:998,
+            background:"rgba(12,24,12,0.5)",
+            backdropFilter:"blur(3px)",
+            transition:"opacity 0.3s",
+          }}
         />
       )}
 
-      <div style={{
+      {/* Panel */}
+      <aside style={{
         position:"fixed", top:0, right:0, bottom:0,
-        width:"100%", maxWidth:"400px",
-        background:"#fff", zIndex:999,
+        width:"100%", maxWidth:400, zIndex:999,
         display:"flex", flexDirection:"column",
-        boxShadow:"-4px 0 32px rgba(0,0,0,0.12)",
+        background:C.surface,
+        boxShadow:"-8px 0 40px rgba(12,24,12,0.18)",
         transform: abierto ? "translateX(0)" : "translateX(100%)",
         transition:"transform 0.35s cubic-bezier(0.4,0,0.2,1)",
       }}>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🛒</span>
-            <h2 className="font-bold text-gray-800 text-base">Tu carrito</h2>
+        {/* ── Header ── */}
+        <div style={{
+          display:"flex", alignItems:"center", justifyContent:"space-between",
+          padding:"18px 20px",
+          borderBottom:`1px solid ${C.border}`,
+          background:C.surface,
+          flexShrink:0,
+        }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div style={{
+              width:36, height:36, borderRadius:10,
+              background:C.brandLight,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:18,
+            }}>🛒</div>
+            <div>
+              <h2 style={{ margin:0, fontSize:15, fontWeight:700, color:C.text }}>Tu carrito</h2>
+              {validando ? (
+                <span style={{ fontSize:11, color:C.textMuted }}>Verificando stock...</span>
+              ) : (
+                <span style={{ fontSize:11, color:C.textMuted }}>
+                  {totalItems > 0 ? `${totalItems} producto${totalItems!==1?"s":""} disponible${totalItems!==1?"s":""}` : "Vacío"}
+                </span>
+              )}
+            </div>
             {totalItems > 0 && (
-              <span className="bg-green-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">{totalItems}</span>
+              <div style={{
+                background:C.brand, color:"#fff",
+                fontSize:11, fontWeight:800,
+                width:20, height:20, borderRadius:"50%",
+                display:"flex", alignItems:"center", justifyContent:"center",
+              }}>
+                {totalItems}
+              </div>
             )}
-            {validando && <span className="text-xs text-gray-400 animate-pulse">Verificando...</span>}
           </div>
-          <div className="flex items-center gap-2">
+
+          <div style={{ display:"flex", gap:6 }}>
             {items.length > 0 && (
-              <button onClick={vaciar} className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">
+              <button
+                onClick={vaciar}
+                style={{
+                  fontSize:12, color:C.danger, background:C.dangerBg,
+                  border:`1px solid ${C.dangerBorder}`,
+                  borderRadius:8, padding:"5px 10px",
+                  cursor:"pointer", fontWeight:600, transition:"all 0.15s",
+                }}
+              >
                 Vaciar
               </button>
             )}
-            <button onClick={() => setAbierto(false)}
-              className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-500 transition-colors text-xl leading-none">
+            <button
+              onClick={() => setAbierto(false)}
+              style={{
+                width:32, height:32, borderRadius:9,
+                border:`1px solid ${C.border}`,
+                background:C.surfaceAlt, cursor:"pointer",
+                fontSize:18, color:C.textTer, display:"flex",
+                alignItems:"center", justifyContent:"center",
+                transition:"all 0.15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.brandLight; e.currentTarget.style.color = C.brand; }}
+              onMouseLeave={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.textTer; }}
+            >
               ×
             </button>
           </div>
         </div>
 
-        {/* Alerta productos no disponibles */}
+        {/* ── Alerta no disponibles ── */}
         {hayNoDisponibles && (
-          <div className="mx-4 mt-3 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2">
-            <p className="text-xs text-red-600 font-medium">⚠️ Hay productos sin stock o no disponibles</p>
-            <button onClick={quitarNoDisponibles}
-              className="text-xs text-red-600 hover:text-red-800 font-bold underline flex-shrink-0">
+          <div style={{
+            margin:"12px 16px 0",
+            padding:"10px 14px",
+            background:C.dangerBg, border:`1px solid ${C.dangerBorder}`,
+            borderRadius:10, display:"flex", alignItems:"center",
+            justifyContent:"space-between", gap:8, flexShrink:0,
+          }}>
+            <p style={{ margin:0, fontSize:12, color:C.danger, fontWeight:500 }}>
+              ⚠️ Hay productos sin stock o no disponibles
+            </p>
+            <button
+              onClick={quitarNoDisponibles}
+              style={{
+                fontSize:12, color:C.danger, background:"none",
+                border:"none", cursor:"pointer", fontWeight:700,
+                textDecoration:"underline", flexShrink:0, padding:0,
+              }}
+            >
               Quitar
             </button>
           </div>
         )}
 
-        {/* Items */}
-        <div className="flex-1 overflow-y-auto">
+        {/* ── Items ── */}
+        <div style={{ flex:1, overflowY:"auto", padding:"8px 0" }}>
           {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
-              <div className="text-6xl">🛒</div>
-              <p className="font-semibold text-gray-700">Tu carrito está vacío</p>
-              <p className="text-sm text-gray-400">Agrega productos para continuar</p>
-              <button onClick={() => setAbierto(false)}
-                className="mt-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-                Seguir comprando
+            <div style={{
+              display:"flex", flexDirection:"column",
+              alignItems:"center", justifyContent:"center",
+              height:"100%", gap:12, padding:32, textAlign:"center",
+            }}>
+              <div style={{
+                width:80, height:80, borderRadius:20,
+                background:C.brandLight,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:40,
+              }}>
+                🛒
+              </div>
+              <div>
+                <p style={{ margin:"0 0 4px", fontWeight:700, color:C.text, fontSize:15 }}>
+                  Tu carrito está vacío
+                </p>
+                <p style={{ margin:0, fontSize:13, color:C.textMuted }}>
+                  Agrega productos para comenzar
+                </p>
+              </div>
+              <button
+                onClick={() => setAbierto(false)}
+                style={{
+                  marginTop:4, padding:"10px 24px", borderRadius:12,
+                  background:C.brand, color:"#fff",
+                  border:"none", fontSize:13, fontWeight:700, cursor:"pointer",
+                }}
+              >
+                Explorar tienda
               </button>
             </div>
           ) : (
-            <div className="p-4 space-y-3">
+            <div style={{ padding:"8px 16px", display:"flex", flexDirection:"column", gap:8 }}>
               {items.map(item => {
-                const noDisp = item.activo === false || item.stock === 0;
-                return (
-                  <div key={item.id}
-                    className={`flex gap-3 p-3 rounded-2xl border transition-all ${noDisp ? "bg-red-50 border-red-200 opacity-80" : "bg-gray-50 border-gray-100"}`}>
+                const noDisp  = item.activo === false || item.stock === 0;
+                const subtotal = item.precio * item.cantidad;
 
+                return (
+                  <div
+                    key={item.id}
+                    style={{
+                      display:"flex", gap:12, padding:"12px 14px",
+                      borderRadius:14,
+                      border:`1px solid ${noDisp ? C.dangerBorder : C.border}`,
+                      background: noDisp ? C.dangerBg : C.surfaceAlt,
+                      transition:"all 0.2s",
+                    }}
+                  >
+                    {/* Imagen */}
                     <div
-                      className="w-16 h-16 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0 overflow-hidden border border-green-100 cursor-pointer"
-                      onClick={() => { setAbierto(false); navigate(`/producto/${item.slug}`); }}>
-                      {item.imagen_url
-                        ? <img src={item.imagen_url} alt={item.nombre} className="w-full h-full object-cover" />
-                        : <span className="text-2xl">🐾</span>}
+                      onClick={() => irAProducto(item.slug)}
+                      style={{
+                        width:60, height:60, borderRadius:10,
+                        background: noDisp ? "#fef2f2" : C.brandLight,
+                        border:`1px solid ${noDisp ? C.dangerBorder : C.brandBorder}`,
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        flexShrink:0, overflow:"hidden", cursor:"pointer",
+                      }}
+                    >
+                      {item.imagen_url ? (
+                        <img
+                          src={item.imagen_url} alt={item.nombre}
+                          style={{ width:"100%", height:"100%", objectFit:"contain", padding:4 }}
+                          onError={e => { e.target.style.display="none"; }}
+                        />
+                      ) : (
+                        <span style={{ fontSize:22 }}>🐾</span>
+                      )}
                     </div>
 
-                    <div className="flex-1 min-w-0">
+                    {/* Info */}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      {/* Badges estado */}
                       {noDisp && (
-                        <span className="inline-block text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-lg mb-1">
-                          {item.stock === 0 ? "Sin stock" : "No disponible"}
+                        <span style={{
+                          display:"inline-block", marginBottom:4,
+                          fontSize:10, fontWeight:700, color:C.danger,
+                          background:"#fecaca", padding:"2px 7px",
+                          borderRadius:6, letterSpacing:0.3,
+                        }}>
+                          {item.stock === 0 ? "SIN STOCK" : "NO DISPONIBLE"}
                         </span>
                       )}
+
                       <p
-                        className="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug mb-1 cursor-pointer hover:text-green-700 transition-colors"
-                        onClick={() => { setAbierto(false); navigate(`/producto/${item.slug}`); }}>
+                        onClick={() => irAProducto(item.slug)}
+                        style={{
+                          margin:"0 0 4px", fontSize:12, fontWeight:600,
+                          color: noDisp ? C.textMuted : C.text,
+                          cursor:"pointer", lineHeight:1.35,
+                          display:"-webkit-box", WebkitLineClamp:2,
+                          WebkitBoxOrient:"vertical", overflow:"hidden",
+                          transition:"color 0.15s",
+                        }}
+                        onMouseEnter={e => { if (!noDisp) e.target.style.color = C.brand; }}
+                        onMouseLeave={e => { e.target.style.color = noDisp ? C.textMuted : C.text; }}
+                      >
                         {item.nombre}
                       </p>
-                      <span className="text-sm font-bold text-green-700">{fmt(item.precio)}</span>
 
-                      <div className="flex items-center justify-between mt-2">
-                        <div className={`flex items-center gap-1 bg-white rounded-xl border border-gray-200 p-0.5 ${noDisp ? "opacity-40 pointer-events-none" : ""}`}>
-                          <button onClick={() => cambiarCantidad(item.id, -1)}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-green-50 text-green-700 font-bold transition-colors">−</button>
-                          <span className="text-sm font-bold text-gray-800 min-w-[20px] text-center">{item.cantidad}</span>
-                          <button onClick={() => cambiarCantidad(item.id, +1)}
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                        {/* Precio */}
+                        <span style={{
+                          fontSize:14, fontWeight:800,
+                          color: noDisp ? C.textMuted : C.brand,
+                          fontFamily:"'JetBrains Mono',monospace",
+                        }}>
+                          {fmt(item.precio)}
+                        </span>
+
+                        {/* Subtotal */}
+                        {!noDisp && item.cantidad > 1 && (
+                          <span style={{ fontSize:11, color:C.textMuted }}>
+                            = {fmt(subtotal)}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Controles de cantidad */}
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:8 }}>
+                        <div style={{
+                          display:"flex", alignItems:"center", gap:4,
+                          background: noDisp ? "transparent" : C.surface,
+                          border:`1px solid ${noDisp ? "transparent" : C.border}`,
+                          borderRadius:9, padding:"2px",
+                          opacity: noDisp ? 0.4 : 1,
+                          pointerEvents: noDisp ? "none" : "auto",
+                        }}>
+                          <button
+                            onClick={() => cambiarCantidad(item.id, -1)}
+                            style={{
+                              width:26, height:26, borderRadius:7, border:"none",
+                              background:"transparent", cursor:"pointer",
+                              color:C.brand, fontSize:16, fontWeight:700,
+                              display:"flex", alignItems:"center", justifyContent:"center",
+                              transition:"all 0.15s",
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = C.brandLight; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                          >
+                            −
+                          </button>
+                          <span style={{
+                            fontSize:13, fontWeight:700, color:C.text,
+                            minWidth:20, textAlign:"center",
+                            fontFamily:"monospace",
+                          }}>
+                            {item.cantidad}
+                          </span>
+                          <button
+                            onClick={() => cambiarCantidad(item.id, +1)}
                             disabled={item.cantidad >= item.stock}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-green-50 text-green-700 font-bold transition-colors disabled:opacity-40">+</button>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {!noDisp && <span className="text-xs font-bold text-gray-700">{fmt(item.precio * item.cantidad)}</span>}
-                          <button onClick={() => quitar(item.id)}
-                            className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
+                            style={{
+                              width:26, height:26, borderRadius:7, border:"none",
+                              background:"transparent", cursor:"pointer",
+                              color:C.brand, fontSize:16, fontWeight:700,
+                              display:"flex", alignItems:"center", justifyContent:"center",
+                              opacity: item.cantidad >= item.stock ? 0.3 : 1,
+                              transition:"all 0.15s",
+                            }}
+                            onMouseEnter={e => { if (item.cantidad < item.stock) e.currentTarget.style.background = C.brandLight; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                          >
+                            +
                           </button>
                         </div>
+
+                        {/* Stock restante */}
+                        {!noDisp && item.stock <= 5 && (
+                          <span style={{ fontSize:10, color:"#d97706", fontWeight:600 }}>
+                            {item.stock} en stock
+                          </span>
+                        )}
+
+                        {/* Eliminar */}
+                        <button
+                          onClick={() => quitar(item.id)}
+                          style={{
+                            width:28, height:28, borderRadius:8, border:`1px solid ${C.border}`,
+                            background:C.surface, cursor:"pointer",
+                            color:C.textMuted, fontSize:14,
+                            display:"flex", alignItems:"center", justifyContent:"center",
+                            transition:"all 0.15s",
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = C.dangerBg; e.currentTarget.style.color = C.danger; e.currentTarget.style.borderColor = C.dangerBorder; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.color = C.textMuted; e.currentTarget.style.borderColor = C.border; }}
+                          title="Quitar producto"
+                        >
+                          🗑
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -137,28 +365,88 @@ export default function CarritoPanel() {
           )}
         </div>
 
-        {/* Footer */}
+        {/* ── Footer con totales ── */}
         {items.length > 0 && (
-          <div className="p-4 border-t border-gray-100 bg-gray-50 space-y-3">
-            <div className="flex justify-between font-bold text-gray-800">
-              <span>Total ({totalItems} disponibles)</span>
-              <span className="text-green-700 text-lg">{fmt(totalPrecio)}</span>
+          <div style={{
+            padding:"16px 20px 20px",
+            borderTop:`1px solid ${C.border}`,
+            background:C.surface,
+            flexShrink:0,
+          }}>
+            {/* Resumen */}
+            <div style={{ marginBottom:14, display:"flex", flexDirection:"column", gap:8 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:C.textTer }}>
+                <span>Subtotal ({totalItems} {totalItems===1?"producto":"productos"})</span>
+                <span style={{fontFamily:"monospace"}}>{fmt(totalPrecio)}</span>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:C.textTer }}>
+                <span>IVA (19%)</span>
+                <span style={{fontFamily:"monospace"}}>{fmt(totalPrecio * 0.19)}</span>
+              </div>
+              <div style={{ height:1, background:C.border, margin:"2px 0" }}/>
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:16, fontWeight:800, color:C.text }}>
+                <span>Total</span>
+                <span style={{ color:C.brand, fontFamily:"monospace" }}>
+                  {fmt(totalPrecio * 1.19)}
+                </span>
+              </div>
             </div>
-            {totalPrecio >= 80000 && (
-              <p className="text-xs text-green-600 font-semibold text-center">🎉 ¡Envío gratis aplicado!</p>
+
+            {/* Envío gratis */}
+            {totalPrecio >= 80000 ? (
+              <div style={{
+                marginBottom:12, padding:"8px 12px", borderRadius:9,
+                background:C.brandLight, border:`1px solid ${C.brandBorder}`,
+                fontSize:12, color:C.brand, fontWeight:600, textAlign:"center",
+              }}>
+                🎉 ¡Envío gratis aplicado!
+              </div>
+            ) : (
+              <div style={{
+                marginBottom:12, padding:"8px 12px", borderRadius:9,
+                background:C.surfaceAlt,
+                fontSize:12, color:C.textTer, textAlign:"center",
+              }}>
+                Te faltan <strong style={{color:C.brand}}>{fmt(80000 - totalPrecio)}</strong> para envío gratis
+              </div>
             )}
+
+            {/* Botón principal */}
             <button
               onClick={handleCheckout}
               disabled={hayNoDisponibles || totalItems === 0}
-              className="w-full bg-green-700 hover:bg-green-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all active:scale-95 text-sm">
-              {hayNoDisponibles ? "Retira productos no disponibles" : "Ver carrito completo →"}
+              style={{
+                width:"100%", padding:"13px 0", borderRadius:12, border:"none",
+                background: hayNoDisponibles || totalItems===0 ? C.surfaceAlt : C.brand,
+                color: hayNoDisponibles || totalItems===0 ? C.textMuted : "#fff",
+                fontSize:14, fontWeight:800,
+                cursor: hayNoDisponibles || totalItems===0 ? "default" : "pointer",
+                transition:"all 0.2s", letterSpacing:0.2,
+              }}
+              onMouseEnter={e => { if (!(hayNoDisponibles || totalItems===0)) e.currentTarget.style.background = C.brandMid; }}
+              onMouseLeave={e => { if (!(hayNoDisponibles || totalItems===0)) e.currentTarget.style.background = C.brand; }}
+            >
+              {hayNoDisponibles
+                ? "⚠ Retira productos no disponibles"
+                : "Ir al carrito →"}
             </button>
-            <button onClick={() => setAbierto(false)} className="w-full text-xs text-gray-500 hover:text-gray-700 font-medium py-1">
+
+            <button
+              onClick={() => setAbierto(false)}
+              style={{
+                width:"100%", padding:"9px 0", marginTop:8,
+                background:"none", border:"none",
+                fontSize:12, color:C.textMuted, cursor:"pointer",
+                transition:"color 0.15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = C.text; }}
+              onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; }}
+            >
               Seguir comprando
             </button>
           </div>
         )}
-      </div>
+      </aside>
     </>
   );
 }

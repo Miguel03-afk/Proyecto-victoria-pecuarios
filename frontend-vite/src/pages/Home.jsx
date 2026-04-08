@@ -1,506 +1,531 @@
 // src/pages/Home.jsx
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import Navbar from "../components/Navbar";
+import { useCarrito } from "../context/CarritoContext";
 import api from "../services/api";
-import ProductCard from "../components/ProductCard";
 
-const ENVIO_GRATIS = 80000;
-const fmt = (n) => new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(n);
+/* ─── Tokens ─────────────────────────────────────────────────────────────── */
+const C = {
+  brand:       "#1a5c1a",
+  brandMid:    "#2d7a2d",
+  brandDark:   "#0c180c",   // ← fix: estaba undefined en versión anterior
+  brandLight:  "#e6f3e6",
+  brandBorder: "#b8d9b8",
+  lime:        "#a3e635",
+  canvas:      "#f6f7f4",
+  surface:     "#ffffff",
+  surfaceAlt:  "#f2f3ef",
+  text:        "#111827",
+  textSec:     "#374151",
+  textTer:     "#6b7280",
+  textMuted:   "#9ca3af",
+  border:      "rgba(0,0,0,0.08)",
+};
 
-// ── Skeleton card ─────────────────────────────────────────────
-const Skeleton = () => (
-  <div className="bg-white rounded-2xl border border-green-50 overflow-hidden animate-pulse">
-    <div className="h-48 bg-gradient-to-br from-green-50 to-emerald-50" />
-    <div className="p-4 space-y-2.5">
-      <div className="h-2.5 bg-green-50 rounded-full w-1/3" />
-      <div className="h-4 bg-green-50 rounded-full w-4/5" />
-      <div className="h-3 bg-green-50 rounded-full w-1/2" />
-      <div className="h-9 bg-green-50 rounded-xl mt-4" />
-    </div>
-  </div>
-);
+const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
 
-// ── Barra superior envío gratis ───────────────────────────────
-function BarraEnvio() {
+/* ─── Mapa de colores por categoría ──────────────────────────────────────── */
+const CAT_CFG = {
+  farmacologia: { color:"#166534", bg:"#dcfce7", emoji:"💊" },
+  alimentos:    { color:"#92400e", bg:"#fef3c7", emoji:"🍖" },
+  higiene:      { color:"#1e40af", bg:"#dbeafe", emoji:"🧴" },
+  accesorios:   { color:"#6b21a8", bg:"#f3e8ff", emoji:"🎀" },
+  equipos:      { color:"#0e7490", bg:"#cffafe", emoji:"🔬" },
+  default:      { color:"#374151", bg:"#f3f4f6", emoji:"📦" },
+};
+
+function getCatCfg(nombre = "") {
+  const n = nombre.toLowerCase();
+  if (n.includes("farm") || n.includes("medic") || n.includes("vacun") || n.includes("antipar") || n.includes("analg") || n.includes("antibio")) return CAT_CFG.farmacologia;
+  if (n.includes("alim") || n.includes("comid") || n.includes("nutri") || n.includes("concentr") || n.includes("húmedo") || n.includes("humedo") || n.includes("seco")) return CAT_CFG.alimentos;
+  if (n.includes("higien") || n.includes("aseo") || n.includes("desinfect") || n.includes("shampoo")) return CAT_CFG.higiene;
+  if (n.includes("accesor") || n.includes("collar") || n.includes("correa") || n.includes("jugue")) return CAT_CFG.accesorios;
+  if (n.includes("equip") || n.includes("instrum") || n.includes("diagnos")) return CAT_CFG.equipos;
+  return CAT_CFG.default;
+}
+
+/* ─── Chip de categoría ───────────────────────────────────────────────────── */
+function CatChip({ cat, activa, onClick }) {
+  const cfg = getCatCfg(cat.nombre);
   return (
-    <div className="bg-green-950 py-2.5 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 flex items-center justify-center gap-3">
-        <div className="w-1.5 h-1.5 rounded-full bg-lime-400 animate-pulse flex-shrink-0" />
-        <p className="text-xs font-semibold text-white/90 text-center">
-          🚚 Envíos gratis a partir de{" "}
-          <span className="text-lime-400 font-bold">{fmt(ENVIO_GRATIS)}</span>
-          {" "}· Todo Colombia · Recíbelo en casa
-        </p>
-        <div className="w-1.5 h-1.5 rounded-full bg-lime-400 animate-pulse flex-shrink-0" />
-      </div>
-    </div>
+    <button
+      onClick={() => onClick(activa ? null : cat.id)}
+      style={{
+        display:"inline-flex", alignItems:"center", gap:6,
+        padding:"6px 14px", borderRadius:999, flexShrink:0,
+        border:`1.5px solid ${activa ? cfg.color : C.border}`,
+        background: activa ? cfg.bg : C.surface,
+        color: activa ? cfg.color : C.textSec,
+        fontSize:13, fontWeight: activa ? 700 : 400,
+        cursor:"pointer", transition:"all 0.15s", whiteSpace:"nowrap",
+      }}
+      onMouseEnter={e => { if (!activa) { e.currentTarget.style.borderColor = cfg.color + "66"; e.currentTarget.style.background = cfg.bg + "88"; }}}
+      onMouseLeave={e => { if (!activa) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.surface; }}}
+    >
+      <span style={{fontSize:13}}>{cfg.emoji}</span>
+      {cat.nombre}
+    </button>
   );
 }
 
-// ── Carrusel destacados autoplay + pause on hover ─────────────
-function CarruselDestacados({ productos }) {
-  const [idx, setIdx]         = useState(0);
-  const [pausado, setPausado] = useState(false);
-  const autoRef               = useRef(null);
-  const trackRef              = useRef(null);
-  const [startX, setStartX]   = useState(0);
-  const [dragging, setDragging] = useState(false);
+/* ─── Tarjeta de producto ─────────────────────────────────────────────────── */
+function TarjetaProducto({ producto }) {
+  const navigate = useNavigate();
+  const { agregar } = useCarrito();  // ← nombre correcto: "agregar", no "agregarAlCarrito"
+  const [agregando, setAgregando] = useState(false);
+  const [agregado,  setAgregado]  = useState(false);
 
-  // Cuántas cards según viewport
-  const getVisibles = () => {
-    if (typeof window === "undefined") return 4;
-    if (window.innerWidth >= 1280) return 5;
-    if (window.innerWidth >= 1024) return 4;
-    if (window.innerWidth >= 640)  return 3;
-    return 2;
+  // Normalizar precio y stock — soporta productos con o sin variantes
+  const precio      = Number(producto.variantes?.[0]?.precio     ?? producto.precio     ?? 0);
+  const precioAntes = Number(producto.variantes?.[0]?.precio_antes ?? producto.precio_antes ?? 0);
+  const stock       = Number(producto.variantes?.[0]?.stock       ?? producto.stock       ?? 0);
+  const agotado     = stock === 0;
+  const descuento   = precioAntes > precio && precioAntes > 0
+    ? Math.round((1 - precio / precioAntes) * 100) : null;
+
+  const handleAgregar = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (agotado || agregando) return;
+
+    setAgregando(true);
+    agregar({
+      id:          producto.id,
+      nombre:      producto.nombre,
+      precio:      precio,
+      precio_antes: precioAntes > 0 ? precioAntes : null,
+      imagen_url:  producto.imagen_url || null,
+      slug:        producto.slug,
+      stock:       stock,
+    }, 1);
+
+    setAgregado(true);
+    setTimeout(() => { setAgregando(false); setAgregado(false); }, 1800);
   };
-  const [visibles, setVisibles] = useState(getVisibles());
-  useEffect(() => {
-    const fn = () => setVisibles(getVisibles());
-    window.addEventListener("resize", fn);
-    return () => window.removeEventListener("resize", fn);
-  }, []);
-
-  const maxIdx = Math.max(0, productos.length - visibles);
-
-  const siguiente = useCallback(() => {
-    setIdx(p => p >= maxIdx ? 0 : p + 1);
-  }, [maxIdx]);
-
-  const anterior = () => setIdx(p => p <= 0 ? maxIdx : p - 1);
-
-  const resetAuto = useCallback(() => {
-    clearInterval(autoRef.current);
-    if (!pausado) autoRef.current = setInterval(siguiente, 2800);
-  }, [pausado, siguiente]);
-
-  useEffect(() => {
-    if (pausado) { clearInterval(autoRef.current); return; }
-    autoRef.current = setInterval(siguiente, 2800);
-    return () => clearInterval(autoRef.current);
-  }, [pausado, siguiente]);
-
-  const irA = (i) => { setIdx(i); resetAuto(); };
-  const prev = () => { anterior(); resetAuto(); };
-  const next = () => { siguiente(); resetAuto(); };
-
-  const onDragStart = (x) => { setDragging(true); setStartX(x); };
-  const onDragEnd   = (x) => {
-    if (!dragging) return;
-    setDragging(false);
-    const diff = startX - x;
-    if (Math.abs(diff) > 40) diff > 0 ? next() : prev();
-  };
-
-  if (!productos.length) return null;
-
-  const cardW = `calc(${100 / visibles}% - ${((visibles - 1) * 16) / visibles}px)`;
 
   return (
-    <section className="py-12" style={{ background: "linear-gradient(180deg,#f0f9f0 0%,#ffffff 100%)" }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex items-end justify-between mb-8 gap-4 flex-wrap">
-          <div>
-            <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-green-600 mb-2">
-              <span className="w-4 h-px bg-green-400 inline-block" />
-              Más vendidos
-              <span className="w-4 h-px bg-green-400 inline-block" />
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-green-950"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-              Productos <em className="text-green-600 not-italic">destacados</em>
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={prev}
-              className="w-9 h-9 rounded-xl border-2 border-green-200 flex items-center justify-center text-green-700 hover:bg-green-700 hover:text-white hover:border-green-700 transition-all duration-200 text-sm font-bold">
-              ←
-            </button>
-            <button onClick={next}
-              className="w-9 h-9 rounded-xl border-2 border-green-200 flex items-center justify-center text-green-700 hover:bg-green-700 hover:text-white hover:border-green-700 transition-all duration-200 text-sm font-bold">
-              →
-            </button>
-            <Link to="/tienda"
-              className="ml-2 flex items-center gap-1.5 text-xs font-bold text-green-700 border-2 border-green-200 hover:border-green-600 hover:bg-green-50 px-4 py-2 rounded-xl transition-all duration-200">
-              Ver catálogo
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
-              </svg>
-            </Link>
-          </div>
+    <article
+      onClick={() => navigate(`/producto/${producto.slug}`)}
+      style={{
+        background:C.surface, border:`1px solid ${C.border}`,
+        borderRadius:16, overflow:"hidden", cursor:"pointer",
+        transition:"all 0.2s", position:"relative",
+        display:"flex", flexDirection:"column", userSelect:"none",
+      }}
+      onMouseEnter={e => { e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 8px 24px rgba(26,92,26,0.12)"; e.currentTarget.style.borderColor=C.brandBorder; }}
+      onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="none"; e.currentTarget.style.borderColor=C.border; }}
+    >
+      {/* Badge descuento */}
+      {descuento && descuento > 0 && (
+        <div style={{ position:"absolute",top:10,left:10,zIndex:2, background:"#dc2626",color:"#fff", fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:6 }}>
+          -{descuento}%
         </div>
-
-        {/* Track */}
-        <div
-          className="relative overflow-hidden"
-          onMouseEnter={() => setPausado(true)}
-          onMouseLeave={() => setPausado(false)}
-          onMouseDown={e => onDragStart(e.clientX)}
-          onMouseUp={e => onDragEnd(e.clientX)}
-          onTouchStart={e => onDragStart(e.touches[0].clientX)}
-          onTouchEnd={e => onDragEnd(e.changedTouches[0].clientX)}
-          style={{ cursor: dragging ? "grabbing" : "grab" }}>
-          <div
-            ref={trackRef}
-            className="flex gap-4 transition-transform duration-500 ease-out"
-            style={{ transform: `translateX(calc(-${idx * (100 / visibles)}% - ${idx * 16 / visibles}px))` }}>
-            {productos.map(p => (
-              <div key={p.id} className="flex-shrink-0" style={{ width: cardW }}>
-                <ProductCard producto={p} />
-              </div>
-            ))}
-          </div>
+      )}
+      {/* Badge destacado */}
+      {(producto.destacado === 1 || producto.destacado === true) && (
+        <div style={{ position:"absolute",top:10,right:10,zIndex:2, background:C.brand,color:"#fff", fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:6 }}>
+          ⭐ Destacado
         </div>
+      )}
 
-        {/* Dots */}
-        {maxIdx > 0 && (
-          <div className="flex justify-center gap-1.5 mt-6">
-            {Array.from({ length: maxIdx + 1 }).map((_, i) => (
-              <button key={i} onClick={() => irA(i)}
-                className={`rounded-full transition-all duration-300 ${
-                  i === idx ? "w-6 h-2 bg-green-600" : "w-2 h-2 bg-green-200 hover:bg-green-400"
-                }`} />
-            ))}
+      {/* Imagen */}
+      <div style={{ background:C.surfaceAlt, height:180, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", position:"relative" }}>
+        {producto.imagen_url ? (
+          <img
+            src={producto.imagen_url} alt={producto.nombre}
+            style={{ width:"100%",height:"100%",objectFit:"contain",padding:12,transition:"transform 0.3s" }}
+            onError={e => { e.target.style.display="none"; }}
+            onMouseEnter={e => { e.target.style.transform="scale(1.05)"; }}
+            onMouseLeave={e => { e.target.style.transform="scale(1)"; }}
+          />
+        ) : (
+          <span style={{fontSize:52, opacity:0.35}}>🐾</span>
+        )}
+        {agotado && (
+          <div style={{ position:"absolute",inset:0, background:"rgba(255,255,255,0.75)", display:"flex",alignItems:"center",justifyContent:"center" }}>
+            <span style={{ fontSize:11,fontWeight:800,color:"#dc2626", background:"#fef2f2",border:"1.5px solid #fecaca", padding:"4px 10px",borderRadius:8 }}>AGOTADO</span>
           </div>
         )}
       </div>
-    </section>
+
+      {/* Info */}
+      <div style={{ padding:"14px 16px 16px", flex:1, display:"flex", flexDirection:"column", gap:6 }}>
+        {producto.marca && (
+          <span style={{ fontSize:10,color:C.textMuted,fontWeight:700,textTransform:"uppercase",letterSpacing:0.8 }}>
+            {producto.marca}
+          </span>
+        )}
+
+        <h3 style={{
+          fontSize:13, fontWeight:600, color:C.text, lineHeight:1.4, margin:0,
+          display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden",
+        }}>
+          {producto.nombre}
+        </h3>
+
+        {/* Precio */}
+        <div style={{ display:"flex", alignItems:"baseline", gap:6, flexWrap:"wrap" }}>
+          <span style={{
+            fontSize:17, fontWeight:800,
+            color: agotado ? C.textMuted : C.brand,
+            fontFamily:"'JetBrains Mono','Fira Code',monospace",
+          }}>
+            {fmt(precio)}
+          </span>
+          {precioAntes > precio && (
+            <span style={{ fontSize:12,color:C.textMuted,textDecoration:"line-through",fontFamily:"monospace" }}>
+              {fmt(precioAntes)}
+            </span>
+          )}
+        </div>
+
+        <span style={{ fontSize:10, color:C.textMuted }}>+ IVA 19%</span>
+
+        {!agotado && stock > 0 && stock <= 5 && (
+          <span style={{ fontSize:11,color:"#d97706",fontWeight:600 }}>⚠ Últimas {stock} unidades</span>
+        )}
+
+        {/* Botón */}
+        <button
+          onClick={handleAgregar}
+          disabled={agotado}
+          style={{
+            marginTop:"auto", padding:"9px 0", borderRadius:10, border:"none",
+            background: agotado ? C.surfaceAlt : agregado ? "#166534" : C.brand,
+            color: agotado ? C.textMuted : "#fff",
+            fontSize:13, fontWeight:700,
+            cursor: agotado ? "default" : "pointer",
+            transition:"all 0.2s", letterSpacing:0.2,
+          }}
+          onMouseEnter={e => { if (!agotado && !agregado) e.currentTarget.style.background = C.brandMid; }}
+          onMouseLeave={e => { if (!agotado && !agregado) e.currentTarget.style.background = C.brand; }}
+        >
+          {agotado ? "Sin stock" : agregado ? "✓ Agregado al carrito" : "Agregar al carrito"}
+        </button>
+      </div>
+    </article>
   );
 }
 
-// ── Categorías visuales ───────────────────────────────────────
-function CategoriasVisuales({ categorias, categoriaActiva, onFiltrar }) {
-  const ICONOS = {
-    farmacologia: "💊", alimentos: "🥩", higiene: "🧴",
-    accesorios: "🎾", equipos: "🔬",
-  };
-  const COLORES = {
-    farmacologia: { bg: "#dcfce7", text: "#166534", border: "#86efac" },
-    alimentos:    { bg: "#fef3c7", text: "#92400e", border: "#fcd34d" },
-    higiene:      { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" },
-    accesorios:   { bg: "#f3e8ff", text: "#6b21a8", border: "#d8b4fe" },
-    equipos:      { bg: "#e0f2fe", text: "#075985", border: "#7dd3fc" },
-  };
-
+/* ─── Skeleton ────────────────────────────────────────────────────────────── */
+function Skeleton() {
   return (
-    <div className="bg-white border-b border-green-50 py-3 sticky top-10 z-40">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none">
-          <button
-            onClick={() => onFiltrar("")}
-            className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 border-2 ${
-              !categoriaActiva
-                ? "bg-green-700 text-white border-green-700 shadow-md shadow-green-200"
-                : "bg-white text-green-800 border-green-100 hover:border-green-300"
-            }`}>
-            🐾 Todos
-          </button>
-          {categorias.map(cat => {
-            const activa = categoriaActiva === cat.slug;
-            const col = COLORES[cat.slug] || { bg: "#f0fdf4", text: "#166534", border: "#bbf7d0" };
-            return (
-              <button key={cat.slug} onClick={() => onFiltrar(cat.slug)}
-                className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 border-2"
-                style={activa
-                  ? { background: col.text, color: "#fff", borderColor: col.text, boxShadow: `0 4px 12px ${col.text}30` }
-                  : { background: col.bg, color: col.text, borderColor: col.border }}>
-                {ICONOS[cat.slug] || "📦"} {cat.nombre}
-              </button>
-            );
-          })}
-        </div>
+    <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, overflow:"hidden" }}>
+      <div style={{ height:180, background:`linear-gradient(90deg,${C.surfaceAlt} 25%,#e9ebe6 50%,${C.surfaceAlt} 75%)`, backgroundSize:"200% 100%", animation:"shimmer 1.4s infinite" }}/>
+      <div style={{ padding:16, display:"flex", flexDirection:"column", gap:9 }}>
+        {[60,100,50,38].map((w,i) => (
+          <div key={i} style={{ height:i===1?26:12, width:`${w}%`, borderRadius:6, background:`linear-gradient(90deg,${C.surfaceAlt} 25%,#e9ebe6 50%,${C.surfaceAlt} 75%)`, backgroundSize:"200% 100%", animation:"shimmer 1.4s infinite" }}/>
+        ))}
       </div>
     </div>
   );
 }
 
-// ── Buscador inline ───────────────────────────────────────────
-function Buscador({ valor, onChange }) {
-  return (
-    <div className="relative">
-      <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-green-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-      </svg>
-      <input
-        value={valor}
-        onChange={e => onChange(e.target.value)}
-        placeholder="Buscar medicamentos, alimentos, accesorios..."
-        className="w-full pl-11 pr-4 py-3 text-sm rounded-2xl outline-none transition-all"
-        style={{
-          border: "1.5px solid #b4d9b4",
-          background: "#fff",
-          color: "#191c18",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-        }}
-        onFocus={e => { e.target.style.borderColor = "#1a5c1a"; e.target.style.boxShadow = "0 0 0 3px rgba(26,92,26,0.1)"; }}
-        onBlur={e => { e.target.style.borderColor = "#b4d9b4"; e.target.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06)"; }}
-      />
-    </div>
-  );
-}
-
-// ── Grid catálogo ─────────────────────────────────────────────
-function CatalogoBanner({ titulo, total, limpiar }) {
-  return (
-    <div className="flex items-center justify-between mb-6">
-      <div>
-        <h2 className="text-lg font-bold" style={{ color: "#191c18", fontFamily: "'Playfair Display', Georgia, serif" }}>
-          {titulo}
-        </h2>
-        <p className="text-xs mt-0.5" style={{ color: "#a8b2a8" }}>{total} productos encontrados</p>
-      </div>
-      {limpiar && (
-        <button onClick={limpiar}
-          className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors"
-          style={{ background: "#fee2e2", color: "#7f1d1d", border: "1px solid #fca5a5" }}>
-          ✕ Limpiar
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ── Por qué elegirnos ─────────────────────────────────────────
-function BannerConfianza() {
-  const items = [
-    { icon: "🚚", title: "Envío gratis", desc: `A partir de ${fmt(ENVIO_GRATIS)}` },
-    { icon: "💊", title: "Certificados", desc: "Registro Invima" },
-    { icon: "👨‍⚕️", title: "Asesoría gratis", desc: "Veterinarios expertos" },
-    { icon: "↩️", title: "Devoluciones", desc: "15 días de garantía" },
-  ];
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-10">
-      {items.map(({ icon, title, desc }) => (
-        <div key={title}
-          className="flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all hover:shadow-md hover:-translate-y-0.5 duration-200"
-          style={{ background: "#fff", borderColor: "#e6f3e6" }}>
-          <span className="text-2xl flex-shrink-0">{icon}</span>
-          <div>
-            <p className="text-xs font-bold" style={{ color: "#191c18" }}>{title}</p>
-            <p className="text-xs" style={{ color: "#788078" }}>{desc}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Paginación ────────────────────────────────────────────────
-function Paginacion({ pagina, totalPaginas, onCambiar }) {
-  if (totalPaginas <= 1) return null;
-  const pages = Array.from({ length: totalPaginas }, (_, i) => i + 1);
-  return (
-    <div className="flex justify-center gap-1.5 mt-10">
-      <button onClick={() => onCambiar(pagina - 1)} disabled={pagina === 1}
-        className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold transition-all disabled:opacity-30"
-        style={{ border: "1.5px solid #b4d9b4", color: "#1a5c1a" }}>←</button>
-      {pages.map(p => (
-        <button key={p} onClick={() => onCambiar(p)}
-          className="w-9 h-9 rounded-xl text-xs font-bold transition-all"
-          style={p === pagina
-            ? { background: "#1a5c1a", color: "#fff", border: "1.5px solid #1a5c1a" }
-            : { background: "#fff", color: "#48524a", border: "1.5px solid #e6f3e6" }}>
-          {p}
-        </button>
-      ))}
-      <button onClick={() => onCambiar(pagina + 1)} disabled={pagina === totalPaginas}
-        className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold transition-all disabled:opacity-30"
-        style={{ border: "1.5px solid #b4d9b4", color: "#1a5c1a" }}>→</button>
-    </div>
-  );
-}
-
-// ── Página principal ──────────────────────────────────────────
+/* ─── Home principal ──────────────────────────────────────────────────────── */
 export default function Home() {
-  const [productos, setProductos]   = useState([]);
-  const [destacados, setDestacados] = useState([]);
-  const [categorias, setCategorias] = useState([]);
-  const [cargando, setCargando]     = useState(true);
-  const [total, setTotal]           = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [buscarLocal, setBuscarLocal]   = useState(searchParams.get("buscar") || "");
-  const buscarTimer = useRef(null);
+  const [productos,    setProductos]    = useState([]);
+  const [categorias,   setCategorias]   = useState([]);
+  const [cargando,     setCargando]     = useState(true);
+  const [totalPaginas, setTotalPaginas] = useState(1);
+  const [totalItems,   setTotalItems]   = useState(0);  // ← total real del backend (fix NaN)
+  const [busquedaInput,setBusquedaInput]= useState(searchParams.get("buscar") || "");
+  const debounceRef = useRef(null);
 
-  const buscar   = searchParams.get("buscar") || "";
-  const categoria = searchParams.get("categoria") || "";
-  const pagina   = Number(searchParams.get("pagina") || 1);
+  const categoriaActiva  = searchParams.get("categoria") ? Number(searchParams.get("categoria")) : null;
+  const busqueda         = searchParams.get("buscar") || "";
+  const pagina           = Number(searchParams.get("pagina") || 1);
+  const catActivaNombre  = categoriaActiva ? categorias.find(c => c.id === categoriaActiva)?.nombre : null;
 
-  // Cargar catálogo
+  /* Categorías */
   useEffect(() => {
-    const cargar = async () => {
-      setCargando(true);
-      try {
-        const params = new URLSearchParams();
-        if (buscar)   params.set("buscar", buscar);
-        if (categoria) params.set("categoria", categoria);
-        params.set("pagina", pagina);
-        params.set("limite", 12);
-        const [rProd, rCat] = await Promise.all([
-          api.get(`/productos?${params}`),
-          api.get("/categorias"),
-        ]);
-        setProductos(rProd.data.productos);
-        setTotal(rProd.data.total);
-        setCategorias(rCat.data.filter(c => !c.parent_id));
-      } catch (err) { console.error(err); }
-      finally { setCargando(false); }
-    };
-    cargar();
-  }, [buscar, categoria, pagina]);
-
-  // Cargar destacados una sola vez
-  useEffect(() => {
-    api.get("/productos/destacados/lista").then(({ data }) => setDestacados(data)).catch(() => {});
+    api.get("/categorias").then(r => setCategorias(r.data || [])).catch(() => {});
   }, []);
 
-  // Búsqueda con debounce
-  const handleBuscar = (val) => {
-    setBuscarLocal(val);
-    clearTimeout(buscarTimer.current);
-    buscarTimer.current = setTimeout(() => {
-      setSearchParams(val ? { buscar: val } : {});
+  /* Productos */
+  useEffect(() => {
+    setCargando(true);
+    const params = { pagina, limite: 20 };
+    if (busqueda)        params.buscar    = busqueda;
+    if (categoriaActiva) params.categoria = categoriaActiva;
+
+    api.get("/productos", { params })
+      .then(r => {
+        const data = r.data;
+        if (Array.isArray(data)) {
+          // Backend devuelve array directo
+          setProductos(data);
+          setTotalItems(data.length);
+          setTotalPaginas(1);
+        } else {
+          // Backend devuelve { productos, total, totalPaginas }
+          setProductos(data.productos || []);
+          setTotalItems(Number(data.total ?? data.productos?.length ?? 0));
+          setTotalPaginas(Number(data.totalPaginas ?? 1));
+        }
+      })
+      .catch(() => { setProductos([]); setTotalItems(0); setTotalPaginas(1); })
+      .finally(() => setCargando(false));
+  }, [busqueda, categoriaActiva, pagina]);
+
+  /* Debounce búsqueda */
+  const handleBusqueda = (v) => {
+    setBusquedaInput(v);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        if (v) next.set("buscar", v); else next.delete("buscar");
+        next.delete("pagina");
+        return next;
+      });
     }, 400);
   };
 
-  const filtrar = (slug) => setSearchParams(slug ? { categoria: slug } : {});
-  const cambiarPagina = (p) => setSearchParams({ pagina: p, ...(categoria && { categoria }), ...(buscar && { buscar }) });
-  const totalPaginas = Math.ceil(total / 12);
+  const cambiarCategoria = (id) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (!id) next.delete("categoria");
+      else next.set("categoria", id);
+      next.delete("pagina");
+      return next;
+    });
+  };
 
-  const tituloCatalogo = buscar
-    ? `Resultados para "${buscar}"`
-    : categoria
-    ? categorias.find(c => c.slug === categoria)?.nombre || "Productos"
-    : "Catálogo completo";
+  const limpiarFiltros = () => { setBusquedaInput(""); setSearchParams({}); };
+  const hayFiltros     = busqueda || categoriaActiva;
+
+  const irPagina = (n) => setSearchParams(prev => {
+    const next = new URLSearchParams(prev);
+    next.set("pagina", n);
+    return next;
+  });
 
   return (
-    <div className="min-h-screen" style={{ background: "#f6f7f4" }}>
-      {/* Barra envío gratis */}
-      <BarraEnvio />
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,600&display=swap');
+        * { box-sizing:border-box; }
+        @keyframes shimmer { to { background-position:-200% 0; } }
+        @keyframes fadeInUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        .prod-grid { display:grid; gap:16px; grid-template-columns:repeat(2,1fr); }
+        @media(min-width:768px)  { .prod-grid { grid-template-columns:repeat(3,1fr); } }
+        @media(min-width:1024px) { .prod-grid { grid-template-columns:repeat(4,1fr); } }
+        @media(min-width:1280px) { .prod-grid { grid-template-columns:repeat(5,1fr); } }
+        ::-webkit-scrollbar { height:4px; }
+        ::-webkit-scrollbar-thumb { background:${C.brandBorder}; border-radius:2px; }
+      `}</style>
 
-      {/* Hero tienda */}
-      <div style={{ background: "linear-gradient(135deg, #0c180c 0%, #1a5c1a 50%, #2d7a2d 100%)" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            <div>
-              {/* Chip */}
-              <span className="inline-flex items-center gap-2 border border-lime-400/30 bg-lime-400/10 text-lime-400 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest mb-4">
-                <span className="w-1.5 h-1.5 bg-lime-400 rounded-full animate-pulse" />
-                Tienda veterinaria oficial
-              </span>
-              <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight mb-3"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
-                Todo lo que tu mascota<br />
-                <span className="text-lime-400 italic">necesita, aquí</span>
-              </h1>
-              <p className="text-white/60 text-sm leading-relaxed mb-6 max-w-sm">
-                Más de 500 productos veterinarios. Medicamentos, alimentos y accesorios con respaldo profesional.
-              </p>
-              {/* Buscador hero */}
-              <div className="max-w-md">
-                <Buscador valor={buscarLocal} onChange={handleBuscar} />
+      <div style={{ minHeight:"100vh", background:C.canvas }}>
+        <Navbar />
+
+        {/* Banner envío gratis */}
+        <div style={{
+          background:C.brandDark, color:"#fff",
+          textAlign:"center", padding:"9px 16px",
+          fontSize:13, fontWeight:500, letterSpacing:0.3,
+        }}>
+          🚚 <strong>Envío gratis</strong> en compras mayores a{" "}
+          <span style={{fontFamily:"monospace"}}>$80.000</span> — Bogotá y área metropolitana
+        </div>
+
+        {/* Hero tienda */}
+        <div style={{
+          background:`linear-gradient(135deg, ${C.brandDark} 0%, ${C.brand} 100%)`,
+          padding:"44px 24px 36px",
+          position:"relative", overflow:"hidden",
+        }}>
+          <div style={{position:"absolute",top:-40,right:-40,width:220,height:220,background:"rgba(163,230,53,0.07)",borderRadius:"50%",pointerEvents:"none"}}/>
+          <div style={{position:"absolute",bottom:-30,left:-30,width:160,height:160,background:"rgba(255,255,255,0.04)",borderRadius:"50%",pointerEvents:"none"}}/>
+
+          <div style={{ maxWidth:1280, margin:"0 auto", position:"relative" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:16, marginBottom:24 }}>
+              <div>
+                <p style={{ margin:"0 0 4px", fontSize:11, color:"rgba(163,230,53,0.9)", fontWeight:700, textTransform:"uppercase", letterSpacing:1.2 }}>
+                  Catálogo completo
+                </p>
+                <h1 style={{
+                  margin:0, fontSize:"clamp(22px,4vw,34px)",
+                  fontFamily:"'Playfair Display',Georgia,serif",
+                  fontStyle:"italic", fontWeight:600, color:"#fff", lineHeight:1.2,
+                }}>
+                  Nuestra Tienda
+                </h1>
+                <p style={{ margin:"6px 0 0", fontSize:13, color:"rgba(255,255,255,0.6)" }}>
+                  Productos veterinarios de calidad para tu mascota
+                </p>
+              </div>
+
+              {/* Stats rápidas */}
+              <div style={{ display:"flex", gap:28, flexWrap:"wrap" }}>
+                {[
+                  { val: cargando ? "…" : `+${totalItems}`, label:"Productos" },
+                  { val: categorias.length || "…",           label:"Categorías" },
+                  { val: "24h",                              label:"Envío" },
+                ].map(s => (
+                  <div key={s.label} style={{ textAlign:"center" }}>
+                    <div style={{ fontSize:22, fontWeight:800, color:C.lime, fontFamily:"monospace", lineHeight:1 }}>{s.val}</div>
+                    <div style={{ fontSize:10, color:"rgba(255,255,255,0.5)", textTransform:"uppercase", letterSpacing:0.8, marginTop:3 }}>{s.label}</div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Stats rápidos */}
-            <div className="hidden lg:grid grid-cols-2 gap-3">
-              {[
-                { num: "500+", label: "Productos", icon: "📦" },
-                { num: "1.200+", label: "Clientes", icon: "👥" },
-                { num: "24/7", label: "Soporte", icon: "💬" },
-                { num: "Invima", label: "Certificados", icon: "✓" },
-              ].map(({ num, label, icon }) => (
-                <div key={label} className="rounded-2xl p-5 text-center"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <div className="text-2xl mb-1">{icon}</div>
-                  <p className="text-xl font-bold text-white">{num}</p>
-                  <p className="text-xs text-white/50 font-medium">{label}</p>
-                </div>
-              ))}
+            {/* Buscador */}
+            <div style={{ position:"relative", maxWidth:540 }}>
+              <span style={{ position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",fontSize:16,pointerEvents:"none" }}>🔍</span>
+              <input
+                type="text"
+                value={busquedaInput}
+                onChange={e => handleBusqueda(e.target.value)}
+                placeholder="Buscar productos, marcas, categorías..."
+                style={{
+                  width:"100%", padding:"13px 44px 13px 42px",
+                  borderRadius:12, border:"2px solid transparent",
+                  background:"rgba(255,255,255,0.13)", backdropFilter:"blur(8px)",
+                  color:"#fff", fontSize:14, outline:"none", transition:"all 0.2s",
+                }}
+                onFocus={e => { e.target.style.background="rgba(255,255,255,0.2)"; e.target.style.borderColor=C.lime; }}
+                onBlur={e  => { e.target.style.background="rgba(255,255,255,0.13)"; e.target.style.borderColor="transparent"; }}
+              />
+              {busquedaInput && (
+                <button onClick={() => handleBusqueda("")} style={{
+                  position:"absolute", right:12, top:"50%", transform:"translateY(-50%)",
+                  background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%",
+                  width:22, height:22, cursor:"pointer", color:"#fff", fontSize:14,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                }}>×</button>
+              )}
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Filtros de categoría */}
-      <CategoriasVisuales
-        categorias={categorias}
-        categoriaActiva={categoria}
-        onFiltrar={filtrar}
-      />
+        {/* Contenido principal */}
+        <div style={{ maxWidth:1280, margin:"0 auto", padding:"20px 16px 64px" }}>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Carrusel destacados — solo en la vista "Todos" sin búsqueda */}
-        {!buscar && !categoria && destacados.length > 0 && (
-          <div className="-mx-4 sm:-mx-6 lg:-mx-8">
-            <CarruselDestacados productos={destacados} />
+          {/* Chips de categoría */}
+          <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8, marginBottom:20, scrollbarWidth:"none" }}>
+            <button
+              onClick={() => cambiarCategoria(null)}
+              style={{
+                display:"inline-flex", alignItems:"center", gap:6,
+                padding:"6px 16px", borderRadius:999, flexShrink:0,
+                border:`1.5px solid ${!categoriaActiva ? C.brand : C.border}`,
+                background:!categoriaActiva ? C.brandLight : C.surface,
+                color:!categoriaActiva ? C.brand : C.textSec,
+                fontSize:13, fontWeight:!categoriaActiva ? 700 : 400,
+                cursor:"pointer", transition:"all 0.15s",
+              }}
+            >
+              🏪 Todos los productos
+            </button>
+            {categorias.map(cat => (
+              <CatChip
+                key={cat.id} cat={cat}
+                activa={categoriaActiva === cat.id}
+                onClick={cambiarCategoria}
+              />
+            ))}
           </div>
-        )}
 
-        {/* Banner confianza */}
-        <BannerConfianza />
-
-        {/* Catálogo */}
-        <div id="catalogo" className="pb-16">
-          <CatalogoBanner
-            titulo={tituloCatalogo}
-            total={total}
-            limpiar={(buscar || categoria) ? () => { setBuscarLocal(""); setSearchParams({}); } : null}
-          />
-
-          {/* Buscador móvil (debajo de categories cuando buscas) */}
-          {(buscar || categoria) && (
-            <div className="mb-5">
-              <Buscador valor={buscarLocal} onChange={handleBuscar} />
+          {/* Barra de resultados — FIX NaN: usa totalItems del backend, no productos.length */}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18, flexWrap:"wrap", gap:8 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+              {cargando ? (
+                <span style={{ fontSize:13, color:C.textMuted }}>Buscando...</span>
+              ) : (
+                <span style={{ fontSize:13, color:C.textSec }}>
+                  <strong style={{ color:C.text }}>{totalItems}</strong>
+                  {" producto"}{totalItems !== 1 ? "s" : ""}
+                  {" encontrado"}{totalItems !== 1 ? "s" : ""}
+                  {busqueda && <> para <em>"{busqueda}"</em></>}
+                  {catActivaNombre && <> en <strong>{catActivaNombre}</strong></>}
+                </span>
+              )}
+              {hayFiltros && (
+                <button
+                  onClick={limpiarFiltros}
+                  style={{ fontSize:12, color:"#dc2626", background:"#fef2f2", border:"1px solid #fecaca", borderRadius:6, padding:"3px 9px", cursor:"pointer", fontWeight:600 }}
+                >
+                  × Limpiar filtros
+                </button>
+              )}
             </div>
-          )}
+            {totalPaginas > 1 && (
+              <span style={{ fontSize:12, color:C.textMuted }}>Página {pagina} de {totalPaginas}</span>
+            )}
+          </div>
 
+          {/* Grid de productos */}
           {cargando ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {[...Array(10)].map((_, i) => <Skeleton key={i} />)}
+            <div className="prod-grid">
+              {Array(12).fill(0).map((_,i) => <Skeleton key={i}/>)}
             </div>
           ) : productos.length === 0 ? (
-            <div className="text-center py-24 space-y-4">
-              <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl mx-auto"
-                style={{ background: "#f0fdf4" }}>🔍</div>
-              <h3 className="text-lg font-bold" style={{ color: "#191c18" }}>Sin resultados</h3>
-              <p className="text-sm" style={{ color: "#788078" }}>
-                No encontramos productos para "{buscar || categoria}"
+            <div style={{ textAlign:"center", padding:"72px 24px", background:C.surface, borderRadius:20, border:`1px solid ${C.border}` }}>
+              <div style={{ fontSize:56, marginBottom:14 }}>🔍</div>
+              <h3 style={{ fontSize:18, color:C.text, margin:"0 0 8px", fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>
+                Sin resultados
+              </h3>
+              <p style={{ color:C.textTer, margin:"0 0 20px", fontSize:14 }}>
+                {busqueda
+                  ? `No encontramos productos para "${busqueda}".`
+                  : "No hay productos en esta categoría."}
               </p>
-              <button onClick={() => { setBuscarLocal(""); setSearchParams({}); }}
-                className="mt-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-colors"
-                style={{ background: "#1a5c1a" }}>
+              <button
+                onClick={limpiarFiltros}
+                style={{ padding:"10px 24px", borderRadius:12, background:C.brand, color:"#fff", border:"none", fontSize:14, fontWeight:700, cursor:"pointer" }}
+              >
                 Ver todos los productos
               </button>
             </div>
           ) : (
-            <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {productos.map(p => <ProductCard key={p.id} producto={p} />)}
-              </div>
-              <Paginacion pagina={pagina} totalPaginas={totalPaginas} onCambiar={cambiarPagina} />
-            </>
+            <div className="prod-grid" style={{ animation:"fadeInUp 0.3s ease" }}>
+              {productos.map(p => <TarjetaProducto key={p.id} producto={p}/>)}
+            </div>
+          )}
+
+          {/* Paginación */}
+          {totalPaginas > 1 && !cargando && (
+            <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:40, flexWrap:"wrap" }}>
+              <PagBtn onClick={() => irPagina(pagina-1)} disabled={pagina===1}>← Anterior</PagBtn>
+
+              {Array.from({length:totalPaginas},(_,i)=>i+1)
+                .filter(n => n===1 || n===totalPaginas || Math.abs(n-pagina)<=2)
+                .reduce((acc,n,i,arr)=>{ if(i>0 && n-arr[i-1]>1) acc.push("..."); acc.push(n); return acc; },[])
+                .map((n,i) => n==="..." ? (
+                  <span key={`e${i}`} style={{padding:"8px 4px",color:C.textMuted,fontSize:13}}>…</span>
+                ) : (
+                  <PagBtn key={n} activo={n===pagina} onClick={()=>irPagina(n)}>{n}</PagBtn>
+                ))
+              }
+
+              <PagBtn onClick={() => irPagina(pagina+1)} disabled={pagina===totalPaginas}>Siguiente →</PagBtn>
+            </div>
           )}
         </div>
       </div>
+    </>
+  );
+}
 
-      {/* Footer */}
-      <footer style={{ background: "#0c180c", borderTop: "1px solid #1a2e1a" }}>
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm"
-                style={{ background: "#b08a24", color: "#0c180c" }}>V</div>
-              <span className="font-bold text-sm" style={{ color: "#c4dcc4" }}>Victoria Pecuarios</span>
-            </div>
-            <p className="text-xs" style={{ color: "#7aa87a" }}>© 2026 · Bogotá, Colombia</p>
-            <div className="flex gap-5 text-xs" style={{ color: "#7aa87a" }}>
-              <span>📞 300 000 0000</span>
-              <span>✉️ info@victoriapecuarios.com</span>
-            </div>
-          </div>
-        </div>
-      </footer>
-    </div>
+function PagBtn({ children, onClick, activo, disabled }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || activo}
+      style={{
+        padding:"8px 14px", borderRadius:8, minWidth:36,
+        border:`1.5px solid ${activo ? "#1a5c1a" : "rgba(0,0,0,0.08)"}`,
+        background: activo ? "#1a5c1a" : "#fff",
+        color: activo ? "#fff" : disabled ? "#9ca3af" : "#374151",
+        fontSize:13, fontWeight: activo ? 700 : 400,
+        cursor: (disabled || activo) ? "default" : "pointer",
+        opacity: disabled ? 0.5 : 1, transition:"all 0.15s",
+      }}
+    >
+      {children}
+    </button>
   );
 }

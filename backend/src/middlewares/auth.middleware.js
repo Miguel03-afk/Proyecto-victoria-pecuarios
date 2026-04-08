@@ -33,3 +33,10 @@ export const soloSuperAdmin = (req, res, next) => {
   }
   next();
 };
+
+export const soloRol = (...roles) => (req, res, next) => {
+  if (!req.usuario) return res.status(401).json({ error: "No autenticado." });
+  if (!roles.includes(req.usuario.rol))
+    return res.status(403).json({ error: "Sin permiso para esta acción." });
+  next();
+};

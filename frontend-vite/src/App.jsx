@@ -5,6 +5,9 @@ import { CarritoProvider } from "./context/CarritoContext";
 import { RutaProtegida, RutaAdmin } from "./components/RutaProtegida";
 import CarritoPanel from "./components/CarritoPanel";
 import Navbar       from "./components/Navbar";
+import AgendarCita      from "./pages/AgendarCita";
+import MisCitas         from "./pages/MisCitas";
+import PanelVeterinario from "./pages/PanelVeterinario";
 
 // Páginas
 import Landing    from "./pages/Landing";
@@ -73,6 +76,16 @@ export default function App() {
 
             <Route path="/mis-ordenes"
               element={<RutaProtegida><LayoutConNav><MisOrdenes /></LayoutConNav></RutaProtegida>} />
+
+            <Route path="/agendar-cita"
+                element={<AgendarCita />} />
+
+            <Route path="/mis-citas"
+                   element={<RutaProtegida><MisCitas /></RutaProtegida>} />
+
+            <Route path="/veterinario"
+                 element={<RutaProtegida><PanelVeterinario /></RutaProtegida>} />
+                 
 
             {/* 404 */}
             <Route path="*" element={<NoEncontrado />} />

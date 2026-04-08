@@ -6,6 +6,7 @@ import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Objetivos from "../components/Objetivos.jsx";
 import ReporteVentas from "./admin/ReporteVentas.jsx";
+import GaleriaAdmin from "./admin/GaleriaAdmin";
 import ReporteSalidas from "./admin/ReporteSalidas.jsx";
 import { T, shadow, font, fmt, fmtShort, fdoc, estadoStyle } from "../styles/admin.tokens";
 
@@ -21,12 +22,16 @@ const NAV = [
   {id:"objetivos",       label:"Objetivos",      d:"M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"},
   {id:"reporte-ventas",  label:"Rep. ventas",    d:"M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"},
   {id:"reporte-salidas", label:"Salidas stock",  d:"M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"},
+  // ── Galería de imágenes ──
+  {id:"galeria",         label:"Galería",        d:"M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"},
 ];
 
 const TITULOS = {
   dashboard:"Dashboard", usuarios:"Usuarios", productos:"Productos",
   ordenes:"Órdenes", factura:"Nueva venta", objetivos:"Objetivos",
   "reporte-ventas":"Reporte de ventas", "reporte-salidas":"Salidas de stock",
+  // ── Galería ──
+  galeria:"Galería de imágenes",
 };
 
 // ─── Componentes base ─────────────────────────────────────────
@@ -168,140 +173,247 @@ const THead = ({cols}) => (
 
 // ─── DASHBOARD ────────────────────────────────────────────────
 function Dashboard() {
-  const [stats,setStats]     = useState(null);
-  const [cargando,setCargando] = useState(true);
-  const [error,setError]     = useState(null);
+  const [stats,    setStats]    = useState(null);
+  const [citas,    setCitas]    = useState(null);  // stats de citas
+  const [cargando, setCargando] = useState(true);
+  const [error,    setError]    = useState(null);
+  const [tabGraf,  setTabGraf]  = useState("ventas"); // "ventas" | "ordenes"
 
   const cargar = () => {
     setCargando(true); setError(null);
-    api.get("/admin/stats")
-      .then(({data})=>setStats(data))
-      .catch(err=>setError(err.response?.data?.error||"Error al cargar el dashboard"))
-      .finally(()=>setCargando(false));
+    Promise.all([
+      api.get("/admin/stats"),
+      // Citas: intenta cargar, falla silenciosamente si no existe el endpoint
+      api.get("/veterinario/agenda", { params:{ estado:"todas" } })
+        .catch(() => ({ data: [] })),
+    ])
+    .then(([s, c]) => {
+      setStats(s.data);
+      // Calcular métricas de citas desde el array
+      const arr = Array.isArray(c.data) ? c.data : [];
+      setCitas({
+        total:      arr.length,
+        pendientes: arr.filter(x => x.estado === "pendiente").length,
+        confirmadas:arr.filter(x => x.estado === "confirmada").length,
+        completadas:arr.filter(x => x.estado === "completada").length,
+        hoy:        arr.filter(x => x.fecha === new Date().toISOString().split("T")[0]).length,
+      });
+    })
+    .catch(err => setError(err.response?.data?.error || "Error al cargar el dashboard"))
+    .finally(() => setCargando(false));
   };
 
-  useEffect(()=>{cargar();},[]);
+  useEffect(() => { cargar(); }, []);
 
-  if(cargando) return <Spinner/>;
-
-  if(error) return (
+  if (cargando) return <Spinner/>;
+  if (error) return (
     <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl" style={{background:T.dangerBg}}>⚠️</div>
       <p className="text-sm font-semibold" style={{color:T.danger}}>{error}</p>
       <p className="text-xs max-w-xs" style={{color:T.textMuted}}>
-        Verifica que el backend esté corriendo y que hayas ejecutado el SQL de migración en phpMyAdmin
+        Verifica que el backend esté corriendo y que hayas ejecutado las migraciones en phpMyAdmin
       </p>
       <Btn onClick={cargar}>Reintentar</Btn>
     </div>
   );
+  if (!stats) return null;
 
-  if(!stats) return null;
-
-  const chartData = (stats.ventas_mes||[]).map(m=>({
-    mes: m.mes?.slice(5),
-    ventas: Number(m.total||0),
-    ordenes: Number(m.ordenes||0),
+  // Datos de gráfica de ventas (últimos 6 meses)
+  const chartData = (stats.ventas_mes||[]).map(m => ({
+    mes:    m.mes?.slice(5),
+    ventas: Number(m.total   || 0),
+    ordenes:Number(m.ordenes || 0),
   }));
 
+  // ── Métricas principales ──────────────────────────────────────
   const metrics = [
-    {label:"Clientes",   value:stats.total_usuarios??0,    accent:T.brand,   d:"M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"},
-    {label:"Productos",  value:stats.total_productos??0,   accent:T.brandMid,d:"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"},
-    {label:"Órdenes",    value:stats.total_ordenes??0,     accent:T.gold,    d:"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"},
-    {label:"Ingresos",   value:fmtShort(stats.ingresos),   accent:T.brand,   d:"M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 13v-1"},
-    {label:"Stock bajo", value:stats.stock_bajo??0,        accent:"#dc2626", d:"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"},
+    { label:"Clientes",   value: stats.total_usuarios  ?? 0,        accent:T.brand,    bg:`${T.brand}12`,   d:"M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" },
+    { label:"Productos",  value: stats.total_productos ?? 0,        accent:T.brandMid, bg:`${T.brandMid}12`,d:"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" },
+    { label:"Órdenes",    value: stats.total_ordenes   ?? 0,        accent:T.gold,     bg:`${T.gold}12`,    d:"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" },
+    { label:"Ingresos",   value: fmtShort(stats.ingresos),          accent:T.brand,    bg:`${T.brand}10`,   d:"M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 13v-1" },
+    { label:"Stock bajo", value: stats.stock_bajo      ?? 0,        accent:"#dc2626",  bg:"#dc262612",      d:"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" },
   ];
 
+  // ── Métricas de citas ─────────────────────────────────────────
+  const metricsCitas = citas ? [
+    { label:"Total citas",   value: citas.total,      accent:"#7c3aed", bg:"#7c3aed12" },
+    { label:"Pendientes",    value: citas.pendientes, accent:"#d97706", bg:"#d9770612" },
+    { label:"Confirmadas",   value: citas.confirmadas,accent:T.info,    bg:`${T.info}12` },
+    { label:"Completadas",   value: citas.completadas,accent:T.success, bg:`${T.success}12` },
+    { label:"Hoy",           value: citas.hoy,        accent:T.brand,   bg:`${T.brand}12` },
+  ] : [];
+
+  // ── Estado del mes (barra de progreso vs objetivo) ────────────
+  const ingresosNum = Number(String(stats.ingresos||"0").replace(/[^0-9]/g,"")) || 0;
+
   return (
-    <div className="space-y-6">
-      {/* Métricas */}
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
-        {metrics.map(({label,value,accent,d})=>(
-          <Card key={label} className="p-5 hover:scale-[1.01] transition-transform duration-200">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
-              style={{background:`${accent}12`,border:`1px solid ${accent}20`}}>
-              <svg className="w-[15px] h-[15px]" fill="none" stroke={accent} strokeWidth={1.75} viewBox="0 0 24 24">
+    <div className="space-y-5">
+
+      {/* ── FILA 1: Métricas principales ── */}
+      <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">
+        {metrics.map(({label,value,accent,bg,d}) => (
+          <Card key={label} className="p-4 hover:scale-[1.01] transition-transform duration-150 cursor-default">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
+              style={{background:bg, border:`1px solid ${accent}22`}}>
+              <svg className="w-3.5 h-3.5" fill="none" stroke={accent} strokeWidth={1.75} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d={d}/>
               </svg>
             </div>
-            <p className="text-2xl font-bold tabular-nums" style={{color:T.text,fontFamily:font.mono}}>{value}</p>
-            <p className="text-xs font-semibold uppercase tracking-wider mt-0.5" style={{color:T.textMuted}}>{label}</p>
+            <p className="text-xl font-bold tabular-nums leading-none" style={{color:T.text,fontFamily:font.mono}}>{value}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider mt-1.5" style={{color:T.textMuted}}>{label}</p>
           </Card>
         ))}
       </div>
 
-      {/* Ganancia e IVA del mes — solo si Camilo ya aplicó el SQL */}
-      {(stats.ganancia_mes!=null || stats.iva_mes!=null) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card className="p-5 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{background:T.successBg}}>
-              <svg className="w-4 h-4" fill="none" stroke={T.success} strokeWidth={1.75} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-              </svg>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider" style={{color:T.textMuted}}>Ganancia este mes</p>
-              <p className="text-xl font-bold tabular-nums" style={{color:T.success,fontFamily:font.mono}}>{fmtShort(stats.ganancia_mes||0)}</p>
-            </div>
-          </Card>
-          <Card className="p-5 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{background:T.infoBg}}>
-              <svg className="w-4 h-4" fill="none" stroke={T.info} strokeWidth={1.75} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
-              </svg>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider" style={{color:T.textMuted}}>IVA recaudado (19%)</p>
-              <p className="text-xl font-bold tabular-nums" style={{color:T.info,fontFamily:font.mono}}>{fmtShort(stats.iva_mes||0)}</p>
-            </div>
-          </Card>
-        </div>
-      )}
+      {/* ── FILA 2: KPIs del mes + métricas de citas ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-      {/* Gráfica */}
-      <Card className="p-6">
-        <SecTitle sub="Ingresos de los últimos 6 meses">Tendencia de ventas</SecTitle>
-        {chartData.length===0
-          ? <div className="flex flex-col items-center py-14 gap-2">
-              <p className="text-sm" style={{color:T.textMuted}}>Sin ventas registradas aún</p>
+        {/* KPIs financieros del mes */}
+        {(stats.ganancia_mes != null || stats.iva_mes != null) && (
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs font-bold uppercase tracking-wider" style={{color:T.textMuted}}>Este mes</p>
+              <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                style={{background:T.brandLight, color:T.brand}}>
+                {new Date().toLocaleDateString("es-CO",{month:"long",year:"numeric"})}
+              </span>
             </div>
-          : <ResponsiveContainer width="100%" height={210}>
-              <AreaChart data={chartData} margin={{top:4,right:4,bottom:0,left:0}}>
-                <defs>
-                  <linearGradient id="gv" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor={T.brand} stopOpacity={0.14}/>
-                    <stop offset="95%" stopColor={T.brand} stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={T.border}/>
-                <XAxis dataKey="mes" tick={{fontSize:11,fill:T.textMuted}} axisLine={false} tickLine={false}/>
-                <YAxis tick={{fontSize:11,fill:T.textMuted}} axisLine={false} tickLine={false}
-                  tickFormatter={v=>fmtShort(v)}/>
-                <Tooltip formatter={v=>[fmt(v),"Ingresos"]}
-                  contentStyle={{borderRadius:12,border:`1px solid ${T.border}`,fontSize:12,background:T.surface,boxShadow:shadow.md}}/>
-                <Area type="monotone" dataKey="ventas" stroke={T.brand} strokeWidth={2} fill="url(#gv)" name="Ingresos"/>
-              </AreaChart>
-            </ResponsiveContainer>
-        }
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label:"Ganancia",      value:fmtShort(stats.ganancia_mes||0), color:T.success, bg:T.successBg,  icon:"📈" },
+                { label:"IVA (19%)",     value:fmtShort(stats.iva_mes||0),      color:T.info,    bg:T.infoBg,     icon:"🧾" },
+                { label:"Ingresos",      value:fmtShort(stats.ingresos||0),     color:T.brand,   bg:T.brandLight, icon:"💰" },
+                { label:"Órdenes hoy",   value: stats.ordenes_recientes?.filter(o=>{
+                    const hoy = new Date().toISOString().split("T")[0];
+                    return o.created_at?.startsWith(hoy);
+                  }).length ?? "—", color:T.gold, bg:T.goldBg, icon:"🛒" },
+              ].map(k => (
+                <div key={k.label} className="rounded-xl px-3 py-3 flex items-center gap-3"
+                  style={{background:k.bg, border:`1px solid ${k.color}22`}}>
+                  <span className="text-xl flex-shrink-0">{k.icon}</span>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide" style={{color:k.color,opacity:0.8}}>{k.label}</p>
+                    <p className="text-sm font-bold tabular-nums leading-none mt-0.5" style={{color:k.color,fontFamily:font.mono}}>{k.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Métricas de citas */}
+        {citas && (
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs font-bold uppercase tracking-wider" style={{color:T.textMuted}}>Citas veterinarias</p>
+              {citas.pendientes > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold"
+                  style={{background:"#fef3c7", color:"#92400e"}}>
+                  ⚠ {citas.pendientes} por confirmar
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {metricsCitas.map(k => (
+                <div key={k.label} className="rounded-xl px-3 py-3 flex items-center gap-3"
+                  style={{background:k.bg, border:`1px solid ${k.accent}22`}}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{background:`${k.accent}22`}}>
+                    <span style={{color:k.accent, fontSize:12, fontWeight:800}}>{k.value}</span>
+                  </div>
+                  <p className="text-xs font-semibold uppercase tracking-wide" style={{color:k.accent, opacity:0.85}}>{k.label}</p>
+                </div>
+              ))}
+            </div>
+            {/* Mini barra de estado de citas */}
+            {citas.total > 0 && (
+              <div className="mt-4 pt-4" style={{borderTop:`1px solid ${T.border}`}}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-xs" style={{color:T.textMuted}}>Tasa de completadas</p>
+                  <p className="text-xs font-bold tabular-nums" style={{color:T.text,fontFamily:font.mono}}>
+                    {Math.round((citas.completadas/citas.total)*100)}%
+                  </p>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{background:T.border}}>
+                  <div className="h-full rounded-full transition-all duration-500"
+                    style={{width:`${Math.round((citas.completadas/citas.total)*100)}%`, background:T.brand}}/>
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
+      </div>
+
+      {/* ── FILA 3: Gráfica dual ventas / órdenes ── */}
+      <Card className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <SecTitle sub="Últimos 6 meses">Tendencia</SecTitle>
+          {/* Tabs de la gráfica */}
+          <div className="flex rounded-lg overflow-hidden" style={{border:`1px solid ${T.border}`}}>
+            {[{k:"ventas",label:"Ingresos"},{k:"ordenes",label:"Órdenes"}].map(t => (
+              <button key={t.k} onClick={() => setTabGraf(t.k)}
+                className="text-xs font-semibold px-3 py-1.5 transition-colors"
+                style={{
+                  background: tabGraf===t.k ? T.brand : T.surface,
+                  color:      tabGraf===t.k ? "#fff" : T.textTer,
+                }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {chartData.length === 0 ? (
+          <div className="flex flex-col items-center py-12 gap-2">
+            <p className="text-sm" style={{color:T.textMuted}}>Sin datos registrados aún</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={chartData} margin={{top:4,right:4,bottom:0,left:0}}>
+              <defs>
+                <linearGradient id="gv" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor={T.brand} stopOpacity={0.15}/>
+                  <stop offset="95%" stopColor={T.brand} stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="go" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor={T.gold}  stopOpacity={0.15}/>
+                  <stop offset="95%" stopColor={T.gold}  stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={T.border}/>
+              <XAxis dataKey="mes" tick={{fontSize:11,fill:T.textMuted}} axisLine={false} tickLine={false}/>
+              <YAxis tick={{fontSize:11,fill:T.textMuted}} axisLine={false} tickLine={false}
+                tickFormatter={v => tabGraf==="ventas" ? fmtShort(v) : v}/>
+              <Tooltip
+                formatter={v => tabGraf==="ventas" ? [fmt(v),"Ingresos"] : [v,"Órdenes"]}
+                contentStyle={{borderRadius:10,border:`1px solid ${T.border}`,fontSize:12,background:T.surface}}/>
+              {tabGraf === "ventas"
+                ? <Area type="monotone" dataKey="ventas"  stroke={T.brand} strokeWidth={2} fill="url(#gv)" name="Ingresos"/>
+                : <Area type="monotone" dataKey="ordenes" stroke={T.gold}  strokeWidth={2} fill="url(#go)" name="Órdenes"/>
+              }
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
       </Card>
 
-      {/* Órdenes recientes + Stock crítico */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      {/* ── FILA 4: Órdenes recientes + Stock crítico + Citas pendientes ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        {/* Órdenes recientes */}
         <Card className="p-5">
-          <SecTitle>Órdenes recientes</SecTitle>
+          <SecTitle sub="Últimas transacciones">Órdenes recientes</SecTitle>
           {!stats.ordenes_recientes?.length
             ? <p className="text-sm text-center py-8" style={{color:T.textMuted}}>Sin órdenes aún</p>
-            : <div className="space-y-2">
-                {stats.ordenes_recientes.map(o=>(
-                  <div key={o.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl"
+            : <div className="space-y-1.5">
+                {stats.ordenes_recientes.slice(0,6).map(o => (
+                  <div key={o.id} className="flex items-center justify-between py-2 px-3 rounded-xl"
                     style={{background:T.surfaceAlt,border:`1px solid ${T.borderSub}`}}>
-                    <div>
-                      <p className="text-xs font-bold" style={{color:T.brand,fontFamily:font.mono}}>{o.codigo}</p>
-                      <p className="text-xs mt-0.5" style={{color:T.textMuted}}>{o.cliente}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold truncate" style={{color:T.brand,fontFamily:font.mono}}>{o.codigo}</p>
+                      <p className="text-xs truncate" style={{color:T.textMuted}}>{o.cliente}</p>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <p className="text-xs font-bold" style={{color:T.text}}>{fmt(o.total)}</p>
+                    <div className="flex flex-col items-end gap-1 ml-2 flex-shrink-0">
+                      <p className="text-xs font-bold tabular-nums" style={{color:T.text,fontFamily:font.mono}}>{fmt(o.total)}</p>
                       <Badge estado={o.estado}/>
                     </div>
                   </div>
@@ -310,28 +422,75 @@ function Dashboard() {
           }
         </Card>
 
+        {/* Stock crítico */}
         <Card className="p-5">
-          <SecTitle>Stock crítico</SecTitle>
+          <SecTitle sub="Productos por reponer">Stock crítico</SecTitle>
           {!stats.productos_stock_bajo?.length
             ? <div className="flex flex-col items-center py-8 gap-2">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:T.successBg}}>✓</div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-base"
+                  style={{background:T.successBg}}>✓</div>
                 <p className="text-sm font-medium" style={{color:T.success}}>Todo el stock está bien</p>
               </div>
-            : <div className="space-y-2">
-                {stats.productos_stock_bajo.map(p=>(
-                  <div key={p.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl"
+            : <div className="space-y-1.5">
+                {stats.productos_stock_bajo.map(p => (
+                  <div key={p.id} className="flex items-center gap-2 py-2 px-3 rounded-xl"
                     style={{background:T.dangerBg,border:`1px solid ${T.dangerBorder}`}}>
-                    <p className="text-xs font-medium flex-1 truncate" style={{color:T.text}}>{p.nombre}</p>
-                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                      <span className="text-xs font-bold tabular-nums" style={{color:T.danger}}>{p.stock} uds</span>
-                      <span className="text-xs" style={{color:T.textTer}}>mín {p.stock_minimo}</span>
+                    {/* Barra de stock visual */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate" style={{color:T.text}}>{p.nombre}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 h-1 rounded-full" style={{background:T.border}}>
+                          <div className="h-full rounded-full"
+                            style={{
+                              width:`${Math.min(100,Math.round((p.stock/Math.max(p.stock_minimo,1))*100))}%`,
+                              background:T.danger,
+                            }}/>
+                        </div>
+                        <span className="text-xs font-bold tabular-nums flex-shrink-0"
+                          style={{color:T.danger,fontFamily:font.mono}}>
+                          {p.stock}/{p.stock_minimo}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
           }
         </Card>
+
+        {/* Citas pendientes de confirmación */}
+        <Card className="p-5">
+          <SecTitle sub="Esperan confirmación del veterinario">Citas pendientes</SecTitle>
+          {!citas || citas.pendientes === 0
+            ? <div className="flex flex-col items-center py-8 gap-2">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-base"
+                  style={{background:T.successBg}}>✓</div>
+                <p className="text-sm font-medium" style={{color:T.success}}>Sin citas pendientes</p>
+              </div>
+            : <div className="space-y-1.5">
+                {/* Resumen por estado */}
+                {[
+                  { label:"Pendientes de confirmar", val:citas.pendientes, color:"#d97706", bg:"#fef3c7" },
+                  { label:"Confirmadas",             val:citas.confirmadas,color:T.info,    bg:T.infoBg },
+                  { label:"Citas hoy",               val:citas.hoy,        color:T.brand,   bg:T.brandLight },
+                ].map(r => (
+                  <div key={r.label} className="flex items-center justify-between py-2.5 px-3 rounded-xl"
+                    style={{background:r.bg, border:`1px solid ${r.color}22`}}>
+                    <p className="text-xs font-medium" style={{color:r.color}}>{r.label}</p>
+                    <p className="text-sm font-bold tabular-nums" style={{color:r.color,fontFamily:font.mono}}>{r.val}</p>
+                  </div>
+                ))}
+                <button
+                  onClick={() => {/* navegar a veterinarios */}}
+                  className="w-full text-xs font-semibold py-2 mt-1 rounded-xl transition-colors"
+                  style={{background:T.brandLight, color:T.brand, border:`1px solid ${T.brandBorder}`}}>
+                  Ver panel veterinario →
+                </button>
+              </div>
+          }
+        </Card>
       </div>
+
     </div>
   );
 }
@@ -1037,6 +1196,8 @@ export default function Admin() {
     if(seccion==="objetivos")       return <Objetivos/>;
     if(seccion==="reporte-ventas")  return <ReporteVentas/>;
     if(seccion==="reporte-salidas") return <ReporteSalidas/>;
+    // ── Galería de imágenes ──
+    if(seccion==="galeria")         return <GaleriaAdmin T={T}/>;
   };
 
   return (
