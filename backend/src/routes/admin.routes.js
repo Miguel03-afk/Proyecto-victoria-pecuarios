@@ -247,86 +247,25 @@ router.patch("/ordenes/:id/estado", async (req, res) => {
   }
 });
  
-// ── FACTURA MANUAL ────────────────────────────────────────────
-router.post("/facturas", async (req, res) => {
-  const { usuario_id, items, metodo_pago, direccion_entrega, ciudad_entrega, notas } = req.body;
-  if (!usuario_id || !items?.length)
-    return res.status(400).json({ error: "usuario_id e items son requeridos." });
- 
-  const conn = await db.getConnection();
+// ── CAJEROS: listado con estadísticas ────────────────────────
+router.get("/cajeros", async (req, res) => {
   try {
-    await conn.beginTransaction();
- 
-    const IVA_PCT = 19;
-    let subtotal = 0;
- 
-    for (const item of items) {
-      const [[prod]] = await conn.query(
-        "SELECT precio, precio_costo, stock FROM productos WHERE id=?",
-        [item.producto_id]
-      );
-      if (!prod) throw new Error(`Producto ${item.producto_id} no encontrado.`);
-      if (prod.stock < item.cantidad) throw new Error(`Stock insuficiente para producto ${item.producto_id}.`);
-      item._precio       = prod.precio;
-      item._precio_costo = prod.precio_costo || 0;
-      subtotal += prod.precio * item.cantidad;
-    }
- 
-    const total = subtotal;
- 
-    let iva_total = 0, ganancia_total = 0;
-    for (const item of items) {
-      iva_total      += +(item._precio * item.cantidad * IVA_PCT / 100).toFixed(2);
-      ganancia_total += +((item._precio - item._precio_costo) * item.cantidad).toFixed(2);
-    }
- 
-    const anio = new Date().getFullYear();
-    const [[{ ultimo }]] = await conn.query(
-      "SELECT COUNT(*) AS ultimo FROM ordenes WHERE YEAR(created_at)=?", [anio]
+    const [rows] = await db.query(
+      `SELECT u.id, u.nombre, u.apellido, u.email, u.activo,
+              COUNT(o.id)                                                    AS total_ventas,
+              COALESCE(SUM(o.total), 0)                                      AS total_facturado,
+              SUM(CASE WHEN DATE(o.created_at) = CURDATE() THEN 1 ELSE 0 END) AS ventas_hoy
+       FROM usuarios u
+       LEFT JOIN ordenes o ON o.cajero_id = u.id
+       WHERE u.rol = 'cajero'
+       GROUP BY u.id
+       ORDER BY u.nombre ASC`
     );
-    const codigo = `VIC-${anio}-${String(ultimo + 1).padStart(5, "0")}`;
- 
-    const [ord] = await conn.query(
-      `INSERT INTO ordenes
-         (usuario_id, codigo, estado, subtotal, descuento, total,
-          iva_total, ganancia_total,
-          metodo_pago, direccion_entrega, ciudad_entrega, notas)
-       VALUES (?, ?, 'pagada', ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
-      [usuario_id, codigo, subtotal, total,
-       iva_total, ganancia_total,
-       metodo_pago || "efectivo",
-       direccion_entrega || null, ciudad_entrega || null, notas || null]
-    );
-    const orden_id = ord.insertId;
- 
-    for (const item of items) {
-      const item_subtotal = +(item._precio * item.cantidad).toFixed(2);
-      const iva_valor     = +(item_subtotal * IVA_PCT / 100).toFixed(2);
-      const ganancia      = +((item._precio - item._precio_costo) * item.cantidad).toFixed(2);
- 
-      await conn.query(
-        `INSERT INTO detalle_orden
-           (orden_id, producto_id, nombre_snap, cantidad,
-            precio_unit, precio_costo, subtotal,
-            iva_porcentaje, iva_valor, ganancia)
-         SELECT ?, id, nombre, ?, ?, ?, ?, ?, ?, ?
-         FROM productos WHERE id=?`,
-        [orden_id, item.cantidad,
-         item._precio, item._precio_costo, item_subtotal,
-         IVA_PCT, iva_valor, ganancia,
-         item.producto_id]
-      );
-    }
- 
-    await conn.commit();
-    res.status(201).json({ mensaje: "Factura creada.", orden_id, codigo });
+    res.json(rows);
   } catch (err) {
-    await conn.rollback();
-    res.status(400).json({ error: err.message });
-  } finally {
-    conn.release();
+    res.status(500).json({ error: err.message });
   }
 });
- 
+
 export default router;
  

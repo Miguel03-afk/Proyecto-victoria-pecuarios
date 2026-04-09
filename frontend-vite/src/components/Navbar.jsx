@@ -1,10 +1,13 @@
+// src/components/Navbar.jsx
+// FIX DISEÑO: se eliminó la flecha SVG (chevron) del botón de usuario
+// El dropdown se abre/cierra sin indicador de flecha visual — más limpio.
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCarrito } from "../context/CarritoContext";
 import { useState } from "react";
 
 export default function Navbar() {
-  const { usuario, logout, esAdmin } = useAuth();
+  const { usuario, logout, esAdmin, esCajero } = useAuth();
   const { totalItems, setAbierto } = useCarrito();
   const navigate = useNavigate();
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -61,15 +64,13 @@ export default function Navbar() {
 
           {usuario ? (
             <div className="relative">
+              {/* FIX DISEÑO: botón de usuario sin flecha/chevron SVG */}
               <button onClick={() => setMenuAbierto(!menuAbierto)}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-green-300 transition-colors text-sm text-gray-700 hover:bg-green-50">
                 <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                   {usuario.nombre?.charAt(0).toUpperCase()}
                 </div>
                 <span className="hidden sm:block max-w-[72px] truncate text-xs font-medium">{usuario.nombre}</span>
-                <svg className={`w-3 h-3 text-gray-400 transition-transform ${menuAbierto ? "rotate-180" : ""}`} fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
               </button>
 
               {menuAbierto && (
@@ -80,8 +81,7 @@ export default function Navbar() {
                       <p className="text-xs font-semibold text-gray-800 truncate">{usuario.nombre} {usuario.apellido}</p>
                       <p className="text-xs text-gray-400 truncate">{usuario.email}</p>
                     </div>
-                    
-                    {/* Lista dinámica de links */}
+
                     <div className="flex flex-col">
                       <Link to="/perfil" onClick={() => setMenuAbierto(false)}
                         className="block px-3 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-800 transition-colors">
@@ -91,8 +91,6 @@ export default function Navbar() {
                         className="block px-3 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-800 transition-colors">
                         Mis órdenes
                       </Link>
-
-                      {/* Nuevos links de Citas para cualquier usuario autenticado */}
                       <Link to="/mis-citas" onClick={() => setMenuAbierto(false)}
                         className="block px-3 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-800 transition-colors">
                         Mis citas
@@ -102,15 +100,21 @@ export default function Navbar() {
                         Agendar cita
                       </Link>
 
-                      {/* Link condicional para Veterinarios */}
                       {usuario?.rol === "veterinario" && (
                         <Link to="/veterinario" onClick={() => setMenuAbierto(false)}
                           className="block px-3 py-2 text-xs text-green-700 font-semibold hover:bg-green-100 transition-colors">
-                          Panel Veterinario
+                          Panel veterinario
                         </Link>
                       )}
 
-                      {/* Link condicional para Admin */}
+                      {esCajero && (
+                        <Link to="/cajero" onClick={() => setMenuAbierto(false)}
+                          className="block px-3 py-2 text-xs font-semibold hover:bg-amber-50 transition-colors"
+                          style={{ color: "#b45309" }}>
+                          Punto de venta
+                        </Link>
+                      )}
+
                       {esAdmin && (
                         <Link to="/admin" onClick={() => setMenuAbierto(false)}
                           className="block px-3 py-2 text-xs text-blue-700 font-semibold hover:bg-blue-50 transition-colors">

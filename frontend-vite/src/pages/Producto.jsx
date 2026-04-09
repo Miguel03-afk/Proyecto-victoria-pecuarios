@@ -1,11 +1,15 @@
 // src/pages/Producto.jsx
+// FIX DISEÑO: selector de variantes ahora usa PILLS/CHIPS en vez de dropdown con flecha
+// FIX DISEÑO: breadcrumb con separador "·" en vez de "/"
+// FIX DISEÑO: botón "Seguir comprando" sin flecha
+// FIX DISEÑO: zoom hint sin ícono lupa SVG
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useCarrito } from "../context/CarritoContext";
 import { useAuth } from "../context/AuthContext";
+import Navbar from "../components/Navbar";
 
-// ── Constantes y helpers ──────────────────────────────────────
 const IVA_PCT = 19;
 
 const fmt = (n) =>
@@ -18,7 +22,6 @@ const descPct = (precio, antes) =>
     ? Math.round(((Number(antes) - Number(precio)) / Number(antes)) * 100)
     : null;
 
-// Tokens visuales del proyecto
 const C = {
   brand:    "#1a5c1a",
   brandMid: "#2d7a2d",
@@ -116,13 +119,10 @@ function Galeria({ imagenPrincipal, imagenesExtra, nombre }) {
           </div>
         )}
 
-        {/* Hint zoom */}
-        {todas[activa] && (
-          <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+        {/* FIX DISEÑO: hint de zoom sin SVG extra, solo texto */}
+        {todas[activa] && !zoom && (
+          <div className="absolute bottom-3 right-3 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
             style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(4px)", color: C.textSec }}>
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
-            </svg>
             Zoom
           </div>
         )}
@@ -151,124 +151,111 @@ function Galeria({ imagenPrincipal, imagenesExtra, nombre }) {
   );
 }
 
-// ── Selector de presentaciones (dropdown) ─────────────────────
+// ── FIX: Selector de variantes como PILLS (no dropdown con flecha) ──
+// Muestra las presentaciones como chips seleccionables tipo:
+//   [● Perro Pollo 200ml]  [Perro Pollo 100ml]  [Perro Pollo 25ml]
+// La presentación activa queda resaltada en verde.
 function SelectorVariante({ variantes, varianteIdx, onChange }) {
-  const [abierto, setAbierto] = useState(false);
-  const ref = useRef(null);
   const activa = variantes[varianteIdx];
 
-  // Cerrar al click afuera
-  useEffect(() => {
-    const fn = (e) => { if (ref.current && !ref.current.contains(e.target)) setAbierto(false); };
-    document.addEventListener("mousedown", fn);
-    return () => document.removeEventListener("mousedown", fn);
-  }, []);
-
   return (
-    <div ref={ref} className="relative">
-      <p className="text-xs font-bold uppercase tracking-[0.12em] mb-2" style={{ color: C.textTer }}>
-        Presentación
+    <div>
+      <p className="text-xs font-bold uppercase tracking-[0.12em] mb-3" style={{ color: C.textTer }}>
+        Presentación — {activa.nombre}
+        {activa.stock > 0 && activa.stock <= (activa.stock_minimo || 5) && (
+          <span className="ml-2 font-normal normal-case" style={{ color: "#d97706" }}>
+            · últimas {activa.stock} uds
+          </span>
+        )}
       </p>
 
-      {/* Trigger */}
-      <button
-        onClick={() => setAbierto(!abierto)}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-semibold border-2 transition-all duration-150"
-        style={{
-          borderColor: abierto ? C.brand : C.brandBorder,
-          background: C.surface,
-          color: C.text,
-          boxShadow: abierto ? `0 0 0 3px ${C.brandLight}` : "none",
-        }}>
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full" style={{ background: activa.stock > 0 ? "#22c55e" : "#ef4444" }} />
-          <span>{activa.nombre}</span>
-          {activa.stock <= activa.stock_minimo && activa.stock > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{ background: "#fef3c7", color: "#92400e" }}>
-              Últimas {activa.stock} uds
-            </span>
-          )}
-          {activa.stock === 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{ background: C.dangerBg, color: C.danger }}>
-              Sin stock
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="font-bold" style={{ color: C.brand }}>{fmt(activa.precio)}</span>
-          <svg className={`w-4 h-4 transition-transform duration-200 ${abierto ? "rotate-180" : ""}`}
-            fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"
-            style={{ color: C.textTer }}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/>
-          </svg>
-        </div>
-      </button>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {variantes.map((v, i) => {
+          const esActiva  = i === varianteIdx;
+          const sinStock  = v.stock === 0;
+          const dc        = descPct(v.precio, v.precio_antes);
 
-      {/* Dropdown */}
-      {abierto && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl overflow-hidden z-30"
-          style={{
-            background: C.surface,
-            border: `1.5px solid ${C.brandBorder}`,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-          }}>
-          {variantes.map((v, i) => {
-            const activo = i === varianteIdx;
-            const sinStock = v.stock === 0;
-            const dc = descPct(v.precio, v.precio_antes);
-            return (
-              <button
-                key={v.id}
-                onClick={() => { if (!sinStock) { onChange(i); setAbierto(false); } }}
-                disabled={sinStock}
-                className="w-full flex items-center justify-between px-4 py-3.5 text-sm transition-colors duration-100"
-                style={{
-                  background: activo ? C.brandLight : "transparent",
-                  cursor: sinStock ? "not-allowed" : "pointer",
-                  borderBottom: i < variantes.length - 1 ? `1px solid ${C.brandLight}` : "none",
-                }}
-                onMouseEnter={e => { if (!activo && !sinStock) e.currentTarget.style.background = C.surfaceAlt; }}
-                onMouseLeave={e => { if (!activo) e.currentTarget.style.background = "transparent"; }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ background: sinStock ? "#d1d5db" : activo ? C.brand : "#22c55e" }} />
-                  <div className="text-left">
-                    <p className="font-semibold" style={{ color: sinStock ? C.textMuted : C.text }}>
-                      {v.nombre}
-                    </p>
-                    {v.sku && (
-                      <p className="text-xs font-mono" style={{ color: C.textMuted }}>SKU: {v.sku}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  {dc && !sinStock && (
-                    <span className="text-xs px-1.5 py-0.5 rounded-md font-bold"
-                      style={{ background: "#fee2e2", color: "#ef4444" }}>-{dc}%</span>
-                  )}
-                  <div className="text-right">
-                    <p className="font-bold text-sm" style={{ color: sinStock ? C.textMuted : C.brand }}>
-                      {fmt(v.precio)}
-                    </p>
-                    {v.precio_antes && !sinStock && (
-                      <p className="text-xs line-through" style={{ color: C.textMuted }}>{fmt(v.precio_antes)}</p>
-                    )}
-                  </div>
-                  {sinStock && (
-                    <span className="text-xs font-medium" style={{ color: C.textMuted }}>Agotado</span>
-                  )}
-                  {activo && !sinStock && (
-                    <svg className="w-4 h-4" fill="none" stroke={C.brand} strokeWidth={2.5} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
-                    </svg>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
+          return (
+            <button
+              key={v.id}
+              onClick={() => { if (!sinStock) onChange(i); }}
+              disabled={sinStock}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                gap: 2,
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: `2px solid ${esActiva ? C.brand : sinStock ? C.border : C.brandBorder}`,
+                background: esActiva ? C.brandLight : sinStock ? C.surfaceAlt : C.surface,
+                color: sinStock ? C.textMuted : C.text,
+                cursor: sinStock ? "not-allowed" : "pointer",
+                opacity: sinStock ? 0.55 : 1,
+                transition: "all 0.15s",
+                position: "relative",
+                minWidth: 72,
+              }}
+              onMouseEnter={e => { if (!esActiva && !sinStock) { e.currentTarget.style.borderColor = C.brand; e.currentTarget.style.background = C.brandLight + "88"; } }}
+              onMouseLeave={e => { if (!esActiva && !sinStock) { e.currentTarget.style.borderColor = C.brandBorder; e.currentTarget.style.background = C.surface; } }}
+            >
+              {/* Indicador stock */}
+              <span style={{
+                width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
+                background: sinStock ? "#d1d5db" : esActiva ? C.brand : "#22c55e",
+                marginBottom: 2,
+              }}/>
+
+              {/* Nombre */}
+              <span style={{
+                fontSize: 12, fontWeight: esActiva ? 700 : 500,
+                color: sinStock ? C.textMuted : esActiva ? C.brand : C.text,
+                lineHeight: 1.2,
+              }}>
+                {v.nombre}
+              </span>
+
+              {/* Precio */}
+              <span style={{
+                fontSize: 11,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 700,
+                color: sinStock ? C.textMuted : C.brand,
+              }}>
+                {fmt(v.precio)}
+              </span>
+
+              {/* Badge descuento */}
+              {dc && !sinStock && (
+                <span style={{
+                  fontSize: 9, fontWeight: 700,
+                  background: "#fee2e2", color: "#ef4444",
+                  padding: "1px 4px", borderRadius: 4,
+                }}>
+                  -{dc}%
+                </span>
+              )}
+
+              {sinStock && (
+                <span style={{ fontSize: 9, color: C.textMuted, marginTop: 1 }}>Agotado</span>
+              )}
+
+              {/* Checkmark activa */}
+              {esActiva && (
+                <span style={{
+                  position: "absolute", top: 4, right: 6,
+                  fontSize: 11, color: C.brand, fontWeight: 800,
+                }}>✓</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {activa.sku && (
+        <p className="text-xs mt-2" style={{ color: C.textMuted, fontFamily: "monospace" }}>
+          SKU: {activa.sku}
+        </p>
       )}
     </div>
   );
@@ -280,10 +267,10 @@ function PanelCompra({ producto, variantes }) {
   const { usuario }   = useAuth();
   const navigate      = useNavigate();
 
-  const [varIdx, setVarIdx]   = useState(0);
+  const [varIdx, setVarIdx]     = useState(0);
   const [cantidad, setCantidad] = useState(1);
   const [agregado, setAgregado] = useState(false);
-  const [error, setError]     = useState("");
+  const [error, setError]       = useState("");
 
   const tieneVariantes = variantes && variantes.length > 0;
   const varActiva      = tieneVariantes ? variantes[varIdx] : null;
@@ -325,15 +312,15 @@ function PanelCompra({ producto, variantes }) {
 
   return (
     <div className="space-y-6 pt-1">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs flex-wrap" style={{ color: C.textMuted }}>
+      {/* FIX DISEÑO: breadcrumb con "·" como separador, sin "/" */}
+      <nav className="flex items-center gap-2 text-xs flex-wrap" style={{ color: C.textMuted }}>
         <Link to="/" className="hover:text-green-700 transition-colors">Inicio</Link>
-        <span>/</span>
+        <span style={{ color: C.border }}>·</span>
         <Link to="/tienda" className="hover:text-green-700 transition-colors">Tienda</Link>
-        <span>/</span>
+        <span style={{ color: C.border }}>·</span>
         <Link to={`/tienda?categoria=${producto.categoria_slug}`}
           className="hover:text-green-700 transition-colors capitalize">{producto.categoria}</Link>
-        <span>/</span>
+        <span style={{ color: C.border }}>·</span>
         <span className="font-medium truncate max-w-[160px]" style={{ color: C.textSec }}>{producto.nombre}</span>
       </nav>
 
@@ -362,7 +349,7 @@ function PanelCompra({ producto, variantes }) {
         )}
       </div>
 
-      {/* Selector presentaciones */}
+      {/* FIX: Selector de presentaciones como pills (no dropdown) */}
       {tieneVariantes && (
         <SelectorVariante
           variantes={variantes}
@@ -377,7 +364,7 @@ function PanelCompra({ producto, variantes }) {
           <div className="w-2 h-2 rounded-full" style={{ background: hayStock ? "#22c55e" : "#ef4444" }} />
           {hayStock
             ? stock <= stockMin
-              ? <span className="font-semibold" style={{ color: "#d97706" }}>⚠️ Últimas {stock} unidades</span>
+              ? <span className="font-semibold" style={{ color: "#d97706" }}>Últimas {stock} unidades</span>
               : <span className="font-semibold" style={{ color: C.success }}>{stock} unidades disponibles</span>
             : <span className="font-semibold" style={{ color: C.danger }}>Sin stock</span>}
         </div>
@@ -434,7 +421,7 @@ function PanelCompra({ producto, variantes }) {
       {error && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium"
           style={{ background: C.dangerBg, color: C.danger, border: `1px solid #fca5a5` }}>
-          ⚠ {error}
+          {error}
         </div>
       )}
 
@@ -447,29 +434,20 @@ function PanelCompra({ producto, variantes }) {
             : hayStock
             ? { background: C.brand, color: "#fff", boxShadow: "0 4px 16px rgba(26,92,26,0.25)" }
             : { background: C.surfaceAlt, color: C.textMuted, cursor: "not-allowed" }}>
-          {agregado ? (
-            <>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
-              </svg>
-              ¡Agregado al carrito!
-            </>
-          ) : hayStock ? (
-            <>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-              </svg>
-              Agregar al carrito · {fmt(total)}
-            </>
-          ) : "Sin stock disponible"}
+          {agregado
+            ? "¡Agregado al carrito!"
+            : hayStock
+            ? `Agregar al carrito · ${fmt(total)}`
+            : "Sin stock disponible"}
         </button>
 
+        {/* FIX DISEÑO: sin flecha en "Seguir comprando" */}
         <Link to="/tienda"
-          className="w-full py-3 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+          className="w-full py-3 rounded-2xl text-sm font-semibold flex items-center justify-center transition-all"
           style={{ border: `2px solid ${C.brandBorder}`, color: C.brand, background: "transparent" }}
           onMouseEnter={e => e.currentTarget.style.background = C.brandLight}
           onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-          ← Seguir comprando
+          Seguir comprando
         </Link>
       </div>
 
@@ -674,7 +652,7 @@ export default function Producto() {
 
   if (cargando) return (
     <div className="min-h-screen" style={{ background: C.canvas }}>
-      {/* Barra certificación */}
+      <Navbar />
       <div className="py-2.5" style={{ background: C.brand }}>
         <p className="text-center text-xs font-semibold text-white/80">
           🚚 Envíos gratis a partir de <span className="text-lime-300 font-bold">$80.000</span>
@@ -685,17 +663,20 @@ export default function Producto() {
   );
 
   if (error) return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-5" style={{ background: C.canvas }}>
-      <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl"
-        style={{ background: C.dangerBg }}>⚠️</div>
-      <div className="text-center">
-        <h2 className="text-xl font-bold mb-2" style={{ color: C.text }}>Producto no encontrado</h2>
-        <p className="text-sm mb-6" style={{ color: C.textMuted }}>{error}</p>
-        <Link to="/tienda"
-          className="px-6 py-3 rounded-xl text-sm font-bold text-white transition-colors"
-          style={{ background: C.brand }}>
-          ← Volver a la tienda
-        </Link>
+    <div className="min-h-screen" style={{ background: C.canvas }}>
+      <Navbar />
+      <div className="flex flex-col items-center justify-center gap-5 py-32">
+        <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl"
+          style={{ background: C.dangerBg }}>⚠️</div>
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-2" style={{ color: C.text }}>Producto no encontrado</h2>
+          <p className="text-sm mb-6" style={{ color: C.textMuted }}>{error}</p>
+          <Link to="/tienda"
+            className="px-6 py-3 rounded-xl text-sm font-bold text-white transition-colors"
+            style={{ background: C.brand }}>
+            Volver a la tienda
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -704,6 +685,8 @@ export default function Producto() {
 
   return (
     <div className="min-h-screen" style={{ background: C.canvas }}>
+      <Navbar />
+
       {/* Barra superior */}
       <div className="py-2.5" style={{ background: C.brand }}>
         <div className="max-w-6xl mx-auto px-4 flex items-center justify-center gap-6 text-xs text-white/70 font-medium">
@@ -725,10 +708,7 @@ export default function Producto() {
           <PanelCompra producto={producto} variantes={variantes} />
         </div>
 
-        {/* Tabs info */}
         <TabsInfo producto={producto} variantes={variantes} />
-
-        {/* Relacionados */}
         <Relacionados productos={relacionados} />
       </div>
     </div>

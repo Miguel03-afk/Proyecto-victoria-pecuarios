@@ -18,7 +18,7 @@ const NAV = [
   {id:"usuarios",        label:"Usuarios",       d:"M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"},
   {id:"productos",       label:"Productos",      d:"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"},
   {id:"ordenes",         label:"Órdenes",        d:"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"},
-  {id:"factura",         label:"Nueva venta",    d:"M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"},
+  {id:"cajeros",         label:"Cajeros",        d:"M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"},
   {id:"objetivos",       label:"Objetivos",      d:"M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"},
   {id:"reporte-ventas",  label:"Rep. ventas",    d:"M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"},
   {id:"reporte-salidas", label:"Salidas stock",  d:"M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"},
@@ -28,7 +28,7 @@ const NAV = [
 
 const TITULOS = {
   dashboard:"Dashboard", usuarios:"Usuarios", productos:"Productos",
-  ordenes:"Órdenes", factura:"Nueva venta", objetivos:"Objetivos",
+  ordenes:"Órdenes", cajeros:"Cajeros", objetivos:"Objetivos",
   "reporte-ventas":"Reporte de ventas", "reporte-salidas":"Salidas de stock",
   // ── Galería ──
   galeria:"Galería de imágenes",
@@ -671,6 +671,8 @@ function Usuarios() {
             </div>
             <Sel label="Rol" value={formEdit.rol} onChange={fe("rol")}>
               <option value="cliente">Cliente</option>
+              <option value="cajero">Cajero</option>
+              <option value="veterinario">Veterinario</option>
               <option value="admin">Admin</option>
               <option value="superadmin">Superadmin</option>
             </Sel>
@@ -1033,147 +1035,94 @@ function Ordenes() {
   );
 }
 
-// ─── FACTURA MANUAL ───────────────────────────────────────────
-function Factura() {
-  const [usuarios,setUsuarios]=useState([]); const [productos,setProductos]=useState([]);
-  const [buscarU,setBuscarU]=useState(""); const [usuarioSel,setUsuarioSel]=useState(null);
-  const [items,setItems]=useState([{producto_id:"",cantidad:1}]);
-  const [metodo,setMetodo]=useState("efectivo");
-  const [direccion,setDireccion]=useState(""); const [ciudad,setCiudad]=useState("");
-  const [notas,setNotas]=useState(""); const [resultado,setResultado]=useState(null);
-  const [error,setError]=useState(""); const [cargando,setCargando]=useState(false);
+// ─── CAJEROS ──────────────────────────────────────────────────
+function Cajeros({ onIrUsuarios }) {
+  const [lista, setLista] = useState([]);
+  const [cargando, setCargando] = useState(true);
 
-  useEffect(()=>{
-    api.get("/admin/usuarios?limite=100").then(({data})=>setUsuarios(data.usuarios));
-    api.get("/admin/productos?limite=100").then(({data})=>setProductos(data.productos));
-  },[]);
-
-  const filtrados=usuarios.filter(u=>
-    `${u.nombre} ${u.apellido} ${u.email}`.toLowerCase().includes(buscarU.toLowerCase()));
-
-  // Cálculo con IVA 19%
-  const subtotal=items.reduce((acc,it)=>{
-    const p=productos.find(p=>p.id==it.producto_id);
-    return acc+(p?p.precio*it.cantidad:0);
-  },0);
-  const iva=subtotal*0.19;
-  const total=subtotal+iva;
-
-  const enviar=async()=>{
-    setError(""); setResultado(null);
-    if(!usuarioSel) return setError("Selecciona un cliente.");
-    if(items.some(i=>!i.producto_id)) return setError("Selecciona producto en cada fila.");
+  useEffect(() => {
     setCargando(true);
-    try{
-      const{data}=await api.post("/admin/facturas",{
-        usuario_id:usuarioSel.id,items,metodo_pago:metodo,
-        direccion_entrega:direccion||undefined,
-        ciudad_entrega:ciudad||undefined,notas:notas||undefined,
-      });
-      setResultado(data);
-      setItems([{producto_id:"",cantidad:1}]);
-      setUsuarioSel(null); setBuscarU("");
-    }catch(err){setError(err.response?.data?.error||"Error al crear factura.");}
-    finally{setCargando(false);}
-  };
+    api.get("/admin/cajeros")
+      .then(({ data }) => setLista(data))
+      .finally(() => setCargando(false));
+  }, []);
+
+  if (cargando) return <Spinner />;
 
   return (
-    <div className="max-w-2xl space-y-5">
-      {resultado&&<Msg texto={`✅ Factura creada: ${resultado.codigo}`} tipo="ok"/>}
-      {error&&<Msg texto={error} tipo="err"/>}
-
-      <Card className="p-6">
-        <SecTitle sub="Busca al cliente por nombre o email">1. Seleccionar cliente</SecTitle>
-        <input value={buscarU} onChange={e=>setBuscarU(e.target.value)} placeholder="Buscar cliente..."
-          className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none mb-2"
-          style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}/>
-        {usuarioSel
-          ? <div className="flex items-center justify-between rounded-xl px-4 py-3"
-              style={{background:T.brandLight,border:`1px solid ${T.brandBorder}`}}>
-              <div>
-                <p className="text-sm font-bold" style={{color:T.brand}}>{usuarioSel.nombre} {usuarioSel.apellido}</p>
-                <p className="text-xs" style={{color:T.textMuted}}>{usuarioSel.email}</p>
-              </div>
-              <button onClick={()=>{setUsuarioSel(null);setBuscarU("");}}
-                className="text-xs font-semibold" style={{color:T.danger}}>Cambiar</button>
-            </div>
-          : buscarU&&(
-            <div className="rounded-xl overflow-hidden max-h-40 overflow-y-auto"
-              style={{border:`1px solid ${T.border}`}}>
-              {filtrados.slice(0,8).map(u=>(
-                <button key={u.id} onClick={()=>{setUsuarioSel(u);setBuscarU("");}}
-                  className="w-full text-left px-4 py-3 transition-colors text-sm"
-                  style={{borderBottom:`1px solid ${T.borderSub}`}}
-                  onMouseEnter={e=>e.currentTarget.style.background=T.surfaceHover}
-                  onMouseLeave={e=>e.currentTarget.style.background=T.surface}>
-                  <p className="font-semibold text-xs" style={{color:T.text}}>{u.nombre} {u.apellido}</p>
-                  <p className="text-xs" style={{color:T.textMuted}}>{u.email}</p>
-                </button>
-              ))}
-            </div>
-          )}
-      </Card>
-
-      <Card className="p-6">
-        <SecTitle sub="Agrega los productos de la venta">2. Productos</SecTitle>
-        <div className="space-y-2.5">
-          {items.map((it,i)=>(
-            <div key={i} className="flex gap-2.5 items-center">
-              <select value={it.producto_id}
-                onChange={e=>setItems(items.map((x,idx)=>idx===i?{...x,producto_id:e.target.value}:x))}
-                className="flex-1 px-3.5 py-2.5 text-xs rounded-xl outline-none"
-                style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}>
-                <option value="">Selecciona producto</option>
-                {productos.map(p=><option key={p.id} value={p.id}>{p.nombre} — {fmt(p.precio)}</option>)}
-              </select>
-              <input type="number" min={1} value={it.cantidad}
-                onChange={e=>setItems(items.map((x,idx)=>idx===i?{...x,cantidad:Number(e.target.value)}:x))}
-                className="w-16 px-2.5 py-2.5 text-xs rounded-xl text-center outline-none"
-                style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}/>
-              <button onClick={()=>setItems(items.filter((_,idx)=>idx!==i))}
-                className="text-xl leading-none transition-colors" style={{color:T.textMuted}}
-                onMouseEnter={e=>e.target.style.color=T.danger}
-                onMouseLeave={e=>e.target.style.color=T.textMuted}>×</button>
-            </div>
-          ))}
+    <div className="space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <p className="text-xs" style={{ color: T.textMuted }}>
+            Los cajeros se asignan cambiando el rol del usuario en la sección <strong>Usuarios</strong>.
+          </p>
         </div>
-        <button onClick={()=>setItems([...items,{producto_id:"",cantidad:1}])}
-          className="mt-3 text-xs font-semibold" style={{color:T.gold}}>+ Agregar producto</button>
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+          style={{ background: T.goldBg, color: T.gold, border: `1px solid ${T.goldBorder}` }}>
+          {lista.length} cajero{lista.length !== 1 ? "s" : ""} registrado{lista.length !== 1 ? "s" : ""}
+        </span>
+      </div>
 
-        {subtotal>0&&(
-          <div className="mt-4 pt-4 space-y-1.5" style={{borderTop:`1px solid ${T.border}`}}>
-            <div className="flex justify-between text-xs" style={{color:T.textTer}}>
-              <span>Subtotal</span><span className="tabular-nums">{fmt(subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-xs" style={{color:T.info}}>
-              <span>IVA (19% — Colombia)</span><span className="tabular-nums">{fmt(iva)}</span>
-            </div>
-            <div className="flex justify-between text-sm font-bold pt-1" style={{borderTop:`1px solid ${T.border}`,color:T.text}}>
-              <span>Total</span><span className="tabular-nums" style={{color:T.brand}}>{fmt(total)}</span>
-            </div>
+      {!lista.length ? (
+        <Card className="p-10 flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl"
+            style={{ background: T.goldBg }}>💳</div>
+          <p className="text-sm font-semibold" style={{ color: T.textSec }}>Sin cajeros registrados</p>
+          <p className="text-xs text-center max-w-xs" style={{ color: T.textMuted }}>
+            Ve a Usuarios, edita un usuario y cambia su rol a <strong>Cajero</strong>.
+          </p>
+          <Btn size="sm" variant="outline" onClick={onIrUsuarios}>Ir a Usuarios</Btn>
+        </Card>
+      ) : (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <THead cols={["Cajero", "Email", "Ventas hoy", "Total ventas", "Total facturado", "Estado"]} />
+              <tbody>
+                {lista.map((c, i) => (
+                  <tr key={c.id} className="transition-colors"
+                    style={{ borderBottom: `1px solid ${T.borderSub}`, background: i % 2 === 0 ? T.surface : T.surfaceAlt }}
+                    onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
+                    onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? T.surface : T.surfaceAlt}>
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                          style={{ background: T.goldBg, color: T.gold, border: `1px solid ${T.goldBorder}` }}>
+                          {c.nombre?.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold" style={{ color: T.text }}>{c.nombre} {c.apellido}</p>
+                          <p className="text-xs" style={{ color: T.textMuted }}>#{c.id}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-xs" style={{ color: T.textSec }}>{c.email}</td>
+                    <td className="py-3.5 px-4">
+                      <span className="text-sm font-bold tabular-nums" style={{ color: T.gold, fontFamily: font.mono }}>
+                        {c.ventas_hoy}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-xs tabular-nums font-semibold" style={{ color: T.text, fontFamily: font.mono }}>
+                      {c.total_ventas}
+                    </td>
+                    <td className="py-3.5 px-4 text-xs tabular-nums font-bold" style={{ color: T.brand, fontFamily: font.mono }}>
+                      {fmt(c.total_facturado)}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                        style={c.activo
+                          ? { background: T.successBg, color: T.success, border: `1px solid ${T.successBorder}` }
+                          : { background: T.dangerBg,  color: T.danger,  border: `1px solid ${T.dangerBorder}` }}>
+                        {c.activo ? "Activo" : "Inactivo"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </Card>
-
-      <Card className="p-6">
-        <SecTitle sub="Método de pago y datos de entrega">3. Pago y entrega</SecTitle>
-        <div className="space-y-4">
-          <Sel label="Método de pago" value={metodo} onChange={e=>setMetodo(e.target.value)}>
-            {["efectivo","tarjeta","transferencia","pse","contraentrega"].map(m=>(
-              <option key={m} value={m} className="capitalize">{m}</option>
-            ))}
-          </Sel>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Dirección entrega" value={direccion} onChange={e=>setDireccion(e.target.value)} placeholder="Opcional"/>
-            <Input label="Ciudad" value={ciudad} onChange={e=>setCiudad(e.target.value)} placeholder="Opcional"/>
-          </div>
-          <Input label="Notas" value={notas} onChange={e=>setNotas(e.target.value)} placeholder="Observaciones..."/>
-        </div>
-      </Card>
-
-      <Btn size="md" onClick={enviar} disabled={cargando}>
-        {cargando?"Creando factura...":"✓ Crear factura"}
-      </Btn>
+        </Card>
+      )}
     </div>
   );
 }
@@ -1192,7 +1141,7 @@ export default function Admin() {
     if(seccion==="usuarios")        return <Usuarios/>;
     if(seccion==="productos")       return <Productos/>;
     if(seccion==="ordenes")         return <Ordenes/>;
-    if(seccion==="factura")         return <Factura/>;
+    if(seccion==="cajeros")         return <Cajeros onIrUsuarios={()=>setSeccion("usuarios")}/>;
     if(seccion==="objetivos")       return <Objetivos/>;
     if(seccion==="reporte-ventas")  return <ReporteVentas/>;
     if(seccion==="reporte-salidas") return <ReporteSalidas/>;

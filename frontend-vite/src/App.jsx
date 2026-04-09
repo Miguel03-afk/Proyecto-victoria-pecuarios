@@ -2,12 +2,13 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider }    from "./context/AuthContext";
 import { CarritoProvider } from "./context/CarritoContext";
-import { RutaProtegida, RutaAdmin } from "./components/RutaProtegida";
+import { RutaProtegida, RutaAdmin, RutaCajero } from "./components/RutaProtegida";
 import CarritoPanel from "./components/CarritoPanel";
 import Navbar       from "./components/Navbar";
 import AgendarCita      from "./pages/AgendarCita";
 import MisCitas         from "./pages/MisCitas";
 import PanelVeterinario from "./pages/PanelVeterinario";
+import PanelCajero      from "./pages/PanelCajero";
 
 // Páginas
 import Landing    from "./pages/Landing";
@@ -85,6 +86,9 @@ export default function App() {
 
             <Route path="/veterinario"
                  element={<RutaProtegida><PanelVeterinario /></RutaProtegida>} />
+
+            <Route path="/cajero"
+                 element={<RutaCajero><PanelCajero /></RutaCajero>} />
                  
 
             {/* 404 */}
