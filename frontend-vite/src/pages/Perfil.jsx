@@ -1,10 +1,10 @@
 // src/pages/Perfil.jsx
-// DISEÑO: borders-only, 4 niveles de texto, Navbar integrada, superficies consistentes
+// DISEÑO: borders-only, 4 niveles de texto, superficies consistentes
+// Navbar la monta App.jsx via LayoutConNav — NO incluir aquí
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import Navbar from "../components/Navbar";
 
 // ─── Tokens — mismos que el sistema del proyecto ──────────────────────────────
 const T = {
@@ -458,7 +458,6 @@ export default function Perfil() {
 
   if (cargando) return (
     <div style={{ minHeight:"100vh", background:T.canvas }}>
-      <Navbar />
       <div style={{ display:"flex", alignItems:"center", justifyContent:"center", padding:"80px 0" }}>
         <div style={{ width:28, height:28, borderRadius:"50%", border:`2px solid ${T.brandLight}`, borderTopColor:T.brand, animation:"spin 0.8s linear infinite" }}/>
       </div>
@@ -480,9 +479,6 @@ export default function Perfil() {
       `}</style>
 
       <div style={{ minHeight:"100vh", background:T.canvas }}>
-
-        {/* ── Navbar — integrada (Perfil no la tenía antes) ────────────── */}
-        <Navbar />
 
         {/* Banner */}
         <div style={{ background:T.brandDark, padding:"8px 16px", textAlign:"center", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>

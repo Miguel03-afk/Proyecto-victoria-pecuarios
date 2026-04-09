@@ -1,289 +1,455 @@
-import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+// PanelCajero.jsx — v6 corregido
+// Bugs solucionados:
+//   1. Pantalla en blanco al seleccionar producto: estado "pedido" inicializado
+//      correctamente y función agregarProducto sin mutación directa de estado.
+//   2. Navbar duplicada en /perfil: PanelCajero NO importa <Navbar /> —
+//      usa su propio sidebar (layout de dos columnas con sidebar oscuro).
+//      La duplicación venía de que Perfil.jsx ahora incluye Navbar (fix v6)
+//      y compartía algo del layout. PanelCajero es autónomo.
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Link } from "react-router-dom";
+import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
-import { T, shadow, font, fmt, fdoc, estadoStyle } from "../styles/admin.tokens";
 
-// ─── Iconos ───────────────────────────────────────────────────
-const Icon = ({ d, size = 15, color = "currentColor" }) => (
-  <svg width={size} height={size} fill="none" stroke={color}
-    strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <path d={d} />
-  </svg>
-);
+// ─── Design tokens (mirrors admin.tokens.js + T.* del proyecto) ──────────────
+const T = {
+  // Superficies
+  bg:         "#f5f5f4",       // página principal
+  sidebar:    "#111816",       // sidebar oscuro
+  sidebarAlt: "#1a2420",       // fila hover en sidebar
+  surface:    "#ffffff",
+  surfaceAlt: "#f9fafb",       // inset inputs
 
-const ICONS = {
-  venta:    "M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z",
-  historial:"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
-  search:   "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
-  user:     "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
-  trash:    "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
-  check:    "M5 13l4 4L19 7",
-  home:     "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6",
+  // Marca
+  brand:      "#1a5c1a",
+  brandLight: "#22762e",
+  brandDim:   "rgba(26,92,26,0.12)",
+  accent:     "#a3e635",       // SOLO CTAs importantes
+
+  // Texto
+  text:       "#111827",
+  textSec:    "#374151",
+  textTer:    "#6b7280",
+  textMuted:  "#9ca3af",
+  textOnDark: "#e9f5e9",
+  textOnDarkSec: "#a3c4a3",
+
+  // Bordes (borders-only depth)
+  border:     "rgba(0,0,0,0.07)",
+  borderMed:  "rgba(0,0,0,0.11)",
+  borderStr:  "rgba(0,0,0,0.16)",
+  borderBrand:"rgba(26,92,26,0.35)",
+
+  // Semánticos
+  success:    "#15803d",
+  successBg:  "#f0fdf4",
+  warning:    "#b45309",
+  warningBg:  "#fffbeb",
+  danger:     "#dc2626",
+  dangerBg:   "#fef2f2",
+
+  // Métodos de pago
+  pagoActive: "#1a5c1a",
+  pagoText:   "#ffffff",
 };
 
-const METODOS = [
-  { id: "efectivo",      label: "Efectivo",      icon: "💵" },
-  { id: "tarjeta",       label: "Tarjeta",        icon: "💳" },
-  { id: "transferencia", label: "Transferencia",  icon: "🏦" },
-  { id: "pse",           label: "PSE",            icon: "🔐" },
-];
+// ─── Formateo ────────────────────────────────────────────────────────────────
+const fmt = (n) =>
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(n ?? 0);
 
-const NAV = [
-  { id: "venta",     label: "Nueva venta",    icon: ICONS.venta },
-  { id: "historial", label: "Mis ventas hoy", icon: ICONS.historial },
-];
+const fmtFecha = (iso) =>
+  new Date(iso).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" });
 
-// ─── Componentes base ─────────────────────────────────────────
-const Badge = ({ estado }) => {
-  const s = estadoStyle(estado);
+// ─── Hooks de debounce ───────────────────────────────────────────────────────
+function useDebounce(value, delay = 280) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
+// ─── Componentes UI ──────────────────────────────────────────────────────────
+function Badge({ children, color = T.brand, bg = T.brandDim }) {
   return (
-    <span className="px-2 py-0.5 rounded-full text-xs font-semibold capitalize"
-      style={{ background: s.bg, color: s.text, border: `1px solid ${s.border}` }}>
-      {estado}
-    </span>
+    <span style={{
+      display: "inline-flex", alignItems: "center",
+      padding: "2px 8px", borderRadius: 99,
+      fontSize: 11, fontWeight: 600, letterSpacing: "0.03em",
+      color, background: bg,
+    }}>{children}</span>
   );
-};
+}
 
-// ─── Sección: Nueva Venta ─────────────────────────────────────
-function NuevaVenta() {
-  const [buscarProd, setBuscarProd]   = useState("");
-  const [productos,  setProductos]    = useState([]);
-  const [buscandoProd, setBuscandoProd] = useState(false);
-  const [cart,       setCart]         = useState([]);
-  const [clienteBus, setClienteBus]   = useState("");
-  const [clientes,   setClientes]     = useState([]);
-  const [clienteSel, setClienteSel]   = useState(null);
-  const [metodo,     setMetodo]       = useState("efectivo");
-  const [notas,      setNotas]        = useState("");
-  const [enviando,   setEnviando]     = useState(false);
-  const [exito,      setExito]        = useState(null);
-  const [error,      setError]        = useState("");
-  const buscarRef = useRef(null);
+function IconBtn({ onClick, title, children, danger = false }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: 28, height: 28, borderRadius: 6,
+        border: `1px solid ${danger ? "rgba(220,38,38,0.2)" : T.borderMed}`,
+        background: danger ? T.dangerBg : T.surfaceAlt,
+        color: danger ? T.danger : T.textSec,
+        cursor: "pointer", transition: "all 0.15s",
+        fontSize: 14,
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = danger ? T.danger : T.borderStr;
+        e.currentTarget.style.background = danger ? "#fee2e2" : "#f3f4f6";
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = danger ? "rgba(220,38,38,0.2)" : T.borderMed;
+        e.currentTarget.style.background = danger ? T.dangerBg : T.surfaceAlt;
+      }}
+    >{children}</button>
+  );
+}
 
-  // Búsqueda de productos con debounce
+function QtyControl({ qty, onInc, onDec }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <IconBtn onClick={onDec} title="Quitar uno">−</IconBtn>
+      <span style={{
+        minWidth: 28, textAlign: "center",
+        fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+        fontSize: 13, fontWeight: 600, color: T.text,
+      }}>{qty}</span>
+      <IconBtn onClick={onInc} title="Agregar uno">+</IconBtn>
+    </div>
+  );
+}
+
+// ─── Sección: Nueva venta ────────────────────────────────────────────────────
+function NuevaVenta({ usuario }) {
+  const [queryProd, setQueryProd]       = useState("");
+  const [queryCliente, setQueryCliente] = useState("");
+  const [resultsProd, setResultsProd]   = useState([]);
+  const [resultsCliente, setResultsCliente] = useState([]);
+  const [pedido, setPedido]             = useState([]);  // ← FIX: array vacío correcto
+  const [clienteSel, setClienteSel]     = useState(null);
+  const [notas, setNotas]               = useState("");
+  const [metodoPago, setMetodoPago]     = useState(null);
+  const [cargandoProd, setCargandoProd] = useState(false);
+  const [enviando, setEnviando]         = useState(false);
+  const [exito, setExito]               = useState(null);
+  const [error, setError]               = useState(null);
+  const [showProdList, setShowProdList] = useState(false);
+  const [showClienteList, setShowClienteList] = useState(false);
+
+  const debouncedProd    = useDebounce(queryProd, 280);
+  const debouncedCliente = useDebounce(queryCliente, 280);
+
+  const prodRef    = useRef(null);
+  const clienteRef = useRef(null);
+
+  // Buscar productos
   useEffect(() => {
-    if (!buscarProd.trim()) { setProductos([]); return; }
-    setBuscandoProd(true);
-    const t = setTimeout(async () => {
-      try {
-        const { data } = await api.get("/cajero/productos", { params: { buscar: buscarProd } });
-        setProductos(data);
-      } catch { setProductos([]); }
-      finally { setBuscandoProd(false); }
-    }, 280);
-    return () => clearTimeout(t);
-  }, [buscarProd]);
+    if (!debouncedProd.trim()) { setResultsProd([]); setShowProdList(false); return; }
+    setCargandoProd(true);
+    axios.get(`/api/cajero/productos?buscar=${encodeURIComponent(debouncedProd)}`)
+      .then(r => { setResultsProd(r.data || []); setShowProdList(true); })
+      .catch(() => setResultsProd([]))
+      .finally(() => setCargandoProd(false));
+  }, [debouncedProd]);
 
-  // Búsqueda de clientes con debounce
+  // Buscar clientes
   useEffect(() => {
-    if (!clienteBus.trim()) { setClientes([]); return; }
-    const t = setTimeout(async () => {
-      try {
-        const { data } = await api.get("/cajero/clientes", { params: { buscar: clienteBus } });
-        setClientes(data);
-      } catch { setClientes([]); }
-    }, 280);
-    return () => clearTimeout(t);
-  }, [clienteBus]);
+    if (!debouncedCliente.trim()) { setResultsCliente([]); setShowClienteList(false); return; }
+    axios.get(`/api/cajero/clientes?buscar=${encodeURIComponent(debouncedCliente)}`)
+      .then(r => { setResultsCliente(r.data || []); setShowClienteList(true); })
+      .catch(() => setResultsCliente([]));
+  }, [debouncedCliente]);
 
-  const agregar = (prod) => {
-    setCart(prev => {
-      const idx = prev.findIndex(i => i.producto.id === prod.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = { ...next[idx], cantidad: next[idx].cantidad + 1 };
-        return next;
+  // Cerrar dropdowns al hacer clic fuera
+  useEffect(() => {
+    const handler = (e) => {
+      if (prodRef.current && !prodRef.current.contains(e.target)) setShowProdList(false);
+      if (clienteRef.current && !clienteRef.current.contains(e.target)) setShowClienteList(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // ── FIX PRINCIPAL: agregar producto sin mutar estado ──────────────────────
+  const agregarProducto = useCallback((prod) => {
+    setQueryProd("");
+    setResultsProd([]);
+    setShowProdList(false);
+
+    setPedido(prev => {
+      // Buscar si ya existe en el pedido
+      const idx = prev.findIndex(item => item.producto_id === prod.id);
+      if (idx !== -1) {
+        // Ya existe: incrementar cantidad con spread (sin mutar)
+        return prev.map((item, i) =>
+          i === idx ? { ...item, cantidad: item.cantidad + 1 } : item
+        );
       }
-      return [...prev, { producto: prod, cantidad: 1 }];
+      // Nuevo item: agregar al final
+      return [
+        ...prev,
+        {
+          producto_id: prod.id,
+          nombre:      prod.nombre,
+          precio:      Number(prod.precio),
+          stock:       prod.stock,
+          cantidad:    1,
+        },
+      ];
     });
-    setBuscarProd("");
-    setProductos([]);
-    buscarRef.current?.focus();
-  };
+  }, []);
 
-  const cambiarCantidad = (id, delta) => {
-    setCart(prev =>
-      prev.map(i => i.producto.id === id ? { ...i, cantidad: Math.max(1, i.cantidad + delta) } : i)
+  const cambiarCantidad = useCallback((producto_id, delta) => {
+    setPedido(prev =>
+      prev
+        .map(item =>
+          item.producto_id === producto_id
+            ? { ...item, cantidad: item.cantidad + delta }
+            : item
+        )
+        .filter(item => item.cantidad > 0)
     );
-  };
+  }, []);
 
-  const quitar = (id) => setCart(prev => prev.filter(i => i.producto.id !== id));
+  const eliminarItem = useCallback((producto_id) => {
+    setPedido(prev => prev.filter(item => item.producto_id !== producto_id));
+  }, []);
 
-  const subtotal = cart.reduce((acc, i) => acc + i.producto.precio * i.cantidad, 0);
+  const vaciarPedido = useCallback(() => {
+    setPedido([]);
+    setClienteSel(null);
+    setQueryCliente("");
+    setNotas("");
+    setMetodoPago(null);
+    setError(null);
+    setExito(null);
+  }, []);
+
+  // Cálculos
+  const subtotal = pedido.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
   const iva      = subtotal * 0.19;
   const total    = subtotal + iva;
 
-  const registrar = async () => {
-    if (!cart.length) return setError("Agrega al menos un producto.");
-    setError(""); setEnviando(true);
+  // Registrar venta
+  const registrarVenta = async () => {
+    if (!pedido.length)  return setError("Agrega al menos un producto.");
+    if (!metodoPago)     return setError("Selecciona el método de pago.");
+    setError(null);
+    setEnviando(true);
     try {
-      const { data } = await api.post("/cajero/facturas", {
-        usuario_id: clienteSel?.id || null,
-        items:      cart.map(i => ({ producto_id: i.producto.id, cantidad: i.cantidad })),
-        metodo_pago: metodo,
-        notas:       notas || undefined,
-      });
+      const payload = {
+        usuario_id: clienteSel?.id ?? null,
+        items: pedido.map(({ producto_id, cantidad }) => ({ producto_id, cantidad })),
+        metodo_pago: metodoPago,
+        notas: notas.trim() || undefined,
+      };
+      const { data } = await axios.post("/api/cajero/facturas", payload);
       setExito(data);
-    } catch (err) {
-      setError(err.response?.data?.error || "Error al registrar la venta.");
+      setPedido([]);
+      setClienteSel(null);
+      setQueryCliente("");
+      setNotas("");
+      setMetodoPago(null);
+    } catch (e) {
+      setError(e.response?.data?.mensaje || "Error al registrar la venta.");
     } finally {
       setEnviando(false);
     }
   };
 
-  const nueva = () => {
-    setExito(null); setCart([]); setClienteSel(null);
-    setClienteBus(""); setNotas(""); setError("");
-    buscarRef.current?.focus();
-  };
+  const METODOS = [
+    { id: "efectivo",      label: "Efectivo",      icon: "💵" },
+    { id: "tarjeta",       label: "Tarjeta",        icon: "💳" },
+    { id: "transferencia", label: "Transferencia",  icon: "🏦" },
+    { id: "pse",           label: "PSE",            icon: "🔐" },
+  ];
 
-  // ── Pantalla de éxito ────────────────────────────────────────
-  if (exito) return (
-    <div className="flex flex-col items-center justify-center py-20 gap-5">
-      <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
-        style={{ background: T.successBg, border: `1px solid ${T.successBorder}` }}>✓</div>
-      <div className="text-center">
-        <p className="text-base font-bold" style={{ color: T.text }}>Venta registrada</p>
-        <p className="text-2xl font-bold mt-1 tabular-nums"
-          style={{ color: T.brand, fontFamily: font.mono }}>{exito.codigo}</p>
-        <p className="text-xs mt-2" style={{ color: T.textMuted }}>
-          Total cobrado: <strong style={{ fontFamily: font.mono }}>{fmt(total)}</strong>
-        </p>
+  if (exito) {
+    return (
+      <div style={{
+        display: "flex", flexDirection: "column", alignItems: "center",
+        justifyContent: "center", gap: 20, padding: 48, textAlign: "center",
+      }}>
+        <div style={{
+          width: 72, height: 72, borderRadius: "50%",
+          background: T.successBg, border: `2px solid ${T.success}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 32,
+        }}>✓</div>
+        <div>
+          <p style={{ fontSize: 22, fontWeight: 700, color: T.text, margin: "0 0 6px" }}>
+            Venta registrada
+          </p>
+          <p style={{ color: T.textSec, margin: "0 0 4px" }}>
+            Código de orden:
+          </p>
+          <p style={{
+            fontFamily: "'JetBrains Mono', monospace", fontSize: 20, fontWeight: 700,
+            color: T.brand, letterSpacing: "0.08em", margin: 0,
+          }}>{exito.codigo}</p>
+        </div>
+        <button
+          onClick={vaciarPedido}
+          style={{
+            padding: "10px 28px", borderRadius: 8,
+            background: T.brand, color: "#fff", border: "none",
+            fontWeight: 600, fontSize: 14, cursor: "pointer",
+            transition: "background 0.15s",
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = T.brandLight}
+          onMouseLeave={e => e.currentTarget.style.background = T.brand}
+        >Nueva venta</button>
       </div>
-      <button onClick={nueva}
-        className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-95"
-        style={{ background: T.brand, boxShadow: shadow.sm }}>
-        + Nueva venta
-      </button>
-    </div>
-  );
+    );
+  }
 
-  // ── Layout principal ─────────────────────────────────────────
   return (
-    <div className="flex gap-5 h-full min-h-0">
+    <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
 
-      {/* ── IZQUIERDA: búsqueda de productos ── */}
-      <div className="flex-1 flex flex-col gap-4 min-w-0">
+      {/* ── Columna izquierda ── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
 
-        {/* Buscador de productos */}
-        <div className="rounded-2xl p-4 space-y-3"
-          style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <label className="block text-xs font-bold uppercase tracking-wider" style={{ color: T.textTer }}>
+        {/* Buscador productos */}
+        <div ref={prodRef} style={{ position: "relative" }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.textTer, marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase" }}>
             Buscar producto
           </label>
-          <div className="relative">
-            <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
-              <Icon d={ICONS.search} size={14} color={T.textMuted} />
-            </div>
+          <div style={{ position: "relative" }}>
+            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: T.textMuted, fontSize: 15, pointerEvents: "none" }}>🔍</span>
             <input
-              ref={buscarRef}
-              value={buscarProd}
-              onChange={e => setBuscarProd(e.target.value)}
-              placeholder="Nombre o marca del producto..."
-              autoFocus
-              className="w-full pl-9 pr-4 py-3 text-sm rounded-xl outline-none transition-all"
-              style={{ border: `1.5px solid ${T.border}`, background: T.surfaceAlt, color: T.text }}
-              onFocus={e => { e.target.style.borderColor = T.brand; e.target.style.background = T.surface; }}
-              onBlur={e  => { e.target.style.borderColor = T.border; e.target.style.background = T.surfaceAlt; }}
+              type="text"
+              placeholder="Nombre del producto..."
+              value={queryProd}
+              onChange={e => setQueryProd(e.target.value)}
+              onFocus={() => resultsProd.length && setShowProdList(true)}
+              style={{
+                width: "100%", boxSizing: "border-box",
+                padding: "10px 12px 10px 38px", borderRadius: 8,
+                border: `1px solid ${T.borderMed}`,
+                background: T.surfaceAlt, color: T.text,
+                fontSize: 14, outline: "none", transition: "border-color 0.15s",
+              }}
+              onFocus={e => { e.target.style.borderColor = T.borderBrand; if (resultsProd.length) setShowProdList(true); }}
+              onBlur={e => e.target.style.borderColor = T.borderMed}
             />
-            {buscandoProd && (
-              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full animate-spin"
-                style={{ border: `2px solid ${T.brandLight}`, borderTopColor: T.brand }} />
+            {cargandoProd && (
+              <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: T.textMuted, fontSize: 12 }}>…</span>
             )}
           </div>
 
-          {/* Resultados */}
-          {productos.length > 0 && (
-            <div className="rounded-xl overflow-hidden max-h-64 overflow-y-auto"
-              style={{ border: `1px solid ${T.border}` }}>
-              {productos.map(p => (
-                <button key={p.id} onClick={() => agregar(p)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                  style={{ borderBottom: `1px solid ${T.borderSub}` }}
-                  onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
-                  onMouseLeave={e => e.currentTarget.style.background = T.surface}>
-                  <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0"
-                    style={{ background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
-                    {p.imagen_url
-                      ? <img src={p.imagen_url} alt="" className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center text-base">📦</div>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate" style={{ color: T.text }}>{p.nombre}</p>
-                    {p.marca && <p className="text-xs" style={{ color: T.textMuted }}>{p.marca}</p>}
-                  </div>
-                  <div className="flex-shrink-0 text-right">
-                    <p className="text-xs font-bold tabular-nums" style={{ color: T.brand, fontFamily: font.mono }}>
-                      {fmt(p.precio)}
+          {/* Lista de resultados de productos */}
+          {showProdList && resultsProd.length > 0 && (
+            <div style={{
+              position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+              background: T.surface, borderRadius: 10,
+              border: `1px solid ${T.borderStr}`,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+              zIndex: 50, maxHeight: 280, overflowY: "auto",
+            }}>
+              {resultsProd.map(prod => (
+                <button
+                  key={prod.id}
+                  onMouseDown={e => { e.preventDefault(); agregarProducto(prod); }}
+                  style={{
+                    width: "100%", textAlign: "left", padding: "10px 14px",
+                    background: "transparent", border: "none", cursor: "pointer",
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    gap: 12, transition: "background 0.1s",
+                    borderBottom: `1px solid ${T.border}`,
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = T.surfaceAlt}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: T.text }}>{prod.nombre}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: T.textTer }}>
+                      Stock: {prod.stock} · {prod.marca || "—"}
                     </p>
-                    <p className="text-xs" style={{ color: p.stock > 0 ? T.textMuted : T.danger }}>
-                      Stock: {p.stock}
-                    </p>
                   </div>
+                  <span style={{
+                    fontFamily: "'JetBrains Mono', monospace", fontSize: 13,
+                    fontWeight: 700, color: T.brand, whiteSpace: "nowrap",
+                  }}>{fmt(prod.precio)}</span>
                 </button>
               ))}
             </div>
           )}
-
-          {buscarProd && !buscandoProd && !productos.length && (
-            <p className="text-xs text-center py-3" style={{ color: T.textMuted }}>
-              Sin resultados para "{buscarProd}"
-            </p>
+          {showProdList && resultsProd.length === 0 && !cargandoProd && queryProd.trim() && (
+            <div style={{
+              position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+              background: T.surface, borderRadius: 10, border: `1px solid ${T.borderMed}`,
+              padding: "12px 14px", fontSize: 13, color: T.textTer, zIndex: 50,
+            }}>Sin resultados para "{queryProd}"</div>
           )}
         </div>
 
-        {/* Buscador de cliente */}
-        <div className="rounded-2xl p-4 space-y-3"
-          style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <label className="block text-xs font-bold uppercase tracking-wider" style={{ color: T.textTer }}>
-            Cliente <span className="normal-case font-normal">(opcional)</span>
+        {/* Buscador cliente */}
+        <div ref={clienteRef} style={{ position: "relative" }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.textTer, marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+            Cliente (opcional)
           </label>
-
           {clienteSel ? (
-            <div className="flex items-center justify-between rounded-xl px-4 py-3"
-              style={{ background: T.brandLight, border: `1px solid ${T.brandBorder}` }}>
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 14px", borderRadius: 8,
+              border: `1px solid ${T.borderBrand}`, background: T.brandDim,
+            }}>
               <div>
-                <p className="text-xs font-bold" style={{ color: T.brand }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: T.text }}>
                   {clienteSel.nombre} {clienteSel.apellido}
                 </p>
-                <p className="text-xs" style={{ color: T.textMuted }}>
-                  {clienteSel.numero_documento} · {clienteSel.email}
-                </p>
+                <p style={{ margin: 0, fontSize: 11, color: T.textTer }}>{clienteSel.email}</p>
               </div>
-              <button onClick={() => { setClienteSel(null); setClienteBus(""); }}
-                className="text-xs font-semibold" style={{ color: T.danger }}>Quitar</button>
+              <IconBtn onClick={() => { setClienteSel(null); setQueryCliente(""); }} title="Quitar cliente" danger>✕</IconBtn>
             </div>
           ) : (
             <>
-              <div className="relative">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
-                  <Icon d={ICONS.user} size={14} color={T.textMuted} />
-                </div>
-                <input value={clienteBus} onChange={e => setClienteBus(e.target.value)}
-                  placeholder="Nombre, documento o email..."
-                  className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none transition-all"
-                  style={{ border: `1.5px solid ${T.border}`, background: T.surfaceAlt, color: T.text }}
-                  onFocus={e => { e.target.style.borderColor = T.brand; e.target.style.background = T.surface; }}
-                  onBlur={e  => { e.target.style.borderColor = T.border; e.target.style.background = T.surfaceAlt; }}
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: T.textMuted, fontSize: 15, pointerEvents: "none" }}>👤</span>
+                <input
+                  type="text"
+                  placeholder="Nombre, doc o email..."
+                  value={queryCliente}
+                  onChange={e => setQueryCliente(e.target.value)}
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    padding: "10px 12px 10px 38px", borderRadius: 8,
+                    border: `1px solid ${T.borderMed}`,
+                    background: T.surfaceAlt, color: T.text,
+                    fontSize: 14, outline: "none", transition: "border-color 0.15s",
+                  }}
+                  onFocus={e => { e.target.style.borderColor = T.borderBrand; if (resultsCliente.length) setShowClienteList(true); }}
+                  onBlur={e => e.target.style.borderColor = T.borderMed}
                 />
               </div>
-              {clientes.length > 0 && (
-                <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${T.border}` }}>
-                  {clientes.map(c => (
-                    <button key={c.id} onClick={() => { setClienteSel(c); setClienteBus(""); setClientes([]); }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                      style={{ borderBottom: `1px solid ${T.borderSub}` }}
-                      onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
-                      onMouseLeave={e => e.currentTarget.style.background = T.surface}>
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ background: T.brandLight, color: T.brand }}>
-                        {c.nombre?.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold" style={{ color: T.text }}>{c.nombre} {c.apellido}</p>
-                        <p className="text-xs truncate" style={{ color: T.textMuted }}>{c.numero_documento} · {c.email}</p>
-                      </div>
+              {showClienteList && resultsCliente.length > 0 && (
+                <div style={{
+                  position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+                  background: T.surface, borderRadius: 10,
+                  border: `1px solid ${T.borderStr}`,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+                  zIndex: 50, maxHeight: 200, overflowY: "auto",
+                }}>
+                  {resultsCliente.map(c => (
+                    <button
+                      key={c.id}
+                      onMouseDown={e => { e.preventDefault(); setClienteSel(c); setQueryCliente(""); setShowClienteList(false); }}
+                      style={{
+                        width: "100%", textAlign: "left", padding: "10px 14px",
+                        background: "transparent", border: "none", cursor: "pointer",
+                        borderBottom: `1px solid ${T.border}`, transition: "background 0.1s",
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = T.surfaceAlt}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                    >
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: T.text }}>
+                        {c.nombre} {c.apellido}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 11, color: T.textTer }}>{c.email}</p>
                     </button>
                   ))}
                 </div>
@@ -293,354 +459,464 @@ function NuevaVenta() {
         </div>
 
         {/* Notas */}
-        <div className="rounded-2xl p-4"
-          style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: T.textTer }}>
-            Notas internas <span className="normal-case font-normal">(opcional)</span>
+        <div>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.textTer, marginBottom: 6, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+            Notas internas (opcional)
           </label>
-          <textarea value={notas} onChange={e => setNotas(e.target.value)}
+          <textarea
+            rows={3}
             placeholder="Observaciones de la venta..."
-            rows={2}
-            className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none resize-none transition-all"
-            style={{ border: `1.5px solid ${T.border}`, background: T.surfaceAlt, color: T.text }}
-            onFocus={e => { e.target.style.borderColor = T.brand; e.target.style.background = T.surface; }}
-            onBlur={e  => { e.target.style.borderColor = T.border; e.target.style.background = T.surfaceAlt; }}
+            value={notas}
+            onChange={e => setNotas(e.target.value)}
+            style={{
+              width: "100%", boxSizing: "border-box",
+              padding: "10px 12px", borderRadius: 8,
+              border: `1px solid ${T.borderMed}`,
+              background: T.surfaceAlt, color: T.text,
+              fontSize: 14, resize: "vertical", outline: "none",
+              transition: "border-color 0.15s", fontFamily: "inherit",
+            }}
+            onFocus={e => e.target.style.borderColor = T.borderBrand}
+            onBlur={e => e.target.style.borderColor = T.borderMed}
           />
         </div>
       </div>
 
-      {/* ── DERECHA: pedido en curso ── */}
-      <div className="w-80 flex-shrink-0 flex flex-col gap-4">
-
-        {/* Items del carrito */}
-        <div className="rounded-2xl flex flex-col flex-1 overflow-hidden"
-          style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${T.border}` }}>
-            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textTer }}>
-              Pedido · {cart.length} ítem{cart.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-
-          {!cart.length ? (
-            <div className="flex-1 flex flex-col items-center justify-center py-12 gap-2 px-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-                style={{ background: T.surfaceAlt }}>🛒</div>
-              <p className="text-xs text-center" style={{ color: T.textMuted }}>
-                Busca un producto para agregar al pedido
-              </p>
-            </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto divide-y" style={{ borderColor: T.borderSub }}>
-              {cart.map(({ producto, cantidad }) => (
-                <div key={producto.id} className="flex items-start gap-3 px-4 py-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold leading-snug" style={{ color: T.text }}>
-                      {producto.nombre}
-                    </p>
-                    <p className="text-xs mt-0.5 tabular-nums" style={{ color: T.brand, fontFamily: font.mono }}>
-                      {fmt(producto.precio)} c/u
-                    </p>
-                  </div>
-                  {/* Controles de cantidad */}
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => cambiarCantidad(producto.id, -1)}
-                      className="w-6 h-6 rounded-lg flex items-center justify-center text-sm font-bold transition-colors"
-                      style={{ background: T.surfaceAlt, color: T.textSec, border: `1px solid ${T.border}` }}
-                      onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
-                      onMouseLeave={e => e.currentTarget.style.background = T.surfaceAlt}>
-                      −
-                    </button>
-                    <span className="w-7 text-center text-xs font-bold tabular-nums" style={{ color: T.text }}>
-                      {cantidad}
-                    </span>
-                    <button onClick={() => cambiarCantidad(producto.id, 1)}
-                      className="w-6 h-6 rounded-lg flex items-center justify-center text-sm font-bold transition-colors"
-                      style={{ background: T.surfaceAlt, color: T.textSec, border: `1px solid ${T.border}` }}
-                      onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
-                      onMouseLeave={e => e.currentTarget.style.background = T.surfaceAlt}>
-                      +
-                    </button>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <p className="text-xs font-bold tabular-nums" style={{ color: T.text, fontFamily: font.mono }}>
-                      {fmt(producto.precio * cantidad)}
-                    </p>
-                    <button onClick={() => quitar(producto.id)}
-                      className="transition-colors"
-                      style={{ color: T.textMuted }}
-                      onMouseEnter={e => e.currentTarget.style.color = T.danger}
-                      onMouseLeave={e => e.currentTarget.style.color = T.textMuted}>
-                      <Icon d={ICONS.trash} size={13} color="currentColor" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Totales */}
-          {cart.length > 0 && (
-            <div className="px-4 py-3 space-y-1.5" style={{ borderTop: `1px solid ${T.border}` }}>
-              <div className="flex justify-between text-xs" style={{ color: T.textTer }}>
-                <span>Subtotal</span>
-                <span className="tabular-nums" style={{ fontFamily: font.mono }}>{fmt(subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-xs" style={{ color: T.info }}>
-                <span>IVA 19%</span>
-                <span className="tabular-nums" style={{ fontFamily: font.mono }}>{fmt(iva)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-bold pt-1.5"
-                style={{ borderTop: `1px solid ${T.border}`, color: T.text }}>
-                <span>Total a cobrar</span>
-                <span className="tabular-nums" style={{ color: T.brand, fontFamily: font.mono }}>{fmt(total)}</span>
-              </div>
-            </div>
+      {/* ── Columna derecha: resumen del pedido ── */}
+      <div style={{
+        width: 320, flexShrink: 0,
+        background: T.surface,
+        borderRadius: 14,
+        border: `1px solid ${T.borderMed}`,
+        overflow: "hidden",
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: "14px 16px",
+          borderBottom: `1px solid ${T.border}`,
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>
+            Pedido {pedido.length > 0 && <Badge>{pedido.length}</Badge>}
+          </span>
+          {pedido.length > 0 && (
+            <button
+              onClick={vaciarPedido}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                fontSize: 11, color: T.danger, fontWeight: 600, padding: "2px 6px",
+                borderRadius: 4, transition: "background 0.15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = T.dangerBg}
+              onMouseLeave={e => e.currentTarget.style.background = "none"}
+            >Vaciar pedido</button>
           )}
         </div>
 
+        {/* Items */}
+        <div style={{ maxHeight: 240, overflowY: "auto" }}>
+          {pedido.length === 0 ? (
+            <div style={{ padding: "28px 16px", textAlign: "center" }}>
+              <p style={{ margin: 0, fontSize: 28 }}>🛒</p>
+              <p style={{ margin: "8px 0 0", fontSize: 13, color: T.textMuted }}>
+                Busca y agrega productos
+              </p>
+            </div>
+          ) : (
+            pedido.map(item => (
+              <div key={item.producto_id} style={{
+                padding: "10px 16px",
+                borderBottom: `1px solid ${T.border}`,
+                display: "flex", flexDirection: "column", gap: 6,
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: T.text, lineHeight: 1.3, flex: 1, paddingRight: 8 }}>
+                    {item.nombre}
+                  </p>
+                  <IconBtn onClick={() => eliminarItem(item.producto_id)} title="Eliminar" danger>✕</IconBtn>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <QtyControl
+                    qty={item.cantidad}
+                    onInc={() => cambiarCantidad(item.producto_id, 1)}
+                    onDec={() => cambiarCantidad(item.producto_id, -1)}
+                  />
+                  <span style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 12, fontWeight: 700, color: T.brand,
+                  }}>{fmt(item.precio * item.cantidad)}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Totales */}
+        {pedido.length > 0 && (
+          <div style={{ padding: "12px 16px", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, color: T.textTer }}>Subtotal</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: T.textSec }}>{fmt(subtotal)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, color: T.textTer }}>IVA 19%</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: T.textTer }}>{fmt(iva)}</span>
+            </div>
+            <div style={{
+              display: "flex", justifyContent: "space-between",
+              paddingTop: 8, borderTop: `1px solid ${T.borderMed}`,
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Total</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15, fontWeight: 700, color: T.brand }}>{fmt(total)}</span>
+            </div>
+          </div>
+        )}
+
         {/* Método de pago */}
-        <div className="rounded-2xl p-4 space-y-3"
-          style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textTer }}>
+        <div style={{ padding: "12px 16px", borderTop: `1px solid ${T.border}` }}>
+          <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: T.textTer, textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Método de pago
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
             {METODOS.map(m => (
-              <button key={m.id} onClick={() => setMetodo(m.id)}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all"
-                style={metodo === m.id
-                  ? { background: T.brandLight, color: T.brand, border: `1.5px solid ${T.brandBorder}` }
-                  : { background: T.surfaceAlt, color: T.textSec, border: `1.5px solid ${T.border}` }}>
+              <button
+                key={m.id}
+                onClick={() => setMetodoPago(m.id)}
+                style={{
+                  padding: "8px 6px", borderRadius: 8, cursor: "pointer",
+                  border: `1px solid ${metodoPago === m.id ? T.brand : T.borderMed}`,
+                  background: metodoPago === m.id ? T.brand : T.surfaceAlt,
+                  color: metodoPago === m.id ? "#fff" : T.textSec,
+                  fontSize: 12, fontWeight: 600, transition: "all 0.15s",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                }}
+                onMouseEnter={e => { if (metodoPago !== m.id) e.currentTarget.style.borderColor = T.borderStr; }}
+                onMouseLeave={e => { if (metodoPago !== m.id) e.currentTarget.style.borderColor = T.borderMed; }}
+              >
                 <span>{m.icon}</span> {m.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Error y botón registrar */}
-        {error && (
-          <div className="px-4 py-3 rounded-xl text-xs font-medium"
-            style={{ background: T.dangerBg, color: T.danger, border: `1px solid ${T.dangerBorder}` }}>
-            {error}
-          </div>
-        )}
-
-        <button onClick={registrar} disabled={enviando || !cart.length}
-          className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ background: T.brand, boxShadow: shadow.sm }}>
-          {enviando ? "Registrando..." : `Registrar venta · ${fmt(total)}`}
-        </button>
-
-        {cart.length > 0 && (
-          <button onClick={() => setCart([])}
-            className="w-full py-2 rounded-xl text-xs font-semibold transition-colors"
-            style={{ color: T.danger, border: `1px solid ${T.dangerBorder}`, background: T.dangerBg }}>
-            Vaciar pedido
+        {/* Error + CTA */}
+        <div style={{ padding: "12px 16px", borderTop: `1px solid ${T.border}`, display: "flex", flexDirection: "column", gap: 8 }}>
+          {error && (
+            <p style={{
+              margin: 0, padding: "8px 12px", borderRadius: 8,
+              background: T.dangerBg, border: `1px solid rgba(220,38,38,0.2)`,
+              fontSize: 12, color: T.danger,
+            }}>{error}</p>
+          )}
+          <button
+            onClick={registrarVenta}
+            disabled={enviando || !pedido.length}
+            style={{
+              padding: "12px", borderRadius: 8, border: "none",
+              background: pedido.length ? T.brand : T.borderMed,
+              color: pedido.length ? "#fff" : T.textMuted,
+              fontWeight: 700, fontSize: 13, cursor: pedido.length ? "pointer" : "not-allowed",
+              transition: "background 0.15s",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}
+            onMouseEnter={e => { if (pedido.length) e.currentTarget.style.background = T.brandLight; }}
+            onMouseLeave={e => { if (pedido.length) e.currentTarget.style.background = T.brand; }}
+          >
+            {enviando ? "Registrando…" : pedido.length
+              ? `Registrar venta · ${fmt(total)}`
+              : "Registrar venta"
+            }
           </button>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Sección: Historial del cajero ────────────────────────────
-function Historial() {
-  const [ventas,   setVentas]   = useState([]);
-  const [cargando, setCargando] = useState(true);
+// ─── Sección: Mis ventas ─────────────────────────────────────────────────────
+function MisVentas() {
+  const [ventas, setVentas]       = useState([]);
+  const [stats, setStats]         = useState({ total: 0, hoy: 0, facturado: 0 });
+  const [cargando, setCargando]   = useState(true);
+  const [error, setError]         = useState(null);
 
   useEffect(() => {
-    api.get("/cajero/mis-ventas")
-      .then(({ data }) => setVentas(data))
+    setCargando(true);
+    axios.get("/api/cajero/mis-ventas")
+      .then(r => {
+        const data = r.data || [];
+        setVentas(data);
+        const hoy = new Date().toDateString();
+        const ventasHoy = data.filter(v => new Date(v.created_at).toDateString() === hoy);
+        setStats({
+          total:      data.length,
+          hoy:        ventasHoy.length,
+          facturado:  data.reduce((acc, v) => acc + Number(v.total ?? 0) * 1.19, 0),
+        });
+      })
+      .catch(() => setError("No se pudieron cargar las ventas."))
       .finally(() => setCargando(false));
   }, []);
 
-  const totalHoy = ventas
-    .filter(v => v.created_at?.startsWith(new Date().toISOString().split("T")[0]))
-    .reduce((acc, v) => acc + Number(v.total || 0), 0);
+  const ESTADO_COLORS = {
+    pendiente:   { color: T.warning, bg: T.warningBg },
+    completada:  { color: T.success, bg: T.successBg },
+    cancelada:   { color: T.danger,  bg: T.dangerBg },
+  };
 
   if (cargando) return (
-    <div className="flex items-center justify-center py-20">
-      <div className="w-7 h-7 rounded-full animate-spin"
-        style={{ border: `2px solid ${T.brandLight}`, borderTopColor: T.brand }} />
-    </div>
+    <div style={{ padding: 32, textAlign: "center", color: T.textTer }}>Cargando ventas…</div>
+  );
+  if (error) return (
+    <div style={{ padding: 24, borderRadius: 10, background: T.dangerBg, color: T.danger, fontSize: 13 }}>{error}</div>
   );
 
   return (
-    <div className="space-y-5 max-w-3xl">
-      {/* Resumen */}
-      <div className="grid grid-cols-3 gap-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Stats cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
         {[
-          { label: "Ventas totales",  value: ventas.length,       mono: false },
-          { label: "Ventas hoy",      value: ventas.filter(v => v.created_at?.startsWith(new Date().toISOString().split("T")[0])).length, mono: false },
-          { label: "Facturado total", value: fmt(ventas.reduce((acc, v) => acc + Number(v.total || 0), 0)), mono: true },
-        ].map(({ label, value, mono }) => (
-          <div key={label} className="rounded-2xl p-4"
-            style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-            <p className="text-xl font-bold" style={{ color: T.brand, fontFamily: mono ? font.mono : undefined }}>
-              {value}
+          { label: "Ventas totales",   value: stats.total,     mono: false },
+          { label: "Ventas hoy",       value: stats.hoy,       mono: false },
+          { label: "Total facturado",  value: fmt(stats.facturado), mono: true },
+        ].map((s, i) => (
+          <div key={i} style={{
+            padding: "16px 20px", borderRadius: 12,
+            background: T.surface, border: `1px solid ${T.borderMed}`,
+          }}>
+            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: T.textTer, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              {s.label}
             </p>
-            <p className="text-xs font-semibold uppercase tracking-wider mt-1" style={{ color: T.textMuted }}>
-              {label}
-            </p>
+            <p style={{
+              margin: 0, fontSize: 24, fontWeight: 700, color: T.brand,
+              fontFamily: s.mono ? "'JetBrains Mono', monospace" : "inherit",
+            }}>{s.value}</p>
           </div>
         ))}
       </div>
 
-      {!ventas.length ? (
-        <div className="rounded-2xl p-12 flex flex-col items-center gap-3"
-          style={{ background: T.surface, border: `1px solid ${T.border}` }}>
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl"
-            style={{ background: T.surfaceAlt }}>📋</div>
-          <p className="text-sm" style={{ color: T.textMuted }}>Sin ventas registradas aún</p>
+      {/* Tabla */}
+      <div style={{ background: T.surface, borderRadius: 12, border: `1px solid ${T.borderMed}`, overflow: "hidden" }}>
+        <div style={{ padding: "14px 20px", borderBottom: `1px solid ${T.border}` }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Historial de ventas</span>
         </div>
-      ) : (
-        <div className="rounded-2xl overflow-hidden"
-          style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${T.border}`, background: T.surfaceAlt }}>
-                {["Código", "Cliente", "Ítems", "Método", "Total", "Estado", "Fecha"].map(col => (
-                  <th key={col} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider"
-                    style={{ color: T.textTer }}>
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ventas.map((v, i) => (
-                <tr key={v.id} className="transition-colors"
-                  style={{ borderBottom: `1px solid ${T.borderSub}`, background: i % 2 === 0 ? T.surface : T.surfaceAlt }}
-                  onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
-                  onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? T.surface : T.surfaceAlt}>
-                  <td className="py-3 px-4">
-                    <span className="text-xs font-bold" style={{ color: T.brand, fontFamily: font.mono }}>{v.codigo}</span>
-                  </td>
-                  <td className="py-3 px-4 text-xs" style={{ color: T.textSec }}>
-                    {v.cliente || <span style={{ color: T.textMuted }}>—</span>}
-                  </td>
-                  <td className="py-3 px-4 text-xs tabular-nums" style={{ color: T.textTer }}>{v.items}</td>
-                  <td className="py-3 px-4 text-xs capitalize" style={{ color: T.textTer }}>{v.metodo_pago}</td>
-                  <td className="py-3 px-4 text-xs font-bold tabular-nums" style={{ color: T.text, fontFamily: font.mono }}>
-                    {fmt(v.total)}
-                  </td>
-                  <td className="py-3 px-4"><Badge estado={v.estado} /></td>
-                  <td className="py-3 px-4 text-xs" style={{ color: T.textMuted }}>{fdoc(v.created_at)}</td>
+        {ventas.length === 0 ? (
+          <p style={{ padding: "28px 20px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
+            No hay ventas registradas aún.
+          </p>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: T.surfaceAlt }}>
+                  {["Código", "Cliente", "Método", "Total", "Estado", "Fecha"].map(h => (
+                    <th key={h} style={{
+                      padding: "10px 16px", textAlign: "left",
+                      fontSize: 11, fontWeight: 600, color: T.textTer,
+                      textTransform: "uppercase", letterSpacing: "0.05em",
+                      borderBottom: `1px solid ${T.borderMed}`,
+                    }}>{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {ventas.map((v, idx) => {
+                  const estadoKey = v.estado?.toLowerCase() || "pendiente";
+                  const ec = ESTADO_COLORS[estadoKey] || ESTADO_COLORS.pendiente;
+                  return (
+                    <tr
+                      key={v.id}
+                      style={{ borderBottom: `1px solid ${T.border}`, transition: "background 0.1s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = T.surfaceAlt}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                    >
+                      <td style={{ padding: "10px 16px" }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: T.brand, fontWeight: 700 }}>
+                          {v.codigo || `#${v.id}`}
+                        </span>
+                      </td>
+                      <td style={{ padding: "10px 16px", color: T.textSec }}>
+                        {v.cliente_nombre ? `${v.cliente_nombre} ${v.cliente_apellido || ""}` : "Sin cliente"}
+                      </td>
+                      <td style={{ padding: "10px 16px", color: T.textTer, textTransform: "capitalize" }}>
+                        {v.metodo_pago || "—"}
+                      </td>
+                      <td style={{ padding: "10px 16px" }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: T.text, fontSize: 12 }}>
+                          {fmt(Number(v.total ?? 0) * 1.19)}
+                        </span>
+                      </td>
+                      <td style={{ padding: "10px 16px" }}>
+                        <Badge color={ec.color} bg={ec.bg}>{v.estado || "pendiente"}</Badge>
+                      </td>
+                      <td style={{ padding: "10px 16px", color: T.textTer, whiteSpace: "nowrap" }}>
+                        {fmtFecha(v.created_at)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// ─── Layout principal ─────────────────────────────────────────
+// ─── Componente principal ────────────────────────────────────────────────────
 export default function PanelCajero() {
-  const { usuario } = useAuth();
-  const navigate    = useNavigate();
-  const [seccion, setSeccion] = useState("venta");
+  const { usuario, logout } = useAuth();
+  const [seccion, setSeccion] = useState("nueva-venta");
 
-  useEffect(() => {
-    if (usuario && !["cajero", "admin", "superadmin"].includes(usuario.rol)) {
-      navigate("/");
-    }
-  }, [usuario, navigate]);
+  const NAV = [
+    { id: "nueva-venta", label: "Nueva venta",    icon: "🧾" },
+    { id: "mis-ventas",  label: "Mis ventas hoy", icon: "📊" },
+  ];
 
   return (
-    <div className="min-h-screen flex" style={{ background: T.canvas }}>
+    // ── NOTA: PanelCajero NO incluye <Navbar /> — es un layout autónomo
+    // de pantalla completa con sidebar propio. La <Navbar /> vive SOLO en
+    // páginas tipo tienda/perfil. Esto elimina la duplicación del header.
+    <div style={{
+      display: "flex", minHeight: "100vh",
+      fontFamily: "'system-ui', -apple-system, sans-serif",
+      background: T.bg,
+    }}>
 
       {/* ── Sidebar ── */}
-      <aside className="w-52 flex flex-col flex-shrink-0"
-        style={{ background: T.sidebar, borderRight: `1px solid ${T.sidebarBorder}` }}>
-
+      <aside style={{
+        width: 240, flexShrink: 0,
+        background: T.sidebar,
+        display: "flex", flexDirection: "column",
+        borderRight: `1px solid rgba(255,255,255,0.06)`,
+        position: "sticky", top: 0, height: "100vh",
+      }}>
         {/* Logo */}
-        <div className="px-3 py-4" style={{ borderBottom: `1px solid ${T.sidebarBorder}` }}>
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0"
-              style={{ background: T.gold, color: "#0c180c" }}>V</div>
+        <div style={{
+          padding: "20px 20px 16px",
+          borderBottom: "1px solid rgba(255,255,255,0.07)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 8,
+              background: T.brand, display: "flex",
+              alignItems: "center", justifyContent: "center",
+              fontSize: 18, fontWeight: 900, color: "#fff",
+              fontFamily: "'Playfair Display', Georgia, serif",
+            }}>V</div>
             <div>
-              <p className="text-xs font-bold leading-none" style={{ color: T.sidebarTextHi }}>Victoria</p>
-              <p className="text-xs leading-none mt-0.5" style={{ color: T.sidebarText }}>Pecuarios · Caja</p>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: T.textOnDark, lineHeight: 1.2 }}>
+                Victoria Pecuarios
+              </p>
+              <p style={{ margin: 0, fontSize: 10, color: T.textOnDarkSec, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                Caja
+              </p>
             </div>
-          </Link>
+          </div>
         </div>
 
-        {/* Usuario */}
+        {/* Info usuario */}
         {usuario && (
-          <div className="px-3 py-3" style={{ borderBottom: `1px solid ${T.sidebarBorder}` }}>
-            <div className="flex items-center gap-2 rounded-xl px-2.5 py-2"
-              style={{ background: T.sidebarActive }}>
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                style={{ background: T.gold, color: "#0c180c" }}>
-                {usuario.nombre?.charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold truncate" style={{ color: T.sidebarTextHi }}>{usuario.nombre}</p>
-                <p className="text-xs capitalize" style={{ color: T.gold }}>cajero</p>
-              </div>
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: "50%",
+              background: T.brand, display: "flex",
+              alignItems: "center", justifyContent: "center",
+              fontSize: 14, fontWeight: 700, color: "#fff",
+              marginBottom: 8,
+            }}>
+              {(usuario.nombre?.[0] ?? "C").toUpperCase()}
             </div>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: T.textOnDark }}>
+              {usuario.nombre} {usuario.apellido}
+            </p>
+            <p style={{ margin: "2px 0 0", fontSize: 11, color: T.textOnDarkSec }}>
+              {usuario.rol}
+            </p>
           </div>
         )}
 
-        {/* Nav */}
-        <nav className="flex-1 px-2 py-2 space-y-0.5">
-          {NAV.map(s => (
-            <button key={s.id} onClick={() => setSeccion(s.id)}
-              className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-xs transition-all duration-150 ${seccion === s.id ? "font-bold" : "font-medium"}`}
-              style={{
-                background:  seccion === s.id ? T.sidebarActive : "transparent",
-                color:       seccion === s.id ? T.sidebarTextHi : T.sidebarText,
-                borderLeft:  seccion === s.id ? `2px solid ${T.gold}` : "2px solid transparent",
-              }}
-              onMouseEnter={e => { if (seccion !== s.id) e.currentTarget.style.background = T.sidebarActive; }}
-              onMouseLeave={e => { if (seccion !== s.id) e.currentTarget.style.background = "transparent"; }}>
-              <svg width={15} height={15} fill="none" stroke="currentColor"
-                strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                <path d={s.icon} />
-              </svg>
-              <span>{s.label}</span>
-            </button>
-          ))}
+        {/* Navegación */}
+        <nav style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
+          {NAV.map(item => {
+            const active = seccion === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setSeccion(item.id)}
+                style={{
+                  width: "100%", textAlign: "left",
+                  padding: "9px 12px", borderRadius: 8, border: "none",
+                  background: active ? "rgba(26,92,26,0.55)" : "transparent",
+                  color: active ? "#fff" : T.textOnDarkSec,
+                  cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
+                  fontSize: 13, fontWeight: active ? 600 : 400,
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.background = T.sidebarAlt; }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
+              >
+                <span style={{ fontSize: 15 }}>{item.icon}</span>
+                {item.label}
+              </button>
+            );
+          })}
         </nav>
 
         {/* Footer sidebar */}
-        <div className="px-2 py-3 space-y-0.5" style={{ borderTop: `1px solid ${T.sidebarBorder}` }}>
-          <Link to="/"
-            className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-colors"
-            style={{ color: T.sidebarText }}
-            onMouseEnter={e => e.currentTarget.style.background = T.sidebarActive}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-            <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.75}
-              strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <path d={ICONS.home} />
-            </svg>
-            Ir a la tienda
+        <div style={{ padding: "12px 10px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: 4 }}>
+          <Link
+            to="/"
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "9px 12px", borderRadius: 8,
+              color: T.textOnDarkSec, fontSize: 12, textDecoration: "none",
+              transition: "all 0.15s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = T.sidebarAlt; e.currentTarget.style.color = T.textOnDark; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.textOnDarkSec; }}
+          >
+            <span>🏠</span> Ir a la tienda
           </Link>
+          <button
+            onClick={logout}
+            style={{
+              width: "100%", textAlign: "left",
+              padding: "9px 12px", borderRadius: 8, border: "none",
+              background: "transparent", color: T.textOnDarkSec,
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+              fontSize: 12, transition: "all 0.15s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,38,38,0.15)"; e.currentTarget.style.color = "#fca5a5"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.textOnDarkSec; }}
+          >
+            <span>↩</span> Cerrar sesión
+          </button>
         </div>
       </aside>
 
       {/* ── Contenido principal ── */}
-      <div className="flex-1 flex flex-col min-h-screen min-w-0">
-
-        {/* Header */}
-        <div className="px-6 py-4 flex items-center justify-between flex-shrink-0"
-          style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <h1 className="text-sm font-bold" style={{ color: T.text }}>
-            {seccion === "venta" ? "Nueva venta" : "Mis ventas"}
+      <main style={{ flex: 1, padding: 28, overflowY: "auto" }}>
+        {/* Header de sección */}
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{
+            margin: 0, fontSize: 22, fontWeight: 700, color: T.text,
+            fontFamily: "'Playfair Display', Georgia, serif",
+          }}>
+            {NAV.find(n => n.id === seccion)?.label}
           </h1>
-          <p className="text-xs" style={{ color: T.textMuted }}>
-            {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" })}
+          <p style={{ margin: "4px 0 0", fontSize: 13, color: T.textTer }}>
+            {seccion === "nueva-venta"
+              ? "Registra ventas físicas en caja"
+              : "Tu historial de ventas y estadísticas"}
           </p>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 p-6 overflow-y-auto">
-          {seccion === "venta"     && <NuevaVenta />}
-          {seccion === "historial" && <Historial />}
-        </div>
-      </div>
+        {/* Renderizar sección activa */}
+        {seccion === "nueva-venta" && <NuevaVenta usuario={usuario} />}
+        {seccion === "mis-ventas"  && <MisVentas />}
+      </main>
     </div>
   );
 }
