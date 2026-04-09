@@ -29,11 +29,12 @@ export function AuthProvider({ children }) {
     setUsuario(null);
   };
 
-  const esAdmin = usuario?.rol === "admin" || usuario?.rol === "superadmin";
+  const esAdmin     = usuario?.rol === "admin" || usuario?.rol === "superadmin";
   const esSuperAdmin = usuario?.rol === "superadmin";
+  const esCajero    = usuario?.rol === "cajero";
 
   return (
-    <AuthContext.Provider value={{ usuario, login, logout, esAdmin, esSuperAdmin, cargando }}>
+    <AuthContext.Provider value={{ usuario, login, logout, esAdmin, esSuperAdmin, esCajero, cargando }}>
       {children}
     </AuthContext.Provider>
   );

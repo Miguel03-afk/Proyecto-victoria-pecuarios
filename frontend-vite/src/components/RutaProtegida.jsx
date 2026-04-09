@@ -15,3 +15,11 @@ export function RutaAdmin({ children }) {
   if (!esAdmin) return <Navigate to="/" replace />;
   return children;
 }
+
+export function RutaCajero({ children }) {
+  const { usuario, esCajero, esAdmin, cargando } = useAuth();
+  if (cargando) return null;
+  if (!usuario) return <Navigate to="/login" replace />;
+  if (!esCajero && !esAdmin) return <Navigate to="/" replace />;
+  return children;
+}

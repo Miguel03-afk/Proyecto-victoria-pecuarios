@@ -157,7 +157,7 @@ function ResumenPedido({ items, totalPrecio, accion, textoBtn, disabled, cargand
           { label: "Subtotal", val: fmt(subtotal) },
           { label: `IVA (${Math.round(IVA * 100)}%)`, val: fmt(iva), nota: "incluido" },
           {
-            label: "Envío", val: envioGratis ? "🎉 Gratis" : fmt(costoEnvio),
+            label: "Envío", val: envioGratis ? "Gratis" : fmt(costoEnvio),
             verde: envioGratis,
           },
         ].map(r => (
@@ -219,13 +219,14 @@ function ResumenPedido({ items, totalPrecio, accion, textoBtn, disabled, cargand
       )}
 
       {onVolver && (
+        // FIX DISEÑO: sin flecha "←" en botón de texto plano
         <button
           onClick={onVolver}
           style={{ width: "100%", marginTop: 10, padding: "9px 0", background: "none", border: "none", fontSize: 12, color: C.textMuted, cursor: "pointer", transition: "color 0.15s" }}
           onMouseEnter={e => { e.currentTarget.style.color = C.text; }}
           onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; }}
         >
-          ← Volver
+          Volver
         </button>
       )}
     </div>
@@ -239,7 +240,6 @@ function PasoCarrito({ onContinuar }) {
   const { items, quitar, cambiarCantidad, totalItems, totalPrecio, agregarAlCarrito } = useCarrito();
   const navigate = useNavigate();
 
-  /* Guardados para más tarde — sin bugs */
   const [guardados, setGuardados] = useState(() => {
     try { return JSON.parse(localStorage.getItem("guardados_later") || "[]"); }
     catch { return []; }
@@ -285,7 +285,7 @@ function PasoCarrito({ onContinuar }) {
             const noDisp = item.activo === false || item.stock === 0;
             return (
               <div key={item.id} style={{
-                background: C.surface, border: `1px solid ${noDisp ? C.dangerBorder : C.border}`,
+                border: `1px solid ${noDisp ? C.dangerBorder : C.border}`,
                 borderRadius: 16, padding: "16px",
                 display: "flex", gap: 14,
                 background: noDisp ? C.dangerBg : C.surface,
@@ -351,18 +351,18 @@ function PasoCarrito({ onContinuar }) {
                     </div>
                   </div>
 
-                  {/* Acciones */}
+                  {/* Acciones — FIX DISEÑO: sin íconos-flecha en links de texto */}
                   <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
                     <button onClick={() => quitar(item.id)} style={{ fontSize: 12, color: C.danger, background: "none", border: "none", cursor: "pointer", fontWeight: 500, display: "flex", alignItems: "center", gap: 4, padding: 0, transition: "opacity 0.15s" }}
                       onMouseEnter={e => { e.currentTarget.style.opacity = "0.7"; }}
                       onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}>
-                      🗑 Eliminar
+                      Eliminar
                     </button>
-                    <span style={{ color: C.border }}>|</span>
+                    <span style={{ color: C.border }}>·</span>
                     <button onClick={() => guardarParaDespues(item)} style={{ fontSize: 12, color: C.textTer, background: "none", border: "none", cursor: "pointer", fontWeight: 500, padding: 0, transition: "color 0.15s" }}
                       onMouseEnter={e => { e.currentTarget.style.color = C.brand; }}
                       onMouseLeave={e => { e.currentTarget.style.color = C.textTer; }}>
-                      🔖 Guardar para más tarde
+                      Guardar para más tarde
                     </button>
                   </div>
                 </div>
@@ -375,7 +375,7 @@ function PasoCarrito({ onContinuar }) {
         {guardados.length > 0 && (
           <div style={{ marginTop: 28 }}>
             <h3 style={{ margin: "0 0 14px", fontSize: 14, fontWeight: 700, color: C.textSec, display: "flex", alignItems: "center", gap: 8 }}>
-              🔖 Guardados para más tarde
+              Guardados para más tarde
               <span style={{ fontSize: 11, fontWeight: 400, color: C.textMuted }}>({guardados.length})</span>
             </h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -406,13 +406,14 @@ function PasoCarrito({ onContinuar }) {
           items={items}
           totalPrecio={totalPrecio}
           accion={onContinuar}
-          textoBtn="Continuar con el envío →"
+          textoBtn="Continuar con el envío"
           disabled={items.length === 0 || items.some(i => i.activo === false || i.stock === 0)}
         />
+        {/* FIX DISEÑO: "Seguir comprando" sin flecha */}
         <Link to="/tienda" style={{ display: "block", textAlign: "center", marginTop: 12, fontSize: 12, color: C.textMuted, textDecoration: "none" }}
           onMouseEnter={e => { e.target.style.color = C.brand; }}
           onMouseLeave={e => { e.target.style.color = C.textMuted; }}>
-          ← Seguir comprando
+          Seguir comprando
         </Link>
       </div>
     </div>
@@ -427,7 +428,6 @@ function PasoEnvio({ onContinuar, onVolver, datosEnvio, setDatosEnvio }) {
   const { usuario } = useAuth();
   const set = (k) => (e) => setDatosEnvio({ ...datosEnvio, [k]: e.target.value });
 
-  /* Pre-llenar con datos del usuario autenticado */
   useEffect(() => {
     if (usuario && !datosEnvio.nombre) {
       setDatosEnvio(p => ({
@@ -468,7 +468,7 @@ function PasoEnvio({ onContinuar, onVolver, datosEnvio, setDatosEnvio }) {
           items={items}
           totalPrecio={totalPrecio}
           accion={onContinuar}
-          textoBtn="Continuar al pago →"
+          textoBtn="Continuar al pago"
           disabled={!valido}
           onVolver={onVolver}
         />
@@ -478,7 +478,9 @@ function PasoEnvio({ onContinuar, onVolver, datosEnvio, setDatosEnvio }) {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   PASO 3 — Pago + llamada real al backend
+   PASO 3 — Pago
+   FIX CRÍTICO: cambiado de /admin/facturas → /cajero/facturas
+   y el payload ahora usa { usuario_id, items, metodo_pago, notas }
    ════════════════════════════════════════════════════════════════ */
 const METODOS = [
   { id: "efectivo",      label: "Efectivo / Contraentrega", icon: "💵", desc: "Paga al recibir tu pedido" },
@@ -495,13 +497,13 @@ function PasoPago({ onVolver, datosEnvio }) {
   const [metodo,     setMetodo]     = useState("efectivo");
   const [procesando, setProcesando] = useState(false);
   const [error,      setError]      = useState("");
-  const [orden,      setOrden]      = useState(null); // { codigo, id }
+  const [orden,      setOrden]      = useState(null);
 
   const envioGratis = totalPrecio >= 80000;
   const costoEnvio  = envioGratis ? 0 : 8900;
   const total       = totalPrecio + costoEnvio;
 
-  /* ── Checkout real al backend ──────────────────────────────── */
+  /* ── FIX: POST /api/cajero/facturas (era /admin/facturas) ── */
   const handleConfirmar = async () => {
     if (!usuario) {
       navigate("/login", { state: { desde: "/carrito" } });
@@ -510,25 +512,22 @@ function PasoPago({ onVolver, datosEnvio }) {
     setError(""); setProcesando(true);
 
     try {
-      // Construir payload para POST /api/admin/facturas
-      const productos = items.map(item => ({
-        producto_id: item.id,
-        cantidad:    item.cantidad,
-        precio_unit: item.precio,
-      }));
-
-      const { data } = await api.post("/admin/facturas", {
-        cliente_id:       usuario.id,
-        productos,
-        metodo_pago:      metodo,
-        direccion_entrega: `${datosEnvio.direccion}${datosEnvio.departamento ? ", " + datosEnvio.departamento : ""}`,
-        ciudad_entrega:   datosEnvio.ciudad,
-        notas:            datosEnvio.notas || undefined,
+      // Payload que acepta cajero.routes.js POST /facturas
+      const { data } = await api.post("/cajero/facturas", {
+        usuario_id:  usuario.id,           // cliente que compra en línea
+        items: items.map(item => ({
+          producto_id: item.producto_id || item.id,
+          cantidad:    item.cantidad,
+        })),
+        metodo_pago: metodo,
+        notas: [
+          datosEnvio.direccion && `Enviar a: ${datosEnvio.direccion}, ${datosEnvio.ciudad}`,
+          datosEnvio.notas,
+        ].filter(Boolean).join(" | ") || null,
       });
 
-      // Éxito — vaciar carrito y mostrar confirmación
       vaciar();
-      setOrden({ codigo: data.codigo, id: data.id });
+      setOrden({ codigo: data.codigo, id: data.orden_id });
     } catch (err) {
       const msg = err.response?.data?.error || "Error al procesar el pedido. Intenta de nuevo.";
       setError(msg);
@@ -551,7 +550,6 @@ function PasoPago({ onVolver, datosEnvio }) {
           Tu pedido fue registrado exitosamente. Nuestro equipo lo procesará pronto.
         </p>
 
-        {/* Código de orden */}
         <div style={{ background: C.brandLight, border: `1px solid ${C.brandBorder}`, borderRadius: 12, padding: "14px 20px", marginBottom: 24 }}>
           <p style={{ margin: "0 0 4px", fontSize: 11, color: C.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Código de pedido</p>
           <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.brand, fontFamily: "'JetBrains Mono',monospace", letterSpacing: 1 }}>
@@ -588,7 +586,7 @@ function PasoPago({ onVolver, datosEnvio }) {
               <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: C.warning }}>Debes iniciar sesión para pagar</p>
               <p style={{ margin: "0 0 10px", fontSize: 12, color: "#92400e" }}>Tu carrito se guardará automáticamente.</p>
               <button onClick={() => navigate("/login", { state: { desde: "/carrito" } })} style={{ fontSize: 12, fontWeight: 700, padding: "6px 14px", borderRadius: 8, border: "none", background: C.warning, color: "#fff", cursor: "pointer" }}>
-                Iniciar sesión →
+                Iniciar sesión
               </button>
             </div>
           </div>
@@ -632,6 +630,7 @@ function PasoPago({ onVolver, datosEnvio }) {
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>📍 Dirección de entrega</h4>
+            {/* FIX DISEÑO: "Cambiar" sin flecha */}
             <button onClick={onVolver} style={{ fontSize: 12, color: C.brand, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Cambiar</button>
           </div>
           <p style={{ margin: "0 0 2px", fontSize: 13, color: C.textSec }}>{datosEnvio.nombre} {datosEnvio.apellido}</p>
@@ -646,7 +645,7 @@ function PasoPago({ onVolver, datosEnvio }) {
           items={items}
           totalPrecio={totalPrecio}
           accion={handleConfirmar}
-          textoBtn={usuario ? "✓ Confirmar pedido" : "Inicia sesión para pagar"}
+          textoBtn={usuario ? "Confirmar pedido" : "Inicia sesión para pagar"}
           disabled={!usuario}
           cargando={procesando}
           onVolver={onVolver}
@@ -673,11 +672,8 @@ export default function Carrito() {
         @keyframes spin    { to { transform: rotate(360deg); } }
         @keyframes fadeUp  { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
         * { box-sizing: border-box; }
-
-        /* Layout responsive del grid de checkout */
         .carrito-grid { grid-template-columns: 1fr; }
         .carrito-resumen { width: 100%; }
-
         @media(min-width: 1024px) {
           .carrito-grid       { grid-template-columns: 1fr 380px !important; }
           .carrito-resumen    { position: relative; }
@@ -695,7 +691,6 @@ export default function Carrito() {
         </div>
 
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 16px 64px" }}>
-          {/* Header */}
           <div style={{ marginBottom: 8 }}>
             <h1 style={{ margin: "0 0 4px", fontSize: "clamp(22px,3vw,30px)", fontWeight: 800, color: C.text, fontFamily: "'Playfair Display',serif", fontStyle: "italic" }}>
               {paso === 0 ? "Tu carrito" : paso === 1 ? "Datos de envío" : "Confirmar pedido"}
@@ -704,11 +699,8 @@ export default function Carrito() {
 
           <Stepper paso={paso}/>
 
-          {/* Contenido del paso */}
           <div style={{ animation: "fadeUp 0.3s ease" }} key={paso}>
-            {paso === 0 && (
-              <PasoCarrito onContinuar={() => setPaso(1)}/>
-            )}
+            {paso === 0 && <PasoCarrito onContinuar={() => setPaso(1)}/>}
             {paso === 1 && (
               <PasoEnvio
                 onContinuar={() => setPaso(2)}

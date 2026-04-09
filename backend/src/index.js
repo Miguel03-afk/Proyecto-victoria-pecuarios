@@ -10,6 +10,7 @@ import reportesRoutes from './routes/reportes.routes.js';
 import citasRouter          from "./routes/citas.routes.js";
 import veterinarioRouter    from "./routes/veterinario.routes.js";
 import adminVetsRouter      from "./routes/admin.veterinarios.routes.js";
+import cajeroRouter         from "./routes/cajero.routes.js";
 
 
 dotenv.config();
@@ -24,6 +25,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/citas",                  citasRouter);
 app.use("/api/veterinario",            veterinarioRouter);
 app.use("/api/admin/veterinarios",     adminVetsRouter);
+app.use("/api/cajero",                 cajeroRouter);
 app.use("/api/auth",       authRoutes);
 app.use("/api/productos",  productosRoutes);
 app.use("/api/categorias", categoriasRoutes);
