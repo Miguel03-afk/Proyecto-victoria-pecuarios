@@ -1,10 +1,9 @@
 // src/pages/Carrito.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCarrito } from "../context/CarritoContext";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
-import Navbar from "../components/Navbar";
 
 /* ─── Tokens (alineados con el sistema del proyecto) ─────────── */
 const C = {
@@ -233,6 +232,43 @@ function ResumenPedido({ items, totalPrecio, accion, textoBtn, disabled, cargand
   );
 }
 
+
+/* ─── Input editable de cantidad ─────────────────────────────────────────── */
+function CantidadInput({ cantidad, stock, onChange }) {
+  const [editando, setEditando] = useState(false);
+  const [val, setVal]           = useState("");
+  const ref                     = useRef(null);
+
+  const confirmar = () => {
+    const v = parseInt(val, 10);
+    setEditando(false);
+    if (!isNaN(v) && v >= 0) onChange(Math.min(v, stock));
+  };
+
+  return editando ? (
+    <input
+      ref={ref}
+      type="text"
+      value={val}
+      onChange={e => { const v = e.target.value; if (!/^\d*$/.test(v)) return; const n = parseInt(v, 10); if (!isNaN(n) && n > stock) return; setVal(v); }}
+      onBlur={confirmar}
+      onKeyDown={e => { if (e.key === "Enter") confirmar(); if (e.key === "Escape") setEditando(false); }}
+      style={{
+        fontSize: 14, fontWeight: 800, color: C.text,
+        width: 36, textAlign: "center", border: "none",
+        background: "transparent", outline: "none",
+        fontFamily: "monospace", padding: 0,
+      }}
+    />
+  ) : (
+    <span
+      onClick={() => { setVal(String(cantidad)); setEditando(true); setTimeout(() => ref.current?.select(), 0); }}
+      title="Toca para editar"
+      style={{ fontSize: 14, fontWeight: 800, color: C.text, minWidth: 24, textAlign: "center", fontFamily: "monospace", cursor: "text" }}
+    >{cantidad}</span>
+  );
+}
+
 /* ════════════════════════════════════════════════════════════════
    PASO 1 — Carrito
    ════════════════════════════════════════════════════════════════ */
@@ -334,7 +370,14 @@ function PasoCarrito({ onContinuar }) {
                       <button onClick={() => cambiarCantidad(item.id, -1)} style={{ width: 28, height: 28, borderRadius: 7, border: "none", background: "transparent", cursor: "pointer", color: C.brand, fontSize: 18, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s" }}
                         onMouseEnter={e => { e.currentTarget.style.background = C.brandLight; }}
                         onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>−</button>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: C.text, minWidth: 24, textAlign: "center", fontFamily: "monospace" }}>{item.cantidad}</span>
+                      <CantidadInput
+                        cantidad={item.cantidad}
+                        stock={item.stock}
+                        onChange={nueva => {
+                          if (nueva === 0) quitar(item.id);
+                          else cambiarCantidad(item.id, nueva - item.cantidad);
+                        }}
+                      />
                       <button onClick={() => cambiarCantidad(item.id, +1)} disabled={item.cantidad >= item.stock} style={{ width: 28, height: 28, borderRadius: 7, border: "none", background: "transparent", cursor: "pointer", color: C.brand, fontSize: 18, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.15s", opacity: item.cantidad >= item.stock ? 0.3 : 1 }}
                         onMouseEnter={e => { if (item.cantidad < item.stock) e.currentTarget.style.background = C.brandLight; }}
                         onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>+</button>
@@ -681,7 +724,6 @@ export default function Carrito() {
       `}</style>
 
       <div style={{ minHeight: "100vh", background: C.canvas }}>
-        <Navbar/>
 
         {/* Banner */}
         <div style={{ background: C.brandDark, padding: "9px 0", textAlign: "center" }}>

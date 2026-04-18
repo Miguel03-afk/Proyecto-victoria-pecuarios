@@ -8,7 +8,6 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useCarrito } from "../context/CarritoContext";
 import { useAuth } from "../context/AuthContext";
-import Navbar from "../components/Navbar";
 
 const IVA_PCT = 19;
 
@@ -269,6 +268,9 @@ function PanelCompra({ producto, variantes }) {
 
   const [varIdx, setVarIdx]     = useState(0);
   const [cantidad, setCantidad] = useState(1);
+  const [editandoCantidad, setEditandoCantidad] = useState(false);
+  const [inputCantidad, setInputCantidad] = useState("");
+  const cantidadRef = useRef(null);
   const [agregado, setAgregado] = useState(false);
   const [error, setError]       = useState("");
 
@@ -404,7 +406,41 @@ function PanelCompra({ producto, variantes }) {
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
               −
             </button>
-            <span className="w-10 text-center font-bold tabular-nums" style={{ color: C.text }}>{cantidad}</span>
+            {editandoCantidad ? (
+              <input
+                ref={cantidadRef}
+                type="text"
+                value={inputCantidad}
+                onChange={e => { const v = e.target.value; if (!/^\d*$/.test(v)) return; const n = parseInt(v, 10); if (!isNaN(n) && n > stock) return; setInputCantidad(v); }}
+                onBlur={() => {
+                  const v = parseInt(inputCantidad, 10);
+                  setEditandoCantidad(false);
+                  if (!isNaN(v) && v >= 1) setCantidad(Math.min(v, stock));
+                  else setInputCantidad(String(cantidad));
+                }}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    const v = parseInt(inputCantidad, 10);
+                    setEditandoCantidad(false);
+                    if (!isNaN(v) && v >= 1) setCantidad(Math.min(v, stock));
+                  }
+                  if (e.key === "Escape") setEditandoCantidad(false);
+                }}
+                style={{
+                  width: 40, border: "none", background: "transparent",
+                  textAlign: "center", fontSize: 14, fontWeight: 700,
+                  color: C.text, outline: "none", padding: 0,
+                  fontFamily: "monospace",
+                }}
+              />
+            ) : (
+              <span
+                className="w-10 text-center font-bold tabular-nums"
+                style={{ color: C.text, cursor: "text" }}
+                title="Toca para editar"
+                onClick={() => { setInputCantidad(String(cantidad)); setEditandoCantidad(true); setTimeout(() => cantidadRef.current?.select(), 0); }}
+              >{cantidad}</span>
+            )}
             <button onClick={() => setCantidad(c => Math.min(stock, c + 1))}
               disabled={cantidad >= stock}
               className="w-10 h-10 flex items-center justify-center text-lg font-bold transition-colors disabled:opacity-30"
@@ -652,7 +688,6 @@ export default function Producto() {
 
   if (cargando) return (
     <div className="min-h-screen" style={{ background: C.canvas }}>
-      <Navbar />
       <div className="py-2.5" style={{ background: C.brand }}>
         <p className="text-center text-xs font-semibold text-white/80">
           🚚 Envíos gratis a partir de <span className="text-lime-300 font-bold">$80.000</span>
@@ -664,7 +699,6 @@ export default function Producto() {
 
   if (error) return (
     <div className="min-h-screen" style={{ background: C.canvas }}>
-      <Navbar />
       <div className="flex flex-col items-center justify-center gap-5 py-32">
         <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl"
           style={{ background: C.dangerBg }}>⚠️</div>
@@ -685,7 +719,6 @@ export default function Producto() {
 
   return (
     <div className="min-h-screen" style={{ background: C.canvas }}>
-      <Navbar />
 
       {/* Barra superior */}
       <div className="py-2.5" style={{ background: C.brand }}>

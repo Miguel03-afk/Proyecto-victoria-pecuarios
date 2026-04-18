@@ -11,9 +11,17 @@ const router = Router();
 // ── GET / — catálogo paginado con filtros ─────────────────────
 router.get("/", async (req, res) => {
   try {
-    const { buscar = "", categoria = "", pagina = 1, limite = 12 } = req.query;
+    const { buscar = "", categoria = "", categorias = "", pagina = 1, limite = 12 } = req.query;
     const offset = (Number(pagina) - 1) * Number(limite);
- 
+
+    // Multi-categoría: ?categorias=1,3,5  |  una sola: ?categoria=2
+    const idsMulti = categorias
+      ? categorias.split(",").map(Number).filter(n => !isNaN(n) && n > 0)
+      : [];
+    const idSingle = categoria && !isNaN(Number(categoria)) && Number(categoria) > 0
+      ? Number(categoria) : null;
+    const catIds = idsMulti.length > 0 ? idsMulti : (idSingle ? [idSingle] : []);
+
     let q = `
       SELECT p.id, p.nombre, p.slug, p.descripcion_corta,
              p.precio, p.precio_antes, p.precio_costo,
@@ -24,22 +32,28 @@ router.get("/", async (req, res) => {
       JOIN categorias c ON p.categoria_id = c.id
       WHERE p.activo = 1`;
     const params = [];
-    if (buscar)    { q += " AND p.nombre LIKE ?"; params.push(`%${buscar}%`); }
-    if (categoria) { q += " AND c.slug = ?";      params.push(categoria); }
- 
-    const countQ = `SELECT COUNT(*) AS total FROM productos p
-                    JOIN categorias c ON p.categoria_id = c.id
-                    WHERE p.activo = 1
-                    ${buscar    ? " AND p.nombre LIKE ?" : ""}
-                    ${categoria ? " AND c.slug = ?"      : ""}`;
-    const countParams = [
-      ...(buscar    ? [`%${buscar}%`] : []),
-      ...(categoria ? [categoria]     : []),
-    ];
- 
+
+    if (buscar) { q += " AND p.nombre LIKE ?"; params.push(`%${buscar}%`); }
+    if (catIds.length === 1) {
+      q += " AND p.categoria_id = ?"; params.push(catIds[0]);
+    } else if (catIds.length > 1) {
+      q += ` AND p.categoria_id IN (${catIds.map(() => "?").join(",")})`; params.push(...catIds);
+    }
+
+    let countQ = `SELECT COUNT(*) AS total FROM productos p
+                  JOIN categorias c ON p.categoria_id = c.id
+                  WHERE p.activo = 1`;
+    const countParams = [];
+    if (buscar) { countQ += " AND p.nombre LIKE ?"; countParams.push(`%${buscar}%`); }
+    if (catIds.length === 1) {
+      countQ += " AND p.categoria_id = ?"; countParams.push(catIds[0]);
+    } else if (catIds.length > 1) {
+      countQ += ` AND p.categoria_id IN (${catIds.map(() => "?").join(",")})`; countParams.push(...catIds);
+    }
+
     q += " ORDER BY p.destacado DESC, p.id DESC LIMIT ? OFFSET ?";
     params.push(Number(limite), offset);
- 
+
     const [productos] = await db.query(q, params);
     const [[{ total }]] = await db.query(countQ, countParams);
     res.json({ productos, total });
@@ -236,4 +250,3 @@ router.delete("/:id", verificarToken, soloAdmin, async (req, res) => {
 });
  
 export default router;
- 

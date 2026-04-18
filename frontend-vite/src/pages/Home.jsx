@@ -3,7 +3,6 @@
 // Navbar única — el hero tiene su propio buscador contextual, no duplica el de Navbar
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import Navbar from "../components/Navbar";
 import { useCarrito } from "../context/CarritoContext";
 import api from "../services/api";
 
@@ -71,7 +70,7 @@ function CatChip({ cat, activa, onClick }) {
   const cfg = getCatCfg(cat.nombre);
   return (
     <button
-      onClick={() => onClick(activa ? null : cat.id)}
+      onClick={() => onClick(cat.id)}
       style={{
         display: "inline-flex", alignItems: "center", gap: 5,
         padding: "5px 13px", borderRadius: 999, flexShrink: 0,
@@ -293,10 +292,11 @@ export default function Home() {
   const [busquedaInput,setBusquedaInput]= useState(searchParams.get("buscar") || "");
   const debounceRef = useRef(null);
 
-  const categoriaActiva = searchParams.get("categoria") ? Number(searchParams.get("categoria")) : null;
-  const busqueda        = searchParams.get("buscar") || "";
-  const pagina          = Number(searchParams.get("pagina") || 1);
-  const catActivaNombre = categoriaActiva ? categorias.find(c => c.id === categoriaActiva)?.nombre : null;
+  // Multi-filtro: array de IDs en ?categorias=1,3,5
+  const categoriasActivas = (searchParams.get("categorias") || "")
+    .split(",").filter(Boolean).map(Number);
+  const busqueda = searchParams.get("buscar") || "";
+  const pagina   = Number(searchParams.get("pagina") || 1);
 
   useEffect(() => {
     api.get("/categorias").then(r => setCategorias(r.data || [])).catch(() => {});
@@ -305,8 +305,9 @@ export default function Home() {
   useEffect(() => {
     setCargando(true);
     const params = { pagina, limite: 20 };
-    if (busqueda)        params.buscar    = busqueda;
-    if (categoriaActiva) params.categoria = categoriaActiva;
+    if (busqueda) params.buscar = busqueda;
+    if (categoriasActivas.length === 1)    params.categoria  = categoriasActivas[0];
+    else if (categoriasActivas.length > 1) params.categorias = categoriasActivas.join(",");
 
     api.get("/productos", { params })
       .then(r => {
@@ -321,7 +322,7 @@ export default function Home() {
       })
       .catch(() => { setProductos([]); setTotalItems(0); setTotalPaginas(1); })
       .finally(() => setCargando(false));
-  }, [busqueda, categoriaActiva, pagina]);
+  }, [busqueda, searchParams.get("categorias"), pagina]);
 
   const handleBusqueda = (v) => {
     setBusquedaInput(v);
@@ -336,17 +337,20 @@ export default function Home() {
     }, 400);
   };
 
-  const cambiarCategoria = (id) => {
+  const toggleCategoria = (id) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      if (!id) next.delete("categoria"); else next.set("categoria", String(id));
+      const actuales = (prev.get("categorias") || "").split(",").filter(Boolean).map(Number);
+      const nuevas = actuales.includes(id) ? actuales.filter(x => x !== id) : [...actuales, id];
+      if (nuevas.length === 0) next.delete("categorias");
+      else next.set("categorias", nuevas.join(","));
       next.delete("pagina");
       return next;
     });
   };
 
   const limpiarFiltros = () => { setBusquedaInput(""); setSearchParams({}); };
-  const hayFiltros     = busqueda || categoriaActiva;
+  const hayFiltros = busqueda || categoriasActivas.length > 0;
 
   const irPagina = (n) => setSearchParams(prev => {
     const next = new URLSearchParams(prev);
@@ -371,8 +375,6 @@ export default function Home() {
 
       <div style={{ minHeight:"100vh", background:T.canvas }}>
 
-        {/* ── Navbar — única instancia ─────────────────────────────────── */}
-        <Navbar />
 
         {/* ── Banner envío gratis — superficie brandDark, texto secundario ── */}
         <div style={{ background: T.brandDark, textAlign:"center", padding:"8px 16px", borderBottom:`1px solid rgba(255,255,255,0.06)` }}>
@@ -456,25 +458,24 @@ export default function Home() {
         {/* ── Contenido principal ───────────────────────────────────────── */}
         <div style={{ maxWidth:1280, margin:"0 auto", padding:"18px 16px 64px" }}>
 
-          {/* Chips de categoría — scroll horizontal, no wrap */}
-          <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:6, marginBottom:18, scrollbarWidth:"none" }}>
-            {/* "Todos" — tratamiento especial brand */}
+          {/* Chips de categoría — flex-wrap para que quepan todos sin scroll */}
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:18 }}>
             <button
-              onClick={() => cambiarCategoria(null)}
+              onClick={limpiarFiltros}
               style={{
                 display:"inline-flex", alignItems:"center", gap:5,
-                padding:"5px 14px", borderRadius:999, flexShrink:0,
-                border:`1px solid ${!categoriaActiva ? T.brand : T.border}`,
-                background: !categoriaActiva ? T.brandLight : T.surface,
-                color: !categoriaActiva ? T.brand : T.textSec,
-                fontSize:12, fontWeight: !categoriaActiva ? 600 : 400,
+                padding:"5px 14px", borderRadius:999,
+                border:`1px solid ${categoriasActivas.length===0 && !busqueda ? T.brand : T.border}`,
+                background: categoriasActivas.length===0 && !busqueda ? T.brandLight : T.surface,
+                color: categoriasActivas.length===0 && !busqueda ? T.brand : T.textSec,
+                fontSize:12, fontWeight: categoriasActivas.length===0 && !busqueda ? 600 : 400,
                 cursor:"pointer", transition:"all 0.15s",
               }}
             >
               Todos
             </button>
             {categorias.map(cat => (
-              <CatChip key={cat.id} cat={cat} activa={categoriaActiva === cat.id} onClick={cambiarCategoria}/>
+              <CatChip key={cat.id} cat={cat} activa={categoriasActivas.includes(cat.id)} onClick={toggleCategoria}/>
             ))}
           </div>
 
@@ -489,15 +490,27 @@ export default function Home() {
                   <strong style={{ color:T.textSec, fontWeight:600 }}>{totalItems}</strong>
                   {" producto"}{totalItems !== 1 ? "s" : ""}
                   {busqueda && <> · <em style={{ fontStyle:"normal", color:T.textMuted }}>"{busqueda}"</em></>}
-                  {catActivaNombre && <> · <span style={{ color:T.textSec }}>{catActivaNombre}</span></>}
+                  {categoriasActivas.length > 0 && (
+                    <> · <span style={{ color:T.textSec }}>
+                      {categoriasActivas.map(id => categorias.find(c => c.id === id)?.nombre).filter(Boolean).join(", ")}
+                    </span></>
+                  )}
                 </span>
               )}
+              {categoriasActivas.map(id => {
+                const cat = categorias.find(c => c.id === id);
+                if (!cat) return null;
+                const cfg = getCatCfg(cat.nombre);
+                return (
+                  <button key={id} onClick={() => toggleCategoria(id)}
+                    style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"2px 8px", borderRadius:999, border:`1px solid ${cfg.color}33`, background:cfg.bg, color:cfg.color, fontSize:11, fontWeight:600, cursor:"pointer" }}
+                  >{cfg.emoji} {cat.nombre} ×</button>
+                );
+              })}
               {hayFiltros && (
-                <button
-                  onClick={limpiarFiltros}
-                  style={{ fontSize:11, color:T.danger, background:T.dangerBg, border:`1px solid rgba(220,38,38,0.15)`, borderRadius:5, padding:"2px 8px", cursor:"pointer", fontWeight:500 }}
-                >
-                  Limpiar filtros
+                <button onClick={limpiarFiltros}
+                  style={{ fontSize:11, color:T.danger, background:T.dangerBg, border:`1px solid rgba(220,38,38,0.15)`, borderRadius:5, padding:"2px 8px", cursor:"pointer", fontWeight:500 }}>
+                  Limpiar todo
                 </button>
               )}
             </div>
