@@ -267,5 +267,69 @@ router.get("/cajeros", async (req, res) => {
   }
 });
 
+// ── PROVEEDORES ───────────────────────────────────────────────
+router.get("/proveedores", async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT p.id, p.nombre, p.contacto, p.telefono, p.email, p.activo, p.created_at,
+             COUNT(prod.id) AS total_productos
+      FROM proveedores p
+      LEFT JOIN productos prod ON prod.proveedor_id = p.id
+      GROUP BY p.id
+      ORDER BY p.nombre ASC`
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/proveedores", async (req, res) => {
+  const { nombre, contacto, telefono, email } = req.body;
+  if (!nombre?.trim()) return res.status(400).json({ error: "El nombre es obligatorio." });
+  try {
+    const [result] = await db.query(
+      "INSERT INTO proveedores (nombre, contacto, telefono, email) VALUES (?,?,?,?)",
+      [nombre.trim(), contacto||null, telefono||null, email||null]
+    );
+    res.status(201).json({ mensaje: "Proveedor creado.", id: result.insertId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put("/proveedores/:id", async (req, res) => {
+  const { nombre, contacto, telefono, email, activo } = req.body;
+  try {
+    const sets = [], vals = [];
+    if (nombre    !== undefined) { sets.push("nombre=?");    vals.push(nombre||null); }
+    if (contacto  !== undefined) { sets.push("contacto=?");  vals.push(contacto||null); }
+    if (telefono  !== undefined) { sets.push("telefono=?");  vals.push(telefono||null); }
+    if (email     !== undefined) { sets.push("email=?");     vals.push(email||null); }
+    if (activo    !== undefined) { sets.push("activo=?");    vals.push(activo); }
+    if (!sets.length) return res.json({ mensaje: "Sin cambios." });
+    vals.push(req.params.id);
+    await db.query(`UPDATE proveedores SET ${sets.join(",")} WHERE id=?`, vals);
+    res.json({ mensaje: "Proveedor actualizado." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete("/proveedores/:id", async (req, res) => {
+  try {
+    const [[{ total }]] = await db.query(
+      "SELECT COUNT(*) AS total FROM productos WHERE proveedor_id=?", [req.params.id]
+    );
+    if (total > 0) return res.status(409).json({
+      error: `No se puede eliminar: ${total} producto(s) tienen este proveedor asignado.`
+    });
+    await db.query("DELETE FROM proveedores WHERE id=?", [req.params.id]);
+    res.json({ mensaje: "Proveedor eliminado." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
  
