@@ -14,9 +14,9 @@ const mesLabel = (m) => {
   return `${meses[Number(mo)]} ${y}`;
 };
 
-const BAR_COLOR = { verde:"#16a34a", gris:"#d1d5db" };
+const BAR_COLOR = { verde:"#0A6B40", gris:"#d1d5db" };
 
-function BarraProgreso({ label, real, meta, formato = "numero", color = "#16a34a" }) {
+function BarraProgreso({ label, real, meta, formato = "numero", color = "#0A6B40" }) {
   const porcentaje = pct(real, meta);
   const realFmt = formato === "dinero" ? fmt(real) : real.toLocaleString("es-CO");
   const metaFmt = formato === "dinero" ? fmt(meta) : meta.toLocaleString("es-CO");
@@ -35,7 +35,7 @@ function BarraProgreso({ label, real, meta, formato = "numero", color = "#16a34a
           className="h-full rounded-full transition-all duration-700"
           style={{
             width: `${porcentaje}%`,
-            backgroundColor: porcentaje >= 100 ? "#16a34a" : porcentaje >= 70 ? "#f59e0b" : "#ef4444"
+            backgroundColor: porcentaje >= 100 ? "#0A6B40" : porcentaje >= 70 ? "#f59e0b" : "#ef4444"
           }}
         />
       </div>
@@ -118,15 +118,15 @@ export default function Objetivos() {
 <title>Reporte ${mesLabel(mes)}</title>
 <style>
   body { font-family: Arial, sans-serif; margin: 40px; color: #1f2937; }
-  h1 { color: #15803d; font-size: 22px; margin-bottom: 4px; }
+  h1 { color: #0A6B40; font-size: 22px; margin-bottom: 4px; }
   .sub { color: #6b7280; font-size: 13px; margin-bottom: 32px; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
   .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
   .card-title { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-  .card-val { font-size: 22px; font-weight: bold; color: #15803d; }
+  .card-val { font-size: 22px; font-weight: bold; color: #0A6B40; }
   .card-meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
   .card-pct { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: bold; }
-  .ok { background: #dcfce7; color: #15803d; }
+  .ok { background: #dcfce7; color: #0A6B40; }
   .warn { background: #fef9c3; color: #854d0e; }
   .bad { background: #fee2e2; color: #991b1b; }
   .barra-wrap { height: 8px; background: #f3f4f6; border-radius: 999px; overflow: hidden; margin: 8px 0; }
@@ -137,7 +137,7 @@ export default function Objetivos() {
   .footer { margin-top: 40px; font-size: 11px; color: #9ca3af; text-align: center; }
 </style></head><body>
   <h1>📊 Reporte de objetivos — ${mesLabel(mes)}</h1>
-  <div class="sub">Generado el ${new Date().toLocaleDateString("es-CO", { day:"2-digit", month:"long", year:"numeric", hour:"2-digit", minute:"2-digit" })} · Victoria Pecuarios</div>
+  <div class="sub">Generado el ${new Date().toLocaleDateString("es-CO", { day:"2-digit", month:"long", year:"numeric", hour:"2-digit", minute:"2-digit" })} · Victoria Pets</div>
 
   <div class="grid">
     ${[
@@ -151,7 +151,7 @@ export default function Objetivos() {
         <div class="card-val">${real}</div>
         <div class="card-meta">Meta: ${meta}</div>
         <div class="barra-wrap">
-          <div class="barra" style="width:${p}%;background:${p>=100?"#16a34a":p>=70?"#f59e0b":"#ef4444"}"></div>
+          <div class="barra" style="width:${p}%;background:${p>=100?"#0A6B40":p>=70?"#f59e0b":"#ef4444"}"></div>
         </div>
         <span class="card-pct ${p>=100?"ok":p>=70?"warn":"bad"}">${p}%</span>
       </div>`).join("")}
@@ -162,14 +162,14 @@ export default function Objetivos() {
     <thead><tr><th>Métrica</th><th>Mes anterior</th><th>Este mes</th><th>Variación</th></tr></thead>
     <tbody>
       <tr><td>Ventas</td><td>${fmt(anterior.ventas)}</td><td>${fmt(real.ventas)}</td>
-        <td style="color:${varVentas!=="N/A"&&Number(varVentas)>=0?"#15803d":"#dc2626"}">${varVentas !== "N/A" ? `${varVentas}%` : "Sin datos"}</td></tr>
+        <td style="color:${varVentas!=="N/A"&&Number(varVentas)>=0?"#0A6B40":"#dc2626"}">${varVentas !== "N/A" ? `${varVentas}%` : "Sin datos"}</td></tr>
       <tr><td>Órdenes</td><td>${anterior.ordenes}</td><td>${real.ordenes}</td>
-        <td style="color:${varOrdenes!=="N/A"&&Number(varOrdenes)>=0?"#15803d":"#dc2626"}">${varOrdenes !== "N/A" ? `${varOrdenes}%` : "Sin datos"}</td></tr>
+        <td style="color:${varOrdenes!=="N/A"&&Number(varOrdenes)>=0?"#0A6B40":"#dc2626"}">${varOrdenes !== "N/A" ? `${varOrdenes}%` : "Sin datos"}</td></tr>
       <tr><td>Nuevos clientes</td><td>${anterior.clientes}</td><td>${real.clientes}</td><td>—</td></tr>
     </tbody>
   </table>
 
-  <div class="footer">Victoria Pecuarios · Panel Administrativo · ${new Date().getFullYear()}</div>
+  <div class="footer">Victoria Pets · Panel Administrativo · ${new Date().getFullYear()}</div>
 </body></html>`;
 
     const ventana = window.open("", "_blank");

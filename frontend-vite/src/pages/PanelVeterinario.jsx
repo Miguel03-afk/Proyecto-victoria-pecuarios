@@ -5,19 +5,39 @@ import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 const C = {
-  brand:"#1a5c1a", brandMid:"#2d7a2d", brandDark:"#0c180c",
-  brandLight:"#e6f3e6", brandBorder:"#b8d9b8", lime:"#a3e635",
-  canvas:"#f6f7f4", surface:"#ffffff", surfaceAlt:"#f2f3ef",
-  surfaceHover:"#ecede8",
-  text:"#111827", textSec:"#374151", textTer:"#6b7280", textMuted:"#9ca3af",
-  border:"rgba(0,0,0,0.08)", borderMid:"rgba(0,0,0,0.13)",
-  sidebar:"#0f1f0f", sidebarBorder:"rgba(255,255,255,0.07)",
-  sidebarActive:"rgba(255,255,255,0.08)", sidebarText:"rgba(255,255,255,0.55)",
+  brand:        "#0A6B40",
+  brandMid:     "#138553",
+  brandDark:    "#064E30",
+  brandLight:   "#E4F5EC",
+  brandBorder:  "#95CCAD",
+  lime:         "#7AC143",
+  limeDark:     "#5a9030",
+  canvas:       "#F5FAF7",
+  surface:      "#ffffff",
+  surfaceAlt:   "#EDF6F1",
+  surfaceHover: "#dff0e6",
+  text:         "#101F16",
+  textSec:      "#2D4A38",
+  textTer:      "#5A7A65",
+  textMuted:    "#8FAA98",
+  border:       "rgba(0,0,0,0.08)",
+  borderMid:    "rgba(0,0,0,0.13)",
+  sidebar:      "#064E30",
+  sidebarBorder:"rgba(255,255,255,0.07)",
+  sidebarActive:"rgba(255,255,255,0.10)",
+  sidebarText:  "rgba(255,255,255,0.60)",
   sidebarTextHi:"#fff",
-  gold:"#b08a24", goldBorder:"rgba(176,138,36,0.3)",
-  danger:"#dc2626", dangerBg:"#fef2f2", dangerBorder:"#fecaca",
-  success:"#16a34a", successBg:"#f0fdf4", successBorder:"#bbf7d0",
-  warning:"#d97706", warningBg:"#fffbeb", warningBorder:"#fde68a",
+  gold:         "#b08a24",
+  goldBorder:   "rgba(176,138,36,0.3)",
+  danger:       "#dc2626",
+  dangerBg:     "#fef2f2",
+  dangerBorder: "#fecaca",
+  success:      "#16a34a",
+  successBg:    "#f0fdf4",
+  successBorder:"#bbf7d0",
+  warning:      "#d97706",
+  warningBg:    "#fffbeb",
+  warningBorder:"#fde68a",
 };
 
 const ESTADO_CFG = {
@@ -698,7 +718,7 @@ export default function PanelVeterinario() {
               <div style={{ display:"flex",alignItems:"center",gap:10 }}>
                 <div style={{ width:30,height:30,borderRadius:9,background:C.gold,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:C.brandDark,flexShrink:0 }}>V</div>
                 <div>
-                  <p style={{ margin:0,fontSize:11,fontWeight:700,color:C.sidebarTextHi,fontFamily:"'Playfair Display',serif",fontStyle:"italic" }}>Victoria Pecuarios</p>
+                  <p style={{ margin:0,fontSize:11,fontWeight:700,color:C.sidebarTextHi,fontFamily:"'Playfair Display',serif",fontStyle:"italic" }}>Victoria Pets</p>
                   <p style={{ margin:0,fontSize:9,color:C.gold,letterSpacing:0.8,textTransform:"uppercase" }}>Panel Veterinario</p>
                 </div>
               </div>

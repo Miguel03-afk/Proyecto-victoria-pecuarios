@@ -6,31 +6,33 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useCarrito } from "../context/CarritoContext";
 import api from "../services/api";
 
-// ─── Sistema de tokens — todos los colores desde aquí, nada hardcodeado ───────
+// ─── Sistema de tokens VP — azul institucional ────────────────────────────────
 const T = {
-  // Superficies — mismo hue, distinta luminosidad (borders-only)
-  canvas:      "#f6f7f4",   // L0 base
-  surface:     "#ffffff",   // L1 cards
-  surfaceAlt:  "#f2f3ef",   // L1 inset / alt
-  surfaceHov:  "#edf0ea",   // L1 hover
+  // Superficies — Green-breath signature
+  canvas:      "#F5FAF7",
+  surface:     "#ffffff",
+  surfaceAlt:  "#EDF6F1",
+  surfaceHov:  "#dff0e6",
 
-  // Brand — verde forestal, no menta
-  brand:       "#1a5c1a",
-  brandMid:    "#2d7a2d",
-  brandDark:   "#0c180c",
-  brandLight:  "#e6f3e6",
-  brandBorder: "#b8d9b8",
+  // Brand — esmeralda profundo VP
+  brand:       "#0A6B40",
+  brandMid:    "#138553",
+  brandDark:   "#064E30",
+  brandLight:  "#E4F5EC",
+  brandBorder: "#95CCAD",
 
-  // Acento — lima solo para CTA primarios
-  lime:        "#a3e635",
+  // CTA — verde lima VP (sin cambio)
+  lime:        "#7AC143",
+  limeDark:    "#5a9030",
+  limeLight:   "#eef7e3",
 
-  // Texto — 4 niveles, mismo hue, distinta opacidad
-  text:        "#111827",   // primario
-  textSec:     "#374151",   // secundario
-  textTer:     "#6b7280",   // terciario / metadatos
-  textMuted:   "#9ca3af",   // desactivado / placeholder
+  // Texto — temperatura verde
+  text:        "#101F16",
+  textSec:     "#2D4A38",
+  textTer:     "#5A7A65",
+  textMuted:   "#8FAA98",
 
-  // Bordes — escala de opacidad, no sólidos
+  // Bordes
   border:      "rgba(0,0,0,0.07)",
   borderMed:   "rgba(0,0,0,0.11)",
   borderStr:   "rgba(0,0,0,0.16)",
@@ -154,7 +156,7 @@ function TarjetaProducto({ producto }) {
         </div>
       )}
       {(producto.destacado === 1 || producto.destacado === true) && (
-        <div style={{ position:"absolute", top:8, right:8, zIndex:2, background:T.brand, color:"#fff", fontSize:9, fontWeight:700, padding:"2px 7px", borderRadius:5, letterSpacing:0.3 }}>
+        <div style={{ position:"absolute", top:8, right:8, zIndex:2, background:T.lime, color:"#fff", fontSize:9, fontWeight:700, padding:"2px 7px", borderRadius:5, letterSpacing:0.3 }}>
           DESTACADO
         </div>
       )}
@@ -197,7 +199,7 @@ function TarjetaProducto({ producto }) {
 
         {/* Precio — monospace, datos */}
         <div style={{ display:"flex", alignItems:"baseline", gap:5, flexWrap:"wrap", marginTop:2 }}>
-          <span style={{ fontSize:16, fontWeight:700, color: agotado ? T.textMuted : T.brand, fontFamily:"'JetBrains Mono','Fira Code',monospace" }}>
+          <span style={{ fontSize:16, fontWeight:700, color: agotado ? T.textMuted : T.brandMid, fontFamily:"'JetBrains Mono','Fira Code',monospace" }}>
             {fmt(precio)}
           </span>
           {precioAntes > precio && (
@@ -223,15 +225,15 @@ function TarjetaProducto({ producto }) {
             marginTop: "auto",
             padding: "8px 0",
             borderRadius: 9,
-            border: `1px solid ${agotado ? T.border : agregado ? T.brandMid : T.brand}`,
-            background: agotado ? T.surfaceAlt : agregado ? T.brandLight : T.brand,
-            color: agotado ? T.textMuted : agregado ? T.brand : "#fff",
+            border: `1px solid ${agotado ? T.border : agregado ? T.lime : T.lime}`,
+            background: agotado ? T.surfaceAlt : agregado ? T.limeLight : T.lime,
+            color: agotado ? T.textMuted : agregado ? T.limeDark : "#fff",
             fontSize: 12, fontWeight: 600,
             cursor: agotado ? "default" : "pointer",
             transition: "all 0.15s",
           }}
-          onMouseEnter={e => { if (!agotado && !agregado) { e.currentTarget.style.background = T.brandMid; e.currentTarget.style.borderColor = T.brandMid; }}}
-          onMouseLeave={e => { if (!agotado && !agregado) { e.currentTarget.style.background = T.brand; e.currentTarget.style.borderColor = T.brand; }}}
+          onMouseEnter={e => { if (!agotado && !agregado) { e.currentTarget.style.background = T.limeDark; e.currentTarget.style.borderColor = T.limeDark; }}}
+          onMouseLeave={e => { if (!agotado && !agregado) { e.currentTarget.style.background = T.lime; e.currentTarget.style.borderColor = T.lime; }}}
         >
           {agotado ? "Sin stock" : agregado ? "✓ Agregado" : "Agregar al carrito"}
         </button>
@@ -363,14 +365,18 @@ export default function Home() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,600&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
-        @keyframes shimmer { to { background-position: -200% 0; } }
-        @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes shimmer  { to { background-position: -200% 0; } }
+        @keyframes fadeUp   { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeIn   { from { opacity:0; } to { opacity:1; } }
+        @keyframes heroIn   { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
         .prod-grid { display:grid; gap:14px; grid-template-columns:repeat(2,1fr); }
         @media(min-width:640px)  { .prod-grid { grid-template-columns:repeat(3,1fr); } }
         @media(min-width:1024px) { .prod-grid { grid-template-columns:repeat(4,1fr); } }
         @media(min-width:1280px) { .prod-grid { grid-template-columns:repeat(5,1fr); } }
         ::-webkit-scrollbar { height: 3px; }
         ::-webkit-scrollbar-thumb { background: ${T.brandBorder}; border-radius: 2px; }
+        .vp-hero-content { animation: heroIn 0.5s cubic-bezier(0.16,1,0.3,1); }
+        .vp-hero-stats   { animation: fadeIn 0.7s ease 0.2s both; }
       `}</style>
 
       <div style={{ minHeight:"100vh", background:T.canvas }}>
@@ -381,13 +387,13 @@ export default function Home() {
           <span style={{ fontSize:12, color:"rgba(255,255,255,0.65)", fontWeight:400 }}>
             🚚 <strong style={{ color:"rgba(255,255,255,0.85)", fontWeight:600 }}>Envío gratis</strong> en compras mayores a{" "}
             <span style={{ fontFamily:"monospace", color:T.lime }}>$80.000</span>
-            <span style={{ color:"rgba(255,255,255,0.4)" }}> — Bogotá y área metropolitana</span>
+            <span style={{ color:"rgba(255,255,255,0.4)" }}> — Solo dentro de Ibagué</span>
           </span>
         </div>
 
         {/* ── Hero — gradiente forestal, buscador contextual ─────────────── */}
         <div style={{
-          background: `linear-gradient(160deg, ${T.brandDark} 0%, #1a3d1a 60%, ${T.brand} 100%)`,
+          background: `linear-gradient(160deg, ${T.brandDark} 0%, #0d5c35 60%, ${T.brand} 100%)`,
           padding: "40px 24px 32px",
           position: "relative", overflow: "hidden",
           borderBottom: `1px solid rgba(0,0,0,0.3)`,
@@ -398,7 +404,7 @@ export default function Home() {
 
           <div style={{ maxWidth:1280, margin:"0 auto", position:"relative" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", flexWrap:"wrap", gap:16, marginBottom:22 }}>
-              <div>
+              <div className="vp-hero-content">
                 {/* Nivel 4 — eyebrow */}
                 <p style={{ margin:"0 0 5px", fontSize:10, color:"rgba(163,230,53,0.75)", fontWeight:700, textTransform:"uppercase", letterSpacing:1.5 }}>
                   Catálogo completo
@@ -409,12 +415,12 @@ export default function Home() {
                 </h1>
                 {/* Nivel 3 */}
                 <p style={{ margin:"5px 0 0", fontSize:12, color:"rgba(255,255,255,0.5)" }}>
-                  Productos veterinarios · Bogotá, Colombia
+                  Productos veterinarios · Ibagué, Colombia
                 </p>
               </div>
 
               {/* Stats — datos en monospace */}
-              <div style={{ display:"flex", gap:24, flexWrap:"wrap" }}>
+              <div className="vp-hero-stats" style={{ display:"flex", gap:24, flexWrap:"wrap" }}>
                 {[
                   { val: cargando ? "—" : `+${totalItems}`, label:"Productos" },
                   { val: categorias.length || "—",           label:"Categorías" },

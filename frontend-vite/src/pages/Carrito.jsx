@@ -5,31 +5,33 @@ import { useCarrito } from "../context/CarritoContext";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 
-/* ─── Tokens (alineados con el sistema del proyecto) ─────────── */
+/* ─── Tokens VP ──────────────────────────────────────────────── */
 const C = {
-  brand:       "#1a5c1a",
-  brandMid:    "#2d7a2d",
-  brandDark:   "#0c180c",
-  brandLight:  "#e6f3e6",
-  brandBorder: "#b8d9b8",
-  lime:        "#a3e635",
-  canvas:      "#f6f7f4",
-  surface:     "#ffffff",
-  surfaceAlt:  "#f2f3ef",
-  text:        "#111827",
-  textSec:     "#374151",
-  textTer:     "#6b7280",
-  textMuted:   "#9ca3af",
-  border:      "rgba(0,0,0,0.08)",
-  borderMid:   "rgba(0,0,0,0.13)",
-  danger:      "#dc2626",
-  dangerBg:    "#fef2f2",
-  dangerBorder:"#fecaca",
-  success:     "#16a34a",
-  successBg:   "#f0fdf4",
+  brand:        "#0A6B40",
+  brandMid:     "#138553",
+  brandDark:    "#064E30",
+  brandLight:   "#E4F5EC",
+  brandBorder:  "#95CCAD",
+  lime:         "#7AC143",
+  limeDark:     "#5a9030",
+  limeLight:    "#eef7e3",
+  canvas:       "#F5FAF7",
+  surface:      "#ffffff",
+  surfaceAlt:   "#EDF6F1",
+  text:         "#101F16",
+  textSec:      "#2D4A38",
+  textTer:      "#5A7A65",
+  textMuted:    "#8FAA98",
+  border:       "rgba(0,0,0,0.08)",
+  borderMid:    "rgba(0,0,0,0.13)",
+  danger:       "#dc2626",
+  dangerBg:     "#fef2f2",
+  dangerBorder: "#fecaca",
+  success:      "#16a34a",
+  successBg:    "#f0fdf4",
   successBorder:"#bbf7d0",
-  warning:     "#d97706",
-  warningBg:   "#fffbeb",
+  warning:      "#d97706",
+  warningBg:    "#fffbeb",
   warningBorder:"#fde68a",
 };
 
@@ -478,7 +480,7 @@ function PasoEnvio({ onContinuar, onVolver, datosEnvio, setDatosEnvio }) {
         nombre:   p.nombre   || usuario.nombre   || "",
         apellido: p.apellido || usuario.apellido || "",
         telefono: p.telefono || usuario.telefono || "",
-        ciudad:   p.ciudad   || "Bogotá",
+        ciudad:   p.ciudad   || "Ibagué",
       }));
     }
   }, [usuario]);
@@ -499,7 +501,7 @@ function PasoEnvio({ onContinuar, onVolver, datosEnvio, setDatosEnvio }) {
           <Campo label="Teléfono" type="tel" value={datosEnvio.telefono} onChange={set("telefono")} placeholder="300 000 0000"/>
           <Campo label="Dirección" value={datosEnvio.direccion} onChange={set("direccion")} placeholder="Cra. 15 #85-23" required hint="Incluye barrio, apto o torre si aplica"/>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <Campo label="Ciudad" value={datosEnvio.ciudad} onChange={set("ciudad")} placeholder="Bogotá" required/>
+            <Campo label="Ciudad" value={datosEnvio.ciudad} onChange={set("ciudad")} placeholder="Ibagué" required/>
             <Campo label="Departamento" value={datosEnvio.departamento} onChange={set("departamento")} placeholder="Cundinamarca"/>
           </div>
           <Campo label="Notas adicionales" value={datosEnvio.notas} onChange={set("notas")} placeholder="Indicaciones especiales para la entrega..." rows={2}/>
@@ -728,7 +730,7 @@ export default function Carrito() {
         {/* Banner */}
         <div style={{ background: C.brandDark, padding: "9px 0", textAlign: "center" }}>
           <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.7)" }}>
-            🚚 Envío gratis en compras mayores a <strong style={{ color: "#a3e635" }}>$80.000</strong> — Bogotá y área metropolitana
+            🚚 Envío gratis en compras mayores a <strong style={{ color: C.lime }}>$80.000</strong> — Solo dentro de Ibagué
           </p>
         </div>
 

@@ -5,13 +5,27 @@ import api from "../services/api";
 import Navbar from "../components/Navbar";
 
 const C = {
-  brand:"#1a5c1a", brandMid:"#2d7a2d", brandDark:"#0c180c",
-  brandLight:"#e6f3e6", brandBorder:"#b8d9b8", lime:"#a3e635",
-  canvas:"#f6f7f4", surface:"#ffffff", surfaceAlt:"#f2f3ef",
-  text:"#111827", textSec:"#374151", textTer:"#6b7280", textMuted:"#9ca3af",
-  border:"rgba(0,0,0,0.08)",
-  danger:"#dc2626", dangerBg:"#fef2f2", dangerBorder:"#fecaca",
-  success:"#16a34a", successBg:"#f0fdf4", successBorder:"#bbf7d0",
+  brand:        "#0A6B40",
+  brandMid:     "#138553",
+  brandDark:    "#064E30",
+  brandLight:   "#E4F5EC",
+  brandBorder:  "#95CCAD",
+  lime:         "#7AC143",
+  limeDark:     "#5a9030",
+  canvas:       "#F5FAF7",
+  surface:      "#ffffff",
+  surfaceAlt:   "#EDF6F1",
+  text:         "#101F16",
+  textSec:      "#2D4A38",
+  textTer:      "#5A7A65",
+  textMuted:    "#8FAA98",
+  border:       "rgba(0,0,0,0.08)",
+  danger:       "#dc2626",
+  dangerBg:     "#fef2f2",
+  dangerBorder: "#fecaca",
+  success:      "#16a34a",
+  successBg:    "#f0fdf4",
+  successBorder:"#bbf7d0",
 };
 
 const ESTADO_CFG = {
@@ -290,11 +304,18 @@ export default function MisCitas() {
 
   return (
     <>
-      <style>{`@keyframes shimmer { to { background-position:-200% 0; } } * { box-sizing:border-box; }`}</style>
+      <style>{`
+        @keyframes shimmer { to { background-position:-200% 0; } }
+        @keyframes fadeUp  { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes slideDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+        .vp-citas-header { animation: fadeUp 0.35s cubic-bezier(0.16,1,0.3,1); }
+        .vp-citas-list   { animation: fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) 0.05s both; }
+        * { box-sizing:border-box; }
+      `}</style>
       <div style={{ minHeight:"100vh", background:C.canvas }}>
         <Navbar/>
 
-        <div style={{ background:C.brandDark, padding:"9px 0", textAlign:"center" }}>
+        <div style={{ background:C.brandDark, padding:"9px 0", textAlign:"center", animation:"slideDown 0.4s ease" }}>
           <p style={{ margin:0, fontSize:12, color:"rgba(255,255,255,0.7)" }}>
             🏥 Historial de citas · <Link to="/agendar-cita" style={{ color:C.lime, fontWeight:700 }}>Agendar nueva cita →</Link>
           </p>
@@ -302,7 +323,7 @@ export default function MisCitas() {
 
         <div style={{ maxWidth:800, margin:"0 auto", padding:"32px 16px 64px" }}>
           {/* Header */}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:24, flexWrap:"wrap", gap:16 }}>
+          <div className="vp-citas-header" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:24, flexWrap:"wrap", gap:16 }}>
             <div>
               <h1 style={{ margin:"0 0 4px", fontSize:22, fontWeight:800, color:C.text, fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>
                 Mis citas
@@ -372,7 +393,7 @@ export default function MisCitas() {
               </Link>
             </div>
           ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            <div className="vp-citas-list" style={{ display:"flex", flexDirection:"column", gap:12 }}>
               {citasFiltradas.map(c => (
                 <TarjetaCita key={c.id} cita={c} onCancelar={cargar}/>
               ))}

@@ -9,6 +9,7 @@ import ReporteVentas from "./admin/ReporteVentas.jsx";
 import GaleriaAdmin from "./admin/GaleriaAdmin";
 import ReporteSalidas from "./admin/ReporteSalidas.jsx";
 import { T, shadow, font, fmt, fmtShort, fdoc, estadoStyle } from "../styles/admin.tokens";
+import logoVP from "../assets/WhatsApp Image 2026-04-22 at 1.19.17 PM.jpeg";
 
 // ─── Constantes ───────────────────────────────────────────────
 const ESTADOS = ["pendiente","pagada","procesando","enviada","entregada","cancelada"];
@@ -24,6 +25,7 @@ const NAV = [
   {id:"reporte-salidas", label:"Salidas stock",  d:"M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"},
   // ── Galería de imágenes ──
   {id:"galeria",         label:"Galería",        d:"M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"},
+  {id:"proveedores",     label:"Proveedores",    d:"M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"},
 ];
 
 const TITULOS = {
@@ -32,6 +34,7 @@ const TITULOS = {
   "reporte-ventas":"Reporte de ventas", "reporte-salidas":"Salidas de stock",
   // ── Galería ──
   galeria:"Galería de imágenes",
+  proveedores:"Proveedores",
 };
 
 // ─── Componentes base ─────────────────────────────────────────
@@ -704,10 +707,10 @@ function Productos() {
   const [pagina,setPagina]=useState(1); const [buscar,setBuscar]=useState("");
   const [catFiltro,setCatFiltro]=useState(""); const [cargando,setCargando]=useState(true);
   const [modal,setModal]=useState(false); const [editando,setEditando]=useState(null);
-  const [categorias,setCategorias]=useState([]);
+  const [categorias,setCategorias]=useState([]); const [proveedores,setProveedores]=useState([]);
   const [msg,setMsg]=useState({}); const [fieldErrors,setFieldErrors]=useState({});
 
-  const VACIO={nombre:"",slug:"",descripcion:"",descripcion_corta:"",categoria_id:"",
+  const VACIO={nombre:"",slug:"",descripcion:"",descripcion_corta:"",categoria_id:"",proveedor_id:"",
     precio:"",precio_antes:"",precio_costo:"",stock:"",stock_minimo:"5",imagen_url:"",
     marca:"",unidad:"",especie:"",destacado:false,activo:true,requiere_formula:false};
   const [form,setForm]=useState(VACIO);
@@ -715,11 +718,13 @@ function Productos() {
   const cargar=useCallback(async()=>{
     setCargando(true);
     try{
-      const[rP,rC]=await Promise.all([
+      const[rP,rC,rProv]=await Promise.all([
         api.get(`/admin/productos?pagina=${pagina}&buscar=${buscar}&limite=10&categoria_id=${catFiltro}`),
         api.get("/categorias"),
+        api.get("/admin/proveedores"),
       ]);
-      setLista(rP.data.productos); setTotal(rP.data.total); setCategorias(rC.data);
+      setLista(rP.data.productos); setTotal(rP.data.total);
+      setCategorias(rC.data); setProveedores(rProv.data);
     }finally{setCargando(false);}
   },[pagina,buscar,catFiltro]);
 
@@ -728,7 +733,7 @@ function Productos() {
   const abrirNuevo=()=>{setForm(VACIO);setEditando(null);setFieldErrors({});setModal(true);};
   const abrirEditar=(p)=>{
     setForm({nombre:p.nombre,slug:p.slug||"",descripcion:p.descripcion||"",
-      descripcion_corta:p.descripcion_corta||"",categoria_id:p.categoria_id||"",
+      descripcion_corta:p.descripcion_corta||"",categoria_id:p.categoria_id||"",proveedor_id:p.proveedor_id||"",
       precio:p.precio,precio_antes:p.precio_antes||"",precio_costo:p.precio_costo||"",
       stock:p.stock,stock_minimo:p.stock_minimo||5,imagen_url:p.imagen_url||"",
       marca:p.marca||"",unidad:p.unidad||"",especie:p.especie||"",
@@ -760,6 +765,7 @@ function Productos() {
       if(form.descripcion)       p.descripcion=form.descripcion;
       if(form.descripcion_corta) p.descripcion_corta=form.descripcion_corta;
       if(form.categoria_id)      p.categoria_id=Number(form.categoria_id);
+      if(form.proveedor_id)      p.proveedor_id=Number(form.proveedor_id);
       if(form.precio!=="")       p.precio=Number(form.precio);
       if(form.precio_antes!=="") p.precio_antes=Number(form.precio_antes);
       if(form.precio_costo!=="") p.precio_costo=Number(form.precio_costo);
@@ -898,7 +904,7 @@ function Productos() {
             </div>
             <Input label="Slug URL" value={form.slug} onChange={ff("slug")}
               placeholder="auto-generado si vacío" error={fieldErrors.slug}/>
-            <Input label="Marca" value={form.marca} onChange={ff("marca")} placeholder="ej: Frontline"/>
+            <div/>
           </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{color:T.textTer}}>Descripción corta</label>
@@ -916,6 +922,13 @@ function Productos() {
               <FieldError msg={fieldErrors.categoria_id}/>
             </div>
             <Input label="Unidad" value={form.unidad} onChange={ff("unidad")} placeholder="ej: frasco, caja"/>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Sel label="Proveedor" value={form.proveedor_id} onChange={ff("proveedor_id")}>
+              <option value="">Sin proveedor</option>
+              {proveedores.map(pv=><option key={pv.id} value={pv.id}>{pv.nombre}</option>)}
+            </Sel>
+            <Input label="Marca" value={form.marca} onChange={ff("marca")} placeholder="ej: Frontline"/>
           </div>
           <div className="grid grid-cols-3 gap-4">
             <Input label="Precio venta *" type="number" value={form.precio} onChange={ff("precio")}
@@ -1127,6 +1140,155 @@ function Cajeros({ onIrUsuarios }) {
   );
 }
 
+// ─── PROVEEDORES ──────────────────────────────────────────────
+function Proveedores() {
+  const VACIO = { nombre:"", contacto:"", telefono:"", email:"" };
+  const [lista,      setLista]      = useState([]);
+  const [cargando,   setCargando]   = useState(true);
+  const [modal,      setModal]      = useState(false);
+  const [editando,   setEditando]   = useState(null);
+  const [form,       setForm]       = useState(VACIO);
+  const [msg,        setMsg]        = useState({});
+  const [confirmElim,setConfirmElim]= useState(null);
+
+  const cargar = async () => {
+    setCargando(true);
+    try { const {data} = await api.get("/admin/proveedores"); setLista(data); }
+    finally { setCargando(false); }
+  };
+  useEffect(() => { cargar(); }, []);
+
+  const showMsg = (texto, tipo="ok") => { setMsg({texto,tipo}); setTimeout(()=>setMsg({}),3500); };
+  const abrirNuevo  = () => { setForm(VACIO); setEditando(null); setModal(true); };
+  const abrirEditar = (p) => { setForm({nombre:p.nombre,contacto:p.contacto||"",telefono:p.telefono||"",email:p.email||""}); setEditando(p); setModal(true); };
+  const ff = k => e => setForm({...form,[k]:e.target.value});
+
+  const guardar = async () => {
+    if (!form.nombre.trim()) return showMsg("El nombre es obligatorio.", "err");
+    try {
+      if (editando) { await api.put(`/admin/proveedores/${editando.id}`, form); showMsg("Proveedor actualizado."); }
+      else          { await api.post("/admin/proveedores", form);               showMsg("Proveedor creado."); }
+      setModal(false); cargar();
+    } catch (err) { showMsg(err.response?.data?.error || "Error al guardar.", "err"); }
+  };
+
+  const eliminar = async (id) => {
+    try {
+      await api.delete(`/admin/proveedores/${id}`);
+      showMsg("Proveedor eliminado."); setConfirmElim(null); cargar();
+    } catch (err) { showMsg(err.response?.data?.error || "Error al eliminar.", "err"); setConfirmElim(null); }
+  };
+
+  const toggleActivo = async (p) => {
+    await api.put(`/admin/proveedores/${p.id}`, { activo: p.activo ? 0 : 1 }); cargar();
+  };
+
+  return (
+    <div className="space-y-5">
+      <Msg texto={msg.texto} tipo={msg.tipo}/>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <p className="text-xs" style={{color:T.textMuted}}>
+          Los proveedores se asignan a los productos al crearlos o editarlos.
+        </p>
+        <Btn onClick={abrirNuevo} size="md">+ Nuevo proveedor</Btn>
+      </div>
+
+      {cargando ? <Spinner/> : lista.length === 0 ? (
+        <Card className="p-10 flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl" style={{background:T.brandLight}}>🏭</div>
+          <p className="text-sm font-semibold" style={{color:T.textSec}}>Sin proveedores registrados</p>
+          <p className="text-xs text-center max-w-xs" style={{color:T.textMuted}}>Agrega los proveedores para asignarlos a tus productos.</p>
+          <Btn size="sm" onClick={abrirNuevo}>Agregar el primero</Btn>
+        </Card>
+      ) : (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <THead cols={["Proveedor","Contacto","Teléfono","Email","Productos","Estado","Acciones"]}/>
+              <tbody>
+                {lista.map((p,i) => (
+                  <tr key={p.id} className="transition-colors"
+                    style={{borderBottom:`1px solid ${T.borderSub}`,background:i%2===0?T.surface:T.surfaceAlt}}
+                    onMouseEnter={e=>e.currentTarget.style.background=T.surfaceHover}
+                    onMouseLeave={e=>e.currentTarget.style.background=i%2===0?T.surface:T.surfaceAlt}>
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
+                          style={{background:T.brandLight,color:T.brand,border:`1px solid ${T.brandBorder}`}}>
+                          {p.nombre?.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold" style={{color:T.text}}>{p.nombre}</p>
+                          <p className="text-xs" style={{color:T.textMuted}}>#{p.id}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-xs" style={{color:T.textSec}}>{p.contacto||"—"}</td>
+                    <td className="py-3.5 px-4 text-xs" style={{color:T.textSec}}>{p.telefono||"—"}</td>
+                    <td className="py-3.5 px-4 text-xs" style={{color:T.textSec}}>{p.email||"—"}</td>
+                    <td className="py-3.5 px-4">
+                      <span className="text-xs font-bold tabular-nums px-2 py-0.5 rounded-full"
+                        style={{background:T.brandLight,color:T.brand}}>
+                        {p.total_productos ?? 0}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <button onClick={()=>toggleActivo(p)}
+                        className="px-2 py-0.5 rounded-full text-xs font-semibold border transition-colors"
+                        style={p.activo
+                          ?{background:T.successBg,color:T.success,borderColor:T.successBorder}
+                          :{background:T.dangerBg, color:T.danger, borderColor:T.dangerBorder}}>
+                        {p.activo?"Activo":"Inactivo"}
+                      </button>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="flex gap-3">
+                        <button onClick={()=>abrirEditar(p)} className="text-xs font-semibold hover:underline" style={{color:T.brand}}>Editar</button>
+                        <button onClick={()=>setConfirmElim(p)} className="text-xs font-semibold hover:underline" style={{color:T.danger}}>Eliminar</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      <Modal abierto={modal} onClose={()=>setModal(false)}
+        titulo={editando?"Editar proveedor":"Nuevo proveedor"}>
+        <div className="space-y-4">
+          <Input label="Nombre *" value={form.nombre} onChange={ff("nombre")} placeholder="ej: Icofarma"/>
+          <Input label="Contacto (representante)" value={form.contacto} onChange={ff("contacto")} placeholder="Nombre del representante"/>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Teléfono" value={form.telefono} onChange={ff("telefono")} placeholder="300 000 0000"/>
+            <Input label="Email" type="email" value={form.email} onChange={ff("email")} placeholder="ventas@proveedor.com"/>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Btn variant="ghost" onClick={()=>setModal(false)}>Cancelar</Btn>
+            <Btn onClick={guardar} size="md">{editando?"Guardar cambios":"Crear proveedor"}</Btn>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal abierto={!!confirmElim} onClose={()=>setConfirmElim(null)} titulo="Confirmar eliminación">
+        {confirmElim && (
+          <div className="space-y-4">
+            <p className="text-sm" style={{color:T.textSec}}>
+              ¿Eliminar a <strong style={{color:T.text}}>{confirmElim.nombre}</strong>?
+              Fallará si hay productos con este proveedor asignado.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Btn variant="ghost" onClick={()=>setConfirmElim(null)}>Cancelar</Btn>
+              <Btn variant="danger" onClick={()=>eliminar(confirmElim.id)}>Sí, eliminar</Btn>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
+
 // ─── LAYOUT PRINCIPAL ─────────────────────────────────────────
 export default function Admin() {
   const {usuario,esAdmin}=useAuth();
@@ -1147,28 +1309,44 @@ export default function Admin() {
     if(seccion==="reporte-salidas") return <ReporteSalidas/>;
     // ── Galería de imágenes ──
     if(seccion==="galeria")         return <GaleriaAdmin T={T}/>;
+    if(seccion==="proveedores")     return <Proveedores/>;
   };
 
   return (
+    <>
+    <style>{`
+      @keyframes sideIn  { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
+      @keyframes mainIn  { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+      @keyframes fadeUp  { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+      @keyframes shimmer { to{background-position:-200% 0} }
+      @keyframes spin    { to{transform:rotate(360deg)} }
+      .vp-admin-side { animation: sideIn 0.35s cubic-bezier(0.16,1,0.3,1); }
+      .vp-admin-main { animation: mainIn 0.4s cubic-bezier(0.16,1,0.3,1); }
+      .vp-section    { animation: fadeUp 0.3s ease; }
+    `}</style>
     <div className="min-h-screen flex" style={{background:T.canvas}}>
       {/* Sidebar */}
-      <aside className={`${collapsed?"w-14":"w-52"} flex flex-col flex-shrink-0 transition-all duration-200`}
+      <aside className={`vp-admin-side ${collapsed?"w-14":"w-52"} flex flex-col flex-shrink-0 transition-all duration-200`}
         style={{background:T.sidebar,borderRight:`1px solid ${T.sidebarBorder}`}}>
 
         {/* Logo */}
         <div className="px-3 py-4" style={{borderBottom:`1px solid ${T.sidebarBorder}`}}>
           {!collapsed
-            ? <Link to="/" className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0"
-                  style={{background:T.gold,color:"#0c180c"}}>V</div>
+            ? <Link to="/" className="flex items-center gap-2.5 group" style={{textDecoration:"none"}}>
+                <img src={logoVP} alt="Victoria Pets"
+                  style={{width:36,height:36,borderRadius:10,objectFit:"cover",border:"2px solid rgba(196,232,213,0.25)",flexShrink:0,transition:"border-color 0.2s"}}
+                  onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(196,232,213,0.55)"}
+                  onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(196,232,213,0.25)"}
+                />
                 <div>
-                  <p className="text-xs font-bold leading-none" style={{color:T.sidebarTextHi}}>Victoria</p>
-                  <p className="text-xs leading-none mt-0.5" style={{color:T.sidebarText}}>Pecuarios</p>
+                  <p className="text-sm font-bold leading-none" style={{color:T.sidebarTextHi,fontFamily:font.display,fontStyle:"italic"}}>Victoria Pets</p>
+                  <p style={{fontSize:9,letterSpacing:1.8,textTransform:"uppercase",color:T.sidebarText,marginTop:3,fontWeight:700}}>Panel Admin</p>
                 </div>
               </Link>
-            : <Link to="/" className="flex justify-center">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs"
-                  style={{background:T.gold,color:"#0c180c"}}>V</div>
+            : <Link to="/" className="flex justify-center" style={{textDecoration:"none"}}>
+                <img src={logoVP} alt="Victoria Pets"
+                  style={{width:34,height:34,borderRadius:10,objectFit:"cover",border:"2px solid rgba(196,232,213,0.25)"}}
+                />
               </Link>
           }
         </div>
@@ -1177,14 +1355,14 @@ export default function Admin() {
         {!collapsed&&usuario&&(
           <div className="px-3 py-3" style={{borderBottom:`1px solid ${T.sidebarBorder}`}}>
             <div className="flex items-center gap-2 rounded-xl px-2.5 py-2"
-              style={{background:T.sidebarActive}}>
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                style={{background:T.gold,color:"#0c180c"}}>
+              style={{background:"rgba(10,107,64,0.35)",border:`1px solid rgba(149,204,173,0.15)`}}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                style={{background:`linear-gradient(135deg,${T.brand},${T.brandMid})`,color:"#fff",border:"1.5px solid rgba(196,232,213,0.3)"}}>
                 {usuario.nombre?.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold truncate" style={{color:T.sidebarTextHi}}>{usuario.nombre}</p>
-                <p className="text-xs capitalize" style={{color:T.gold}}>{usuario.rol}</p>
+                <p className="text-xs capitalize" style={{color:T.lime,opacity:0.8,fontSize:10}}>{usuario.rol}</p>
               </div>
             </div>
           </div>
@@ -1209,30 +1387,37 @@ export default function Admin() {
         </nav>
 
         {/* Footer sidebar */}
-        <div className="px-2 py-2 space-y-0.5" style={{borderTop:`1px solid ${T.sidebarBorder}`}}>
-          {!collapsed&&(
-            <Link to="/" className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-xs font-medium transition-all"
-              style={{color:T.sidebarText}}
-              onMouseEnter={e=>e.currentTarget.style.background=T.sidebarActive}
-              onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-              <svg className="w-[15px] h-[15px]" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-              </svg>
-              <span>Ir a la tienda</span>
-            </Link>
-          )}
-          <button onClick={()=>setCollapsed(!collapsed)}
-            className="w-full flex items-center justify-center py-2 rounded-xl text-xs transition-all"
-            style={{color:T.sidebarText}}
-            onMouseEnter={e=>e.currentTarget.style.background=T.sidebarActive}
-            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-            {collapsed?"→":"←"}
+        <div className="p-2" style={{borderTop:`1px solid ${T.sidebarBorder}`}}>
+          {/* Ir a la tienda */}
+          <Link to="/" title={collapsed?"Ir a la tienda":undefined}
+            className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-xs font-semibold transition-all mb-1"
+            style={{color:T.sidebarText,textDecoration:"none"}}
+            onMouseEnter={e=>{e.currentTarget.style.background="rgba(10,107,64,0.45)";e.currentTarget.style.color=T.sidebarTextHi;}}
+            onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=T.sidebarText;}}>
+            <svg className="w-[15px] h-[15px] flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+            </svg>
+            {!collapsed&&<span>Ir a la tienda</span>}
+          </Link>
+
+          {/* Colapsar / expandir */}
+          <button onClick={()=>setCollapsed(!collapsed)} title={collapsed?"Expandir sidebar":"Colapsar sidebar"}
+            className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-xs font-semibold transition-all"
+            style={{color:T.sidebarText,background:"transparent"}}
+            onMouseEnter={e=>{e.currentTarget.style.background="rgba(10,107,64,0.45)";e.currentTarget.style.color=T.sidebarTextHi;}}
+            onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=T.sidebarText;}}>
+            <svg className="w-[15px] h-[15px] flex-shrink-0 transition-transform duration-300"
+              style={{transform:collapsed?"rotate(180deg)":"rotate(0deg)"}}
+              fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7M19 19l-7-7 7-7"/>
+            </svg>
+            {!collapsed&&<span>Colapsar panel</span>}
           </button>
         </div>
       </aside>
 
       {/* Contenido */}
-      <main className="flex-1 min-w-0 flex flex-col">
+      <main className="vp-admin-main flex-1 min-w-0 flex flex-col">
         <header className="px-8 py-4 flex items-center justify-between"
           style={{background:T.surface,borderBottom:`1px solid ${T.border}`}}>
           <div>
@@ -1250,9 +1435,12 @@ export default function Admin() {
         </header>
 
         <div className="flex-1 p-8 overflow-auto">
-          {renderSeccion()}
+          <div className="vp-section" key={seccion}>
+            {renderSeccion()}
+          </div>
         </div>
       </main>
     </div>
+    </>
   );
 }

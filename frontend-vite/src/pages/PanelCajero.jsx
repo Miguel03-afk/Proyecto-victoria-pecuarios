@@ -559,10 +559,10 @@ export default function PanelCajero() {
         <div className="px-3 py-4" style={{ borderBottom: `1px solid ${T.sidebarBorder}` }}>
           <Link to="/" className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0"
-              style={{ background: T.gold, color: "#0c180c" }}>V</div>
+              style={{ background: T.gold, color: "#064E30" }}>V</div>
             <div>
               <p className="text-xs font-bold leading-none" style={{ color: T.sidebarTextHi }}>Victoria</p>
-              <p className="text-xs leading-none mt-0.5" style={{ color: T.sidebarText }}>Pecuarios · Caja</p>
+              <p className="text-xs leading-none mt-0.5" style={{ color: T.sidebarText }}>Pets · Caja</p>
             </div>
           </Link>
         </div>
@@ -573,7 +573,7 @@ export default function PanelCajero() {
             <div className="flex items-center gap-2 rounded-xl px-2.5 py-2"
               style={{ background: T.sidebarActive }}>
               <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                style={{ background: T.gold, color: "#0c180c" }}>
+                style={{ background: T.gold, color: "#064E30" }}>
                 {usuario.nombre?.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0">
