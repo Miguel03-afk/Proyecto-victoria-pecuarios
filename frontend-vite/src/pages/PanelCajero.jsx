@@ -20,6 +20,7 @@ const ICONS = {
   trash:    "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
   check:    "M5 13l4 4L19 7",
   home:     "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6",
+  barcode:  "M4 6h1v12H4zm3 0h1v12H7zm3 0h2v12h-2zm4 0h1v12h-1zm3 0h1v12h-1zm3 0h1v12h-1z",
 };
 
 const METODOS = [
@@ -47,21 +48,28 @@ const Badge = ({ estado }) => {
 
 // ─── Sección: Nueva Venta ─────────────────────────────────────
 function NuevaVenta() {
-  const [buscarProd, setBuscarProd]   = useState("");
-  const [productos,  setProductos]    = useState([]);
+  const [buscarProd,   setBuscarProd]   = useState("");
+  const [productos,    setProductos]    = useState([]);
   const [buscandoProd, setBuscandoProd] = useState(false);
-  const [cart,       setCart]         = useState([]);
-  const [clienteBus, setClienteBus]   = useState("");
-  const [clientes,   setClientes]     = useState([]);
-  const [clienteSel, setClienteSel]   = useState(null);
-  const [metodo,     setMetodo]       = useState("efectivo");
-  const [notas,      setNotas]        = useState("");
-  const [enviando,   setEnviando]     = useState(false);
-  const [exito,      setExito]        = useState(null);
-  const [error,      setError]        = useState("");
-  const buscarRef = useRef(null);
+  const [cart,         setCart]         = useState([]);
+  const [clienteBus,   setClienteBus]   = useState("");
+  const [clientes,     setClientes]     = useState([]);
+  const [clienteSel,   setClienteSel]   = useState(null);
+  const [metodo,       setMetodo]       = useState("efectivo");
+  const [notas,        setNotas]        = useState("");
+  const [enviando,     setEnviando]     = useState(false);
+  const [exito,        setExito]        = useState(null);
+  const [error,        setError]        = useState("");
 
-  // Búsqueda de productos con debounce
+  // ── Escáner ──────────────────────────────────────────────────
+  const [codigoBarra, setCodigoBarra] = useState("");
+  const [errorBarra,  setErrorBarra]  = useState("");
+  const [scanOk,      setScanOk]      = useState(false); // feedback visual éxito
+
+  const barraRef  = useRef(null); // ref del input escáner
+  const buscarRef = useRef(null); // ref del buscador de texto
+
+  // Búsqueda de productos con debounce (buscador manual)
   useEffect(() => {
     if (!buscarProd.trim()) { setProductos([]); return; }
     setBuscandoProd(true);
@@ -87,6 +95,7 @@ function NuevaVenta() {
     return () => clearTimeout(t);
   }, [clienteBus]);
 
+  // Agregar producto al carrito
   const agregar = (prod) => {
     setCart(prev => {
       const idx = prev.findIndex(i => i.producto.id === prod.id);
@@ -99,7 +108,31 @@ function NuevaVenta() {
     });
     setBuscarProd("");
     setProductos([]);
-    buscarRef.current?.focus();
+  };
+
+  // ── Escáner: buscar producto por código de barras ─────────────
+  const escanear = async (codigo) => {
+    if (!codigo.trim()) return;
+    setErrorBarra("");
+    setScanOk(false);
+    try {
+      const { data } = await api.get("/cajero/productos", {
+        params: { buscar: codigo.trim() }
+      });
+      const prod = data?.[0];
+      if (!prod) {
+        setErrorBarra(`No se encontró: "${codigo}"`);
+      } else {
+        agregar(prod);
+        setScanOk(true);
+        setTimeout(() => setScanOk(false), 1200); // feedback verde 1.2s
+      }
+    } catch {
+      setErrorBarra("Error al buscar el producto.");
+    } finally {
+      setCodigoBarra("");
+      setTimeout(() => barraRef.current?.focus(), 50);
+    }
   };
 
   const cambiarCantidad = (id, delta) => {
@@ -119,8 +152,8 @@ function NuevaVenta() {
     setError(""); setEnviando(true);
     try {
       const { data } = await api.post("/cajero/facturas", {
-        usuario_id: clienteSel?.id || null,
-        items:      cart.map(i => ({ producto_id: i.producto.id, cantidad: i.cantidad })),
+        usuario_id:  clienteSel?.id || null,
+        items:       cart.map(i => ({ producto_id: i.producto.id, cantidad: i.cantidad })),
         metodo_pago: metodo,
         notas:       notas || undefined,
       });
@@ -135,7 +168,8 @@ function NuevaVenta() {
   const nueva = () => {
     setExito(null); setCart([]); setClienteSel(null);
     setClienteBus(""); setNotas(""); setError("");
-    buscarRef.current?.focus();
+    setCodigoBarra(""); setErrorBarra("");
+    setTimeout(() => barraRef.current?.focus(), 100);
   };
 
   // ── Pantalla de éxito ────────────────────────────────────────
@@ -163,14 +197,68 @@ function NuevaVenta() {
   return (
     <div className="flex gap-5 h-full min-h-0">
 
-      {/* ── IZQUIERDA: búsqueda de productos ── */}
+      {/* ── IZQUIERDA ── */}
       <div className="flex-1 flex flex-col gap-4 min-w-0">
 
-        {/* Buscador de productos */}
+        {/* ── ESCÁNER DE CÓDIGO DE BARRAS ─────────────────────── */}
+        <div className="rounded-2xl p-4 space-y-2 transition-all duration-200"
+          style={{
+            background: scanOk ? T.successBg : errorBarra ? T.dangerBg : T.brandLight,
+            border: `1.5px solid ${scanOk ? T.successBorder : errorBarra ? T.dangerBorder : T.brandBorder}`,
+            boxShadow: shadow.sm,
+          }}>
+          <div className="flex items-center gap-2">
+            <svg width={15} height={15} fill="none" stroke={scanOk ? T.success : errorBarra ? T.danger : T.brand}
+              strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <path d={ICONS.barcode}/>
+            </svg>
+            <label className="text-xs font-bold uppercase tracking-wider"
+              style={{ color: scanOk ? T.success : errorBarra ? T.danger : T.brand }}>
+              {scanOk ? "✓ Producto agregado" : errorBarra ? "Producto no encontrado" : "Escáner de código de barras"}
+            </label>
+          </div>
+
+          <input
+            ref={barraRef}
+            value={codigoBarra}
+            autoFocus
+            onChange={e => { setCodigoBarra(e.target.value); setErrorBarra(""); setScanOk(false); }}
+            onKeyDown={e => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                escanear(codigoBarra);
+              }
+            }}
+            placeholder="Apunta el lector aquí — Enter automático al escanear..."
+            className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none transition-all"
+            style={{
+              border: `1.5px solid ${scanOk ? T.successBorder : errorBarra ? T.dangerBorder : T.brandBorder}`,
+              background: T.surface,
+              color: T.text,
+              fontFamily: font.mono,
+              letterSpacing: "0.06em",
+            }}
+            onFocus={e => e.target.style.borderColor = scanOk ? T.success : errorBarra ? T.danger : T.brand}
+            onBlur={e  => e.target.style.borderColor = scanOk ? T.successBorder : errorBarra ? T.dangerBorder : T.brandBorder}
+          />
+
+          {errorBarra && (
+            <p className="text-xs font-medium" style={{ color: T.danger }}>
+              ⚠ {errorBarra}
+            </p>
+          )}
+
+          <p className="text-xs" style={{ color: T.textTer }}>
+            El lector envía Enter automáticamente · También puedes escribir el código manualmente
+          </p>
+        </div>
+        {/* ── FIN ESCÁNER ─────────────────────────────────────── */}
+
+        {/* Buscador de productos (manual por nombre) */}
         <div className="rounded-2xl p-4 space-y-3"
           style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
           <label className="block text-xs font-bold uppercase tracking-wider" style={{ color: T.textTer }}>
-            Buscar producto
+            Buscar producto por nombre
           </label>
           <div className="relative">
             <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
@@ -181,7 +269,6 @@ function NuevaVenta() {
               value={buscarProd}
               onChange={e => setBuscarProd(e.target.value)}
               placeholder="Nombre o marca del producto..."
-              autoFocus
               className="w-full pl-9 pr-4 py-3 text-sm rounded-xl outline-none transition-all"
               style={{ border: `1.5px solid ${T.border}`, background: T.surfaceAlt, color: T.text }}
               onFocus={e => { e.target.style.borderColor = T.brand; e.target.style.background = T.surface; }}
@@ -193,7 +280,7 @@ function NuevaVenta() {
             )}
           </div>
 
-          {/* Resultados */}
+          {/* Resultados del buscador */}
           {productos.length > 0 && (
             <div className="rounded-xl overflow-hidden max-h-64 overflow-y-auto"
               style={{ border: `1px solid ${T.border}` }}>
@@ -326,7 +413,7 @@ function NuevaVenta() {
               <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
                 style={{ background: T.surfaceAlt }}>🛒</div>
               <p className="text-xs text-center" style={{ color: T.textMuted }}>
-                Busca un producto para agregar al pedido
+                Escanea un código o busca un producto para agregar
               </p>
             </div>
           ) : (
@@ -605,6 +692,7 @@ export default function PanelCajero() {
           ))}
         </nav>
 
+ MSFL17555
         {/* Footer sidebar */}
         <div className="px-2 py-3 space-y-0.5" style={{ borderTop: `1px solid ${T.sidebarBorder}` }}>
           <Link to="/"

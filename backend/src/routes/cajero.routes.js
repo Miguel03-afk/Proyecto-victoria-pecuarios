@@ -9,12 +9,13 @@ const auth = [verificarToken, soloRol("cajero", "admin", "superadmin")];
 router.get("/productos", auth, async (req, res) => {
   const { buscar = "" } = req.query;
   try {
-    let q = `SELECT id, nombre, precio, stock, imagen_url, marca, unidad
+    let q = `SELECT id, nombre, precio, stock, imagen_url, marca, unidad, codigo_barra
              FROM productos WHERE activo = 1`;
     const params = [];
     if (buscar.trim()) {
-      q += " AND (nombre LIKE ? OR marca LIKE ?)";
-      params.push(`%${buscar}%`, `%${buscar}%`);
+      // Búsqueda por nombre, marca O código de barras exacto
+      q += " AND (nombre LIKE ? OR marca LIKE ? OR codigo_barra = ?)";
+      params.push(`%${buscar}%`, `%${buscar}%`, buscar.trim());
     }
     q += " ORDER BY nombre ASC LIMIT 30";
     const [rows] = await db.query(q, params);

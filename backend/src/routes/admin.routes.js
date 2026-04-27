@@ -2,10 +2,10 @@
 import { Router } from "express";
 import db from "../db.js";
 import { verificarToken, soloAdmin } from "../middlewares/auth.middleware.js";
- 
+
 const router = Router();
 router.use(verificarToken, soloAdmin);
- 
+
 // ── STATS DASHBOARD ──────────────────────────────────────────
 router.get("/stats", async (req, res) => {
   try {
@@ -14,7 +14,7 @@ router.get("/stats", async (req, res) => {
     const [[{ total_ordenes }]]   = await db.query("SELECT COUNT(*) AS total_ordenes FROM ordenes");
     const [[{ ingresos }]]        = await db.query("SELECT COALESCE(SUM(total),0) AS ingresos FROM ordenes WHERE estado NOT IN ('cancelada')");
     const [[{ stock_bajo }]]      = await db.query("SELECT COUNT(*) AS stock_bajo FROM productos WHERE stock <= stock_minimo AND activo=1");
- 
+
     const [[{ ganancia_mes, iva_mes }]] = await db.query(`
       SELECT
         COALESCE(SUM(ganancia_total),0) AS ganancia_mes,
@@ -24,7 +24,7 @@ router.get("/stats", async (req, res) => {
         AND YEAR(created_at)  = YEAR(CURDATE())
         AND estado NOT IN ('cancelada')`
     );
- 
+
     const [ventas_mes] = await db.query(`
       SELECT DATE_FORMAT(created_at,'%Y-%m') AS mes,
              COALESCE(SUM(total),0)          AS total,
@@ -34,20 +34,20 @@ router.get("/stats", async (req, res) => {
         AND estado NOT IN ('cancelada')
       GROUP BY mes ORDER BY mes ASC`
     );
- 
+
     const [ordenes_recientes] = await db.query(`
-      SELECT o.id, o.codigo, o.total, o.estado,
+      SELECT o.id, o.codigo, o.total, o.estado, o.created_at,
              CONCAT(u.nombre,' ',u.apellido) AS cliente
       FROM ordenes o JOIN usuarios u ON o.usuario_id=u.id
       ORDER BY o.created_at DESC LIMIT 5`
     );
- 
+
     const [productos_stock_bajo] = await db.query(`
       SELECT id, nombre, stock, stock_minimo
       FROM productos WHERE stock <= stock_minimo AND activo=1
       ORDER BY stock ASC LIMIT 8`
     );
- 
+
     res.json({
       total_usuarios, total_productos, total_ordenes, ingresos,
       stock_bajo, ganancia_mes, iva_mes,
@@ -57,53 +57,56 @@ router.get("/stats", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
- 
-// ── PRODUCTOS ADMIN (con paginación y filtros) ────────────────
+
+// ── PRODUCTOS ADMIN (con paginación, filtros y código de barras) ─
 router.get("/productos", async (req, res) => {
   try {
     const { buscar = "", pagina = 1, limite = 10, categoria_id = "" } = req.query;
     const offset = (pagina - 1) * limite;
- 
+
     let q = `
       SELECT p.id, p.nombre, p.slug, p.precio, p.precio_antes, p.precio_costo,
              p.stock, p.stock_minimo, p.activo, p.destacado, p.imagen_url, p.marca,
+             p.codigo_barra,
              c.nombre AS categoria, c.id AS categoria_id
       FROM productos p
       JOIN categorias c ON p.categoria_id = c.id
       WHERE 1=1`;
     const params = [];
- 
+
     if (buscar) {
-      q += " AND p.nombre LIKE ?";
-      params.push(`%${buscar}%`);
+      // Búsqueda por nombre (LIKE) o código de barras exacto
+      q += " AND (p.nombre LIKE ? OR p.codigo_barra = ?)";
+      params.push(`%${buscar}%`, buscar.trim());
     }
     if (categoria_id) {
       q += " AND p.categoria_id = ?";
       params.push(Number(categoria_id));
     }
- 
+
+    // Count respetando los mismos filtros
     const countQ = `SELECT COUNT(*) AS total FROM productos p
                     JOIN categorias c ON p.categoria_id = c.id
                     WHERE 1=1
-                    ${buscar ? " AND p.nombre LIKE ?" : ""}
+                    ${buscar ? " AND (p.nombre LIKE ? OR p.codigo_barra = ?)" : ""}
                     ${categoria_id ? " AND p.categoria_id = ?" : ""}`;
     const countParams = [
-      ...(buscar ? [`%${buscar}%`] : []),
+      ...(buscar ? [`%${buscar}%`, buscar.trim()] : []),
       ...(categoria_id ? [Number(categoria_id)] : []),
     ];
- 
+
     q += " ORDER BY p.id DESC LIMIT ? OFFSET ?";
     params.push(Number(limite), Number(offset));
- 
+
     const [rows] = await db.query(q, params);
     const [[{ total }]] = await db.query(countQ, countParams);
- 
+
     res.json({ productos: rows, total });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
- 
+
 // ── USUARIOS ─────────────────────────────────────────────────
 router.get("/usuarios", async (req, res) => {
   try {
@@ -120,7 +123,7 @@ router.get("/usuarios", async (req, res) => {
     }
     q += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
     p.push(Number(limite), Number(offset));
- 
+
     const [rows] = await db.query(q, p);
     const [[{ total }]] = await db.query(
       buscar
@@ -133,7 +136,7 @@ router.get("/usuarios", async (req, res) => {
     res.status(500).json({ error: "Error al obtener usuarios." });
   }
 });
- 
+
 router.get("/usuarios/:id", async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -142,7 +145,7 @@ router.get("/usuarios/:id", async (req, res) => {
       [req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: "Usuario no encontrado." });
- 
+
     const [ordenes] = await db.query(
       `SELECT o.id, o.codigo, o.total, o.estado, o.metodo_pago, o.created_at,
               COUNT(d.id) AS items
@@ -161,7 +164,7 @@ router.get("/usuarios/:id", async (req, res) => {
     res.status(500).json({ error: "Error." });
   }
 });
- 
+
 router.put("/usuarios/:id", async (req, res) => {
   const { nombre, apellido, email, telefono, tipo_documento, numero_documento, rol, activo } = req.body;
   try {
@@ -182,7 +185,7 @@ router.put("/usuarios/:id", async (req, res) => {
     res.status(500).json({ error: "Error al actualizar." });
   }
 });
- 
+
 router.patch("/usuarios/:id/password", async (req, res) => {
   const { nueva_password } = req.body;
   if (!nueva_password || nueva_password.length < 6)
@@ -196,7 +199,7 @@ router.patch("/usuarios/:id/password", async (req, res) => {
     res.status(500).json({ error: "Error." });
   }
 });
- 
+
 router.delete("/usuarios/:id", async (req, res) => {
   if (req.params.id == req.usuario.id)
     return res.status(400).json({ error: "No puedes eliminarte a ti mismo." });
@@ -207,7 +210,7 @@ router.delete("/usuarios/:id", async (req, res) => {
     res.status(500).json({ error: "Error." });
   }
 });
- 
+
 // ── ÓRDENES ───────────────────────────────────────────────────
 router.get("/ordenes", async (req, res) => {
   try {
@@ -221,7 +224,7 @@ router.get("/ordenes", async (req, res) => {
     if (estado) { q += " AND o.estado=?"; params.push(estado); }
     q += " ORDER BY o.created_at DESC LIMIT ? OFFSET ?";
     params.push(Number(limite), Number(offset));
- 
+
     const [rows] = await db.query(q, params);
     const [[{ total }]] = await db.query(
       estado
@@ -234,7 +237,7 @@ router.get("/ordenes", async (req, res) => {
     res.status(500).json({ error: "Error." });
   }
 });
- 
+
 router.patch("/ordenes/:id/estado", async (req, res) => {
   const { estado } = req.body;
   const validos = ["pendiente","pagada","procesando","enviada","entregada","cancelada"];
@@ -246,14 +249,14 @@ router.patch("/ordenes/:id/estado", async (req, res) => {
     res.status(500).json({ error: "Error." });
   }
 });
- 
+
 // ── CAJEROS: listado con estadísticas ────────────────────────
 router.get("/cajeros", async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT u.id, u.nombre, u.apellido, u.email, u.activo,
-              COUNT(o.id)                                                    AS total_ventas,
-              COALESCE(SUM(o.total), 0)                                      AS total_facturado,
+              COUNT(o.id)                                                      AS total_ventas,
+              COALESCE(SUM(o.total), 0)                                        AS total_facturado,
               SUM(CASE WHEN DATE(o.created_at) = CURDATE() THEN 1 ELSE 0 END) AS ventas_hoy
        FROM usuarios u
        LEFT JOIN ordenes o ON o.cajero_id = u.id
@@ -302,11 +305,11 @@ router.put("/proveedores/:id", async (req, res) => {
   const { nombre, contacto, telefono, email, activo } = req.body;
   try {
     const sets = [], vals = [];
-    if (nombre    !== undefined) { sets.push("nombre=?");    vals.push(nombre||null); }
-    if (contacto  !== undefined) { sets.push("contacto=?");  vals.push(contacto||null); }
-    if (telefono  !== undefined) { sets.push("telefono=?");  vals.push(telefono||null); }
-    if (email     !== undefined) { sets.push("email=?");     vals.push(email||null); }
-    if (activo    !== undefined) { sets.push("activo=?");    vals.push(activo); }
+    if (nombre   !== undefined) { sets.push("nombre=?");   vals.push(nombre||null); }
+    if (contacto !== undefined) { sets.push("contacto=?"); vals.push(contacto||null); }
+    if (telefono !== undefined) { sets.push("telefono=?"); vals.push(telefono||null); }
+    if (email    !== undefined) { sets.push("email=?");    vals.push(email||null); }
+    if (activo   !== undefined) { sets.push("activo=?");   vals.push(activo); }
     if (!sets.length) return res.json({ mensaje: "Sin cambios." });
     vals.push(req.params.id);
     await db.query(`UPDATE proveedores SET ${sets.join(",")} WHERE id=?`, vals);
@@ -331,5 +334,80 @@ router.delete("/proveedores/:id", async (req, res) => {
   }
 });
 
+// ── FACTURA MANUAL ────────────────────────────────────────────
+router.post("/facturas", async (req, res) => {
+  const { usuario_id, items, metodo_pago, direccion_entrega, ciudad_entrega, notas } = req.body;
+  if (!usuario_id || !items?.length)
+    return res.status(400).json({ error: "usuario_id e items son requeridos." });
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const IVA_PCT = 19;
+    let subtotal = 0;
+
+    for (const item of items) {
+      const [[prod]] = await conn.query(
+        "SELECT precio, precio_costo, stock FROM productos WHERE id=?",
+        [item.producto_id]
+      );
+      if (!prod) throw new Error(`Producto ${item.producto_id} no encontrado.`);
+      if (prod.stock < item.cantidad) throw new Error(`Stock insuficiente para producto ${item.producto_id}.`);
+      item._precio       = prod.precio;
+      item._precio_costo = prod.precio_costo || 0;
+      subtotal += prod.precio * item.cantidad;
+    }
+
+    const total = subtotal;
+    let iva_total = 0, ganancia_total = 0;
+    for (const item of items) {
+      iva_total      += +(item._precio * item.cantidad * IVA_PCT / 100).toFixed(2);
+      ganancia_total += +((item._precio - item._precio_costo) * item.cantidad).toFixed(2);
+    }
+
+    const anio = new Date().getFullYear();
+    const [[{ ultimo }]] = await conn.query(
+      "SELECT COUNT(*) AS ultimo FROM ordenes WHERE YEAR(created_at)=?", [anio]
+    );
+    const codigo = `VIC-${anio}-${String(ultimo + 1).padStart(5, "0")}`;
+
+    const [ord] = await conn.query(
+      `INSERT INTO ordenes
+         (usuario_id, codigo, estado, subtotal, descuento, total,
+          iva_total, ganancia_total, metodo_pago, direccion_entrega, ciudad_entrega, notas)
+       VALUES (?, ?, 'pagada', ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
+      [usuario_id, codigo, subtotal, total,
+       iva_total, ganancia_total,
+       metodo_pago || "efectivo",
+       direccion_entrega || null, ciudad_entrega || null, notas || null]
+    );
+    const orden_id = ord.insertId;
+
+    for (const item of items) {
+      const item_subtotal = +(item._precio * item.cantidad).toFixed(2);
+      const iva_valor     = +(item_subtotal * IVA_PCT / 100).toFixed(2);
+      const ganancia      = +((item._precio - item._precio_costo) * item.cantidad).toFixed(2);
+
+      await conn.query(
+        `INSERT INTO detalle_orden
+           (orden_id, producto_id, nombre_snap, cantidad, precio_unit, precio_costo,
+            subtotal, iva_porcentaje, iva_valor, ganancia)
+         SELECT ?, id, nombre, ?, ?, ?, ?, ?, ?, ?
+         FROM productos WHERE id=?`,
+        [orden_id, item.cantidad, item._precio, item._precio_costo,
+         item_subtotal, IVA_PCT, iva_valor, ganancia, item.producto_id]
+      );
+    }
+
+    await conn.commit();
+    res.status(201).json({ mensaje: "Factura creada.", orden_id, codigo });
+  } catch (err) {
+    await conn.rollback();
+    res.status(400).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+});
+
 export default router;
- 
