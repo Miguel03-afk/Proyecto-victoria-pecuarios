@@ -18,7 +18,8 @@ import Admin      from "./pages/Admin";
 import Carrito    from "./pages/Carrito";
 import Producto   from "./pages/Producto";
 import Perfil     from "./pages/Perfil";
-import MisOrdenes from "./pages/MisOrdenes";
+import MisOrdenes     from "./pages/MisOrdenes";
+import PagoRespuesta  from "./pages/PagoRespuesta";
 
 const NoEncontrado = () => (
   <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-4"
@@ -77,6 +78,9 @@ export default function App() {
 
             <Route path="/mis-ordenes"
               element={<RutaProtegida><LayoutConNav><MisOrdenes /></LayoutConNav></RutaProtegida>} />
+
+            {/* Respuesta de pago ePayco — sin Navbar, sin protección (puede llegar sin sesión) */}
+            <Route path="/pago/respuesta" element={<PagoRespuesta />} />
 
             <Route path="/agendar-cita"
                 element={<AgendarCita />} />

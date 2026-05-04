@@ -162,7 +162,7 @@ function PasoVeterinario({ onElegir }) {
             </div>
 
             <p style={{ margin:0, fontSize:11, color:C.textMuted }}>
-              ⏱ {v.duracion_cita} min por cita
+              {v.disponibilidad.length} día{v.disponibilidad.length !== 1 ? "s" : ""} disponible{v.disponibilidad.length !== 1 ? "s" : ""}
             </p>
           </div>
 
@@ -180,131 +180,149 @@ function PasoVeterinario({ onElegir }) {
   );
 }
 
-/* ─── Paso 2: elegir fecha y hora ──────────────────────────── */
+/* ─── helpers fecha ────────────────────────────────────────── */
+const DIAS_FULL   = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+const MESES_CORTO = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+
+function proximasFechas(diaSemana, n = 6) {
+  const fechas = [];
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  cursor.setDate(cursor.getDate() + 1);
+  const limite = new Date(cursor.getTime() + 90 * 86400000);
+  while (fechas.length < n && cursor <= limite) {
+    if (cursor.getDay() === diaSemana)
+      fechas.push(cursor.toISOString().split("T")[0]);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return fechas;
+}
+
+function slotEnBloque(slot, bloque) {
+  return slot >= bloque.hora_inicio && slot < bloque.hora_fin;
+}
+
+function fmtRango(inicio, duracionMin) {
+  const [h, m] = inicio.split(":").map(Number);
+  const fin = h * 60 + m + duracionMin;
+  const hf = Math.floor(fin / 60), mf = fin % 60;
+  return `${fmt(inicio)} – ${fmt(`${String(hf).padStart(2,"0")}:${String(mf).padStart(2,"0")}`)}`;
+}
+
+/* ─── Paso 2: fecha → hora ─────────────────────────────────── */
+const MESES_LARGO = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
 function PasoFechaHora({ vet, fecha, setFecha, hora, setHora }) {
-  const [slots, setSlots] = useState([]);
-  const [cargandoSlots, setCargandoSlots] = useState(false);
-  const [mensajeSlots, setMensajeSlots] = useState("");
+  const [slots,    setSlots]    = useState([]);
+  const [cargando, setCargando] = useState(false);
+  const [sinSlots, setSinSlots] = useState(false);
 
-  // Fecha mínima: mañana
-  const fechaMin = new Date();
-  fechaMin.setDate(fechaMin.getDate() + 1);
-  const fechaMinStr = fechaMin.toISOString().split("T")[0];
+  // UN banner por día configurado: solo la próxima fecha de ese día de semana
+  const fechasDisp = vet.disponibilidad
+    .map(d => {
+      const prox = proximasFechas(d.dia, 1);
+      return prox.length ? { dia: d.dia, fecha: prox[0] } : null;
+    })
+    .filter(Boolean);
 
-  // Fecha máxima: 60 días
-  const fechaMax = new Date();
-  fechaMax.setDate(fechaMax.getDate() + 60);
-  const fechaMaxStr = fechaMax.toISOString().split("T")[0];
-
-  useEffect(() => {
-    if (!fecha || !vet) return;
-    setSlots([]); setHora(""); setCargandoSlots(true);
-    api.get("/citas/disponibilidad", { params: { veterinario_id: vet.id, fecha } })
-      .then(r => {
-        setSlots(r.data.slots || []);
-        setMensajeSlots(r.data.mensaje || "");
-      })
-      .catch(() => setMensajeSlots("Error al cargar horarios"))
-      .finally(() => setCargandoSlots(false));
-  }, [fecha, vet]);
-
-  // Días disponibles del vet
-  const diasDisp = new Set(vet.disponibilidad.map(d => d.dia));
-
-  const isDateDisabled = (dateStr) => {
-    const d = new Date(dateStr + "T00:00:00");
-    return !diasDisp.has(d.getDay());
+  const elegirFecha = (f) => {
+    setFecha(f); setHora(""); setSlots([]); setSinSlots(false);
+    setCargando(true);
+    api.get("/citas/disponibilidad", { params: { veterinario_id: vet.id, fecha: f } })
+      .then(r => { setSlots(r.data.slots || []); setSinSlots(!r.data.slots?.length); })
+      .catch(() => setSinSlots(true))
+      .finally(() => setCargando(false));
   };
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-      {/* Vet seleccionado */}
-      <div style={{
-        display:"flex", alignItems:"center", gap:14,
-        padding:"16px 18px", borderRadius:14,
-        background:C.brandLight, border:`1px solid ${C.brandBorder}`,
-      }}>
-        <div style={{ width:44, height:44, borderRadius:12, background:C.surface, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>
-          👨‍⚕️
-        </div>
+
+      {/* Vet banner */}
+      <div style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 18px", borderRadius:14, background:C.brandLight, border:`1px solid ${C.brandBorder}` }}>
+        <div style={{ width:40, height:40, borderRadius:11, background:C.surface, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>👨‍⚕️</div>
         <div>
-          <p style={{ margin:0, fontWeight:800, color:C.brand, fontSize:14 }}>
-            Dr(a). {vet.nombre} {vet.apellido}
-          </p>
-          <p style={{ margin:0, fontSize:12, color:C.textTer }}>{vet.especialidad} · {vet.duracion_cita} min</p>
-        </div>
-        <div style={{ marginLeft:"auto", display:"flex", gap:4 }}>
-          {vet.disponibilidad.map(d => (
-            <span key={d.dia} style={{ fontSize:10, fontWeight:700, padding:"2px 7px", borderRadius:6, background:"rgba(26,92,26,0.15)", color:C.brand }}>
-              {DIAS[d.dia]}
-            </span>
-          ))}
+          <p style={{ margin:0, fontWeight:800, color:C.brand, fontSize:14 }}>Dr(a). {vet.nombre} {vet.apellido}</p>
+          <p style={{ margin:0, fontSize:12, color:C.textTer }}>{vet.especialidad}</p>
         </div>
       </div>
 
-      {/* Selector de fecha */}
+      {/* ── Banners de fecha ── */}
       <div>
-        <label style={{ display:"block", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8, color:C.textTer, marginBottom:8 }}>
+        <label style={{ display:"block", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8, color:C.textTer, marginBottom:12 }}>
           Selecciona una fecha
         </label>
-        <input
-          type="date"
-          value={fecha}
-          onChange={e => setFecha(e.target.value)}
-          min={fechaMinStr}
-          max={fechaMaxStr}
-          style={{
-            width:"100%", padding:"11px 14px", borderRadius:12,
-            border:`1.5px solid ${C.border}`,
-            background:C.surfaceAlt, color:C.text,
-            fontSize:14, outline:"none",
-          }}
-          onFocus={e => { e.target.style.borderColor=C.brand; e.target.style.boxShadow="0 0 0 3px rgba(26,92,26,0.08)"; }}
-          onBlur={e => { e.target.style.borderColor=C.border; e.target.style.boxShadow="none"; }}
-        />
-        {fecha && isDateDisabled(fecha) && (
-          <p style={{ margin:"6px 0 0", fontSize:12, color:C.danger }}>
-            ⚠ El veterinario no atiende ese día. Días disponibles: {vet.disponibilidad.map(d => DIAS[d.dia]).join(", ")}
-          </p>
+
+        {fechasDisp.length === 0 ? (
+          <div style={{ padding:"14px 18px", borderRadius:12, background:C.dangerBg, border:`1px solid ${C.dangerBorder}` }}>
+            <p style={{ margin:0, fontSize:13, color:C.danger }}>Este veterinario no tiene días de atención configurados.</p>
+          </div>
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {fechasDisp.map(item => {
+              const d      = new Date(item.fecha + "T00:00:00");
+              const activo = fecha === item.fecha;
+              return (
+                <button key={item.fecha} onClick={() => elegirFecha(item.fecha)} style={{
+                  display:"flex", alignItems:"center", gap:18,
+                  padding:"16px 20px", borderRadius:14, textAlign:"left", width:"100%",
+                  background: activo ? C.brand : C.surface,
+                  border:`1.5px solid ${activo ? C.brand : C.border}`,
+                  cursor:"pointer", transition:"all 0.18s",
+                  boxShadow: activo ? "0 4px 16px rgba(10,107,64,0.2)" : "none",
+                }}
+                onMouseEnter={e => { if (!activo) { e.currentTarget.style.borderColor=C.brandBorder; e.currentTarget.style.background=C.brandLight; }}}
+                onMouseLeave={e => { if (!activo) { e.currentTarget.style.borderColor=C.border; e.currentTarget.style.background=C.surface; }}}
+                >
+                  <div style={{ width:50, height:50, borderRadius:12, flexShrink:0, background: activo ? "rgba(255,255,255,0.15)" : C.brandLight, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
+                    <span style={{ fontSize:22, fontWeight:900, lineHeight:1, color: activo ? "#fff" : C.brand }}>{d.getDate()}</span>
+                    <span style={{ fontSize:9, fontWeight:700, textTransform:"uppercase", color: activo ? "rgba(255,255,255,0.65)" : C.textMuted }}>{MESES_CORTO[d.getMonth()]}</span>
+                  </div>
+                  <div>
+                    <p style={{ margin:0, fontSize:16, fontWeight:800, color: activo ? "#fff" : C.text }}>
+                      {DIAS_FULL[d.getDay()]}
+                    </p>
+                    <p style={{ margin:0, fontSize:12, color: activo ? "rgba(255,255,255,0.75)" : C.textTer }}>
+                      {d.getDate()} de {MESES_LARGO[d.getMonth()]} de {d.getFullYear()}
+                    </p>
+                  </div>
+                  {activo && <span style={{ marginLeft:"auto", fontSize:20, color:"rgba(255,255,255,0.85)" }}>✓</span>}
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* Slots de hora */}
-      {fecha && !isDateDisabled(fecha) && (
+      {/* ── Horarios disponibles ── */}
+      {fecha && (
         <div>
           <label style={{ display:"block", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8, color:C.textTer, marginBottom:10 }}>
             Horarios disponibles
           </label>
-          {cargandoSlots ? (
+          {cargando ? (
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-              {[1,2,3,4,5,6].map(i => (
-                <div key={i} style={{ width:72, height:36, borderRadius:8, background:`linear-gradient(90deg,${C.surfaceAlt} 25%,#e9ebe6 50%,${C.surfaceAlt} 75%)`, backgroundSize:"200% 100%", animation:"shimmer 1.4s infinite" }}/>
-              ))}
+              {[1,2,3,4,5,6].map(i => <div key={i} style={{ width:90, height:42, borderRadius:10, background:`linear-gradient(90deg,${C.surfaceAlt} 25%,#e9ebe6 50%,${C.surfaceAlt} 75%)`, backgroundSize:"200% 100%", animation:"shimmer 1.4s infinite" }}/>)}
             </div>
-          ) : slots.length === 0 ? (
-            <div style={{ padding:"16px 20px", borderRadius:12, background:C.dangerBg, border:`1px solid ${C.dangerBorder}` }}>
-              <p style={{ margin:0, fontSize:13, color:C.danger, fontWeight:500 }}>
-                {mensajeSlots || "No hay horarios disponibles para este día."}
-              </p>
+          ) : sinSlots ? (
+            <div style={{ padding:"14px 18px", borderRadius:12, background:C.dangerBg, border:`1px solid ${C.dangerBorder}` }}>
+              <p style={{ margin:0, fontSize:13, color:C.danger, fontWeight:500 }}>No hay horarios disponibles para esta fecha. Elige otra.</p>
             </div>
           ) : (
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {slots.map(s => (
-                <button
-                  key={s}
-                  onClick={() => setHora(s)}
-                  style={{
-                    padding:"8px 14px", borderRadius:9,
-                    border:`1.5px solid ${hora === s ? C.brand : C.border}`,
-                    background: hora === s ? C.brand : C.surface,
-                    color: hora === s ? "#fff" : C.textSec,
-                    fontSize:13, fontWeight: hora === s ? 700 : 400,
-                    cursor:"pointer", transition:"all 0.15s",
-                  }}
-                  onMouseEnter={e => { if (hora !== s) { e.currentTarget.style.borderColor=C.brandBorder; e.currentTarget.style.background=C.brandLight; }}}
-                  onMouseLeave={e => { if (hora !== s) { e.currentTarget.style.borderColor=C.border; e.currentTarget.style.background=C.surface; }}}
+                <button key={s} onClick={() => setHora(s)} style={{
+                  padding:"10px 18px", borderRadius:10,
+                  border:`1.5px solid ${hora === s ? C.brand : C.border}`,
+                  background: hora === s ? C.brand : C.surface,
+                  color: hora === s ? "#fff" : C.textSec,
+                  fontSize:13, fontWeight: hora === s ? 700 : 500,
+                  cursor:"pointer", transition:"all 0.15s",
+                  boxShadow: hora === s ? "0 4px 12px rgba(10,107,64,0.2)" : "none",
+                }}
+                onMouseEnter={e => { if (hora !== s) { e.currentTarget.style.borderColor=C.brandBorder; e.currentTarget.style.background=C.brandLight; }}}
+                onMouseLeave={e => { if (hora !== s) { e.currentTarget.style.borderColor=C.border; e.currentTarget.style.background=C.surface; }}}
                 >
-                  {fmt(s)}
+                  {fmtRango(s, vet.duracion_cita)}
                 </button>
               ))}
             </div>
@@ -554,7 +572,7 @@ export default function AgendarCita() {
                 {[
                   { icon:"👨‍⚕️", label:"Veterinario", val:`Dr(a). ${vet?.nombre} ${vet?.apellido} · ${vet?.especialidad}` },
                   { icon:"📅", label:"Fecha",       val: fmt2(fecha) },
-                  { icon:"🕐", label:"Hora",        val: fmt(hora) },
+                  { icon:"🕐", label:"Hora",        val: hora ? fmtRango(hora, vet?.duracion_cita) : "" },
                   { icon:"🐾", label:"Mascota",     val:`${form.nombre_mascota} (${form.especie_mascota})` },
                   { icon:"📋", label:"Motivo",      val: form.motivo },
                 ].map(r => (

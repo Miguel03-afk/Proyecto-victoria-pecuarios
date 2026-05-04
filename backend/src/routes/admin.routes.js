@@ -2,6 +2,7 @@
 import { Router } from "express";
 import db from "../db.js";
 import { verificarToken, soloAdmin } from "../middlewares/auth.middleware.js";
+import { enviarPropuestaReagendamiento } from "../services/email.js";
 
 const router = Router();
 router.use(verificarToken, soloAdmin);
@@ -180,6 +181,14 @@ router.put("/usuarios/:id", async (req, res) => {
        tipo_documento??null, numero_documento??null, rol??null, activo??null,
        req.params.id]
     );
+    // Si se asigna rol veterinario, garantizar perfil en tabla veterinarios
+    if (rol === "veterinario") {
+      await db.query(
+        `INSERT IGNORE INTO veterinarios (usuario_id, especialidad, duracion_cita, activo)
+         VALUES (?, 'Medicina General', 30, 1)`,
+        [req.params.id]
+      );
+    }
     res.json({ mensaje: "Usuario actualizado." });
   } catch (err) {
     res.status(500).json({ error: "Error al actualizar." });
@@ -221,16 +230,16 @@ router.get("/ordenes", async (req, res) => {
              CONCAT(u.nombre,' ',u.apellido) AS cliente, u.email
              FROM ordenes o JOIN usuarios u ON o.usuario_id=u.id WHERE 1=1`;
     const params = [];
-    if (estado) { q += " AND o.estado=?"; params.push(estado); }
+    if (estado) { q += " AND LOWER(IFNULL(o.estado,'')) = ?"; params.push(estado.toLowerCase()); }
     q += " ORDER BY o.created_at DESC LIMIT ? OFFSET ?";
     params.push(Number(limite), Number(offset));
 
     const [rows] = await db.query(q, params);
     const [[{ total }]] = await db.query(
       estado
-        ? "SELECT COUNT(*) AS total FROM ordenes WHERE estado=?"
+        ? "SELECT COUNT(*) AS total FROM ordenes WHERE LOWER(IFNULL(estado,'')) = ?"
         : "SELECT COUNT(*) AS total FROM ordenes",
-      estado ? [estado] : []
+      estado ? [estado.toLowerCase()] : []
     );
     res.json({ ordenes: rows, total });
   } catch (err) {
@@ -238,15 +247,220 @@ router.get("/ordenes", async (req, res) => {
   }
 });
 
+router.get("/ordenes/:id", async (req, res) => {
+  try {
+    const [[orden]] = await db.query(
+      `SELECT o.id, o.codigo, o.subtotal, o.costo_envio, o.descuento, o.total,
+              o.iva_total, o.ganancia_total, o.estado, o.metodo_pago,
+              o.direccion_entrega, o.ciudad_entrega, o.notas, o.created_at,
+              o.epayco_ref,
+              CONCAT(u.nombre,' ',u.apellido) AS cliente, u.email, u.telefono
+       FROM ordenes o JOIN usuarios u ON o.usuario_id = u.id
+       WHERE o.id = ?`,
+      [req.params.id]
+    );
+    if (!orden) return res.status(404).json({ error: "Orden no encontrada." });
+
+    const [items] = await db.query(
+      `SELECT nombre_snap, cantidad, precio_unit, subtotal, iva_valor
+       FROM detalle_orden WHERE orden_id = ?`,
+      [orden.id]
+    );
+    res.json({ ...orden, items });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.patch("/ordenes/:id/estado", async (req, res) => {
   const { estado } = req.body;
-  const validos = ["pendiente","pagada","procesando","enviada","entregada","cancelada"];
+  const validos = ["pendiente","pendiente_pago","pagada","procesando","enviada","entregada","cancelada","rechazada"];
   if (!validos.includes(estado)) return res.status(400).json({ error: "Estado inválido." });
   try {
     await db.query("UPDATE ordenes SET estado=? WHERE id=?", [estado, req.params.id]);
     res.json({ mensaje: "Estado actualizado." });
   } catch (err) {
     res.status(500).json({ error: "Error." });
+  }
+});
+
+router.patch("/ordenes/:id/envio", async (req, res) => {
+  const costo = parseFloat(req.body.costo_envio);
+  if (isNaN(costo) || costo < 0) return res.status(400).json({ error: "Costo de envío inválido." });
+  try {
+    const [[ord]] = await db.query("SELECT subtotal, descuento FROM ordenes WHERE id=?", [req.params.id]);
+    if (!ord) return res.status(404).json({ error: "Orden no encontrada." });
+    const nuevoTotal = ord.subtotal + costo - (ord.descuento || 0);
+    await db.query("UPDATE ordenes SET costo_envio=?, total=? WHERE id=?", [costo, nuevoTotal, req.params.id]);
+    res.json({ mensaje: "Costo de envío actualizado.", costo_envio: costo, total: nuevoTotal });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── CITAS (vista admin) ───────────────────────────────────────
+router.get("/citas", async (req, res) => {
+  try {
+    const { estado = "" } = req.query;
+    let where = "1=1";
+    const params = [];
+    if (estado) { where += " AND c.estado = ?"; params.push(estado); }
+
+    const [citas] = await db.query(`
+      SELECT c.id, c.codigo, DATE_FORMAT(c.fecha,'%Y-%m-%d') AS fecha, c.hora,
+             c.estado, c.motivo, c.nombre_mascota, c.especie_mascota,
+             c.motivo_cancelacion, c.created_at,
+             c.reagendamiento_motivo, c.reagendamiento_estado,
+             DATE_FORMAT(c.reagendamiento_nueva_fecha,'%Y-%m-%d') AS reagendamiento_nueva_fecha,
+             c.reagendamiento_nueva_hora,
+             u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.email AS cliente_email,
+             uv.nombre AS vet_nombre, uv.apellido AS vet_apellido,
+             v.especialidad
+      FROM citas c
+      JOIN usuarios u  ON u.id  = c.cliente_id
+      JOIN veterinarios v  ON v.id  = c.veterinario_id
+      JOIN usuarios uv ON uv.id = v.usuario_id
+      WHERE ${where}
+      ORDER BY c.fecha ASC, c.hora ASC
+      LIMIT 200
+    `, params);
+    res.json(citas);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── REAGENDAR CITA (admin propone nueva fecha al cliente) ─────
+router.post("/citas/:id/reagendar", async (req, res) => {
+  const { motivo, nueva_fecha, nueva_hora } = req.body;
+  if (!motivo?.trim())
+    return res.status(400).json({ error: "El motivo es obligatorio." });
+
+  try {
+    const [[cita]] = await db.query(
+      `SELECT c.id, c.codigo, c.estado, c.nombre_mascota,
+              u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.email AS cliente_email
+       FROM citas c JOIN usuarios u ON u.id = c.cliente_id
+       WHERE c.id = ?`,
+      [req.params.id]
+    );
+    if (!cita) return res.status(404).json({ error: "Cita no encontrada." });
+    if (!["pendiente","confirmada"].includes(cita.estado))
+      return res.status(400).json({ error: "Solo se pueden reagendar citas pendientes o confirmadas." });
+
+    await db.query(
+      `UPDATE citas SET
+         reagendamiento_motivo     = ?,
+         reagendamiento_nueva_fecha= ?,
+         reagendamiento_nueva_hora = ?,
+         reagendamiento_estado     = 'propuesta'
+       WHERE id = ?`,
+      [motivo.trim(), nueva_fecha || null, nueva_hora || null, req.params.id]
+    );
+
+    try {
+      await enviarPropuestaReagendamiento(
+        cita.cliente_email,
+        cita.cliente_nombre,
+        cita,
+        motivo.trim(),
+        nueva_fecha || null,
+        nueva_hora  || null
+      );
+    } catch (emailErr) {
+      console.error("Email reagendamiento no enviado:", emailErr.message);
+    }
+
+    res.json({ mensaje: "Propuesta de reagendamiento enviada al cliente." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── VETERINARIOS ─────────────────────────────────────────────
+router.get("/veterinarios", async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT u.id AS usuario_id, u.nombre, u.apellido, u.email, u.activo AS usuario_activo,
+             v.id AS vet_id, v.especialidad, v.duracion_cita, v.descripcion,
+             v.foto_url, v.activo AS vet_activo,
+             COUNT(DISTINCT c.id)                                                   AS total_citas,
+             SUM(CASE WHEN c.estado='pendiente'  THEN 1 ELSE 0 END)                AS citas_pendientes,
+             SUM(CASE WHEN c.estado='confirmada' THEN 1 ELSE 0 END)                AS citas_confirmadas
+      FROM usuarios u
+      LEFT JOIN veterinarios v ON v.usuario_id = u.id
+      LEFT JOIN citas c        ON c.veterinario_id = v.id
+      WHERE u.rol = 'veterinario'
+      GROUP BY u.id, v.id
+      ORDER BY u.nombre ASC
+    `);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Usuarios con rol veterinario pero sin perfil en la tabla veterinarios
+router.get("/veterinarios/candidatos", async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT u.id, u.nombre, u.apellido, u.email
+      FROM usuarios u
+      LEFT JOIN veterinarios v ON v.usuario_id = u.id
+      WHERE u.rol = 'veterinario' AND v.id IS NULL AND u.activo = 1
+      ORDER BY u.nombre ASC
+    `);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/veterinarios", async (req, res) => {
+  const { usuario_id, especialidad, duracion_cita, descripcion } = req.body;
+  if (!usuario_id) return res.status(400).json({ error: "usuario_id es requerido." });
+  try {
+    await db.query(
+      `INSERT INTO veterinarios (usuario_id, especialidad, duracion_cita, descripcion, activo)
+       VALUES (?, ?, ?, ?, 1)`,
+      [usuario_id, especialidad || "Medicina General", duracion_cita || 30, descripcion || null]
+    );
+    res.status(201).json({ mensaje: "Perfil veterinario creado." });
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY")
+      return res.status(409).json({ error: "Este usuario ya tiene un perfil veterinario." });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put("/veterinarios/:id", async (req, res) => {
+  const { especialidad, duracion_cita, descripcion, foto_url, activo } = req.body;
+  try {
+    const sets = [], vals = [];
+    if (especialidad  !== undefined) { sets.push("especialidad=?");   vals.push(especialidad||null); }
+    if (duracion_cita !== undefined) { sets.push("duracion_cita=?");  vals.push(Number(duracion_cita)||30); }
+    if (descripcion   !== undefined) { sets.push("descripcion=?");    vals.push(descripcion||null); }
+    if (foto_url      !== undefined) { sets.push("foto_url=?");       vals.push(foto_url||null); }
+    if (activo        !== undefined) { sets.push("activo=?");         vals.push(activo ? 1 : 0); }
+    if (!sets.length) return res.json({ mensaje: "Sin cambios." });
+    vals.push(req.params.id);
+    await db.query(`UPDATE veterinarios SET ${sets.join(",")} WHERE id=?`, vals);
+    res.json({ mensaje: "Perfil actualizado." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Toggle activo/inactivo del veterinario
+router.patch("/veterinarios/:id/activo", async (req, res) => {
+  try {
+    const [[vet]] = await db.query("SELECT id, activo FROM veterinarios WHERE id=?", [req.params.id]);
+    if (!vet) return res.status(404).json({ error: "Veterinario no encontrado." });
+    const nuevoEstado = vet.activo ? 0 : 1;
+    await db.query("UPDATE veterinarios SET activo=? WHERE id=?", [nuevoEstado, req.params.id]);
+    res.json({ activo: nuevoEstado, mensaje: nuevoEstado ? "Veterinario activado." : "Veterinario desactivado." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

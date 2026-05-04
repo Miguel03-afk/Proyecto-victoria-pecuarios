@@ -1,7 +1,11 @@
 // src/pages/Admin.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  LineChart, Line, ComposedChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  ReferenceLine,
+} from "recharts";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Objetivos from "../components/Objetivos.jsx";
@@ -12,7 +16,17 @@ import { T, shadow, font, fmt, fmtShort, fdoc, estadoStyle } from "../styles/adm
 import logoVP from "../assets/WhatsApp Image 2026-04-22 at 1.19.17 PM.jpeg";
 
 // ─── Constantes ───────────────────────────────────────────────
-const ESTADOS = ["pendiente","pagada","procesando","enviada","entregada","cancelada"];
+const ESTADOS = ["pendiente","pendiente_pago","pagada","procesando","enviada","entregada","cancelada","rechazada"];
+const ESTADO_LABEL = {
+  pendiente:      "Pendiente",
+  pendiente_pago: "Pago pendiente",
+  pagada:         "Pagada",
+  procesando:     "Procesando",
+  enviada:        "Enviada",
+  entregada:      "Entregada",
+  cancelada:      "Cancelada",
+  rechazada:      "Rechazada",
+};
 
 const NAV = [
   {id:"dashboard",       label:"Dashboard",     d:"M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"},
@@ -26,6 +40,7 @@ const NAV = [
   // ── Galería de imágenes ──
   {id:"galeria",         label:"Galería",        d:"M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"},
   {id:"proveedores",     label:"Proveedores",    d:"M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"},
+  {id:"veterinarios",    label:"Veterinarios",   d:"M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"},
 ];
 
 const TITULOS = {
@@ -35,6 +50,7 @@ const TITULOS = {
   // ── Galería ──
   galeria:"Galería de imágenes",
   proveedores:"Proveedores",
+  veterinarios:"Veterinarios & Citas",
 };
 
 // ─── Componentes base ─────────────────────────────────────────
@@ -175,24 +191,52 @@ const THead = ({cols}) => (
 );
 
 // ─── DASHBOARD ────────────────────────────────────────────────
+function SparkLine({ data, dataKey, color, height=36 }) {
+  if (!data?.length) return null;
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <LineChart data={data} margin={{top:2,right:0,bottom:0,left:0}}>
+        <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={1.5} dot={false}/>
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:"10px 14px", fontSize:12, boxShadow:shadow.sm }}>
+      <p style={{ color:T.textMuted, marginBottom:6, fontSize:10, textTransform:"uppercase", letterSpacing:0.8 }}>
+        {label}
+      </p>
+      {payload.map((p, i) => (
+        <div key={i} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:i < payload.length-1 ? 4 : 0 }}>
+          <span style={{ width:8, height:8, borderRadius:"50%", background:p.color, display:"block", flexShrink:0 }}/>
+          <span style={{ color:T.textSec, fontSize:11 }}>{p.name}:</span>
+          <span style={{ color:T.text, fontWeight:700, fontFamily:"monospace" }}>
+            {p.name === "Ingresos" ? fmtShort(p.value) : p.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Dashboard() {
   const [stats,    setStats]    = useState(null);
-  const [citas,    setCitas]    = useState(null);  // stats de citas
+  const [citas,    setCitas]    = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error,    setError]    = useState(null);
-  const [tabGraf,  setTabGraf]  = useState("ventas"); // "ventas" | "ordenes"
+  const [rango,    setRango]    = useState("6m");
 
   const cargar = () => {
     setCargando(true); setError(null);
     Promise.all([
       api.get("/admin/stats"),
-      // Citas: intenta cargar, falla silenciosamente si no existe el endpoint
-      api.get("/veterinario/agenda", { params:{ estado:"todas" } })
-        .catch(() => ({ data: [] })),
+      api.get("/veterinario/agenda", { params:{ estado:"todas" } }).catch(() => ({ data: [] })),
     ])
     .then(([s, c]) => {
       setStats(s.data);
-      // Calcular métricas de citas desde el array
       const arr = Array.isArray(c.data) ? c.data : [];
       setCitas({
         total:      arr.length,
@@ -213,80 +257,176 @@ function Dashboard() {
     <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl" style={{background:T.dangerBg}}>⚠️</div>
       <p className="text-sm font-semibold" style={{color:T.danger}}>{error}</p>
-      <p className="text-xs max-w-xs" style={{color:T.textMuted}}>
-        Verifica que el backend esté corriendo y que hayas ejecutado las migraciones en phpMyAdmin
-      </p>
+      <p className="text-xs max-w-xs" style={{color:T.textMuted}}>Verifica que el backend esté corriendo y que hayas ejecutado las migraciones en phpMyAdmin</p>
       <Btn onClick={cargar}>Reintentar</Btn>
     </div>
   );
   if (!stats) return null;
 
-  // Datos de gráfica de ventas (últimos 6 meses)
-  const chartData = (stats.ventas_mes||[]).map(m => ({
-    mes:    m.mes?.slice(5),
-    ventas: Number(m.total   || 0),
-    ordenes:Number(m.ordenes || 0),
+  // Datos de gráfica — aplicar rango
+  const allData = (stats.ventas_mes||[]).map(m => ({
+    mes:     m.mes?.slice(5) || m.mes,
+    ventas:  Number(m.total   || 0),
+    ordenes: Number(m.ordenes || 0),
+    ganancia:Number(m.ganancia|| 0),
   }));
+  const mesesRango = rango === "3m" ? 3 : rango === "12m" ? 12 : 6;
+  const chartData = allData.slice(-mesesRango);
 
-  // ── Métricas principales ──────────────────────────────────────
+  // Calcular promedios para reference lines
+  const avgVentas  = chartData.length ? Math.round(chartData.reduce((a,b) => a + b.ventas,  0) / chartData.length) : 0;
+  const avgOrdenes = chartData.length ? Math.round(chartData.reduce((a,b) => a + b.ordenes, 0) / chartData.length) : 0;
+
+  // Tendencia (último mes vs anterior)
+  const tendVentas = chartData.length >= 2
+    ? ((chartData[chartData.length-1].ventas - chartData[chartData.length-2].ventas) / Math.max(chartData[chartData.length-2].ventas,1) * 100).toFixed(1)
+    : null;
+
   const metrics = [
-    { label:"Clientes",   value: stats.total_usuarios  ?? 0,        accent:T.brand,    bg:`${T.brand}12`,   d:"M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" },
-    { label:"Productos",  value: stats.total_productos ?? 0,        accent:T.brandMid, bg:`${T.brandMid}12`,d:"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" },
-    { label:"Órdenes",    value: stats.total_ordenes   ?? 0,        accent:T.gold,     bg:`${T.gold}12`,    d:"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" },
-    { label:"Ingresos",   value: fmtShort(stats.ingresos),          accent:T.brand,    bg:`${T.brand}10`,   d:"M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 13v-1" },
-    { label:"Stock bajo", value: stats.stock_bajo      ?? 0,        accent:"#dc2626",  bg:"#dc262612",      d:"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" },
+    { label:"Clientes",   value: stats.total_usuarios  ?? 0,   accent:T.brand,    bg:`${T.brand}12`,   icon:"👥", spark: null },
+    { label:"Productos",  value: stats.total_productos ?? 0,   accent:T.brandMid, bg:`${T.brandMid}12`,icon:"📦", spark: null },
+    { label:"Órdenes",    value: stats.total_ordenes   ?? 0,   accent:T.gold,     bg:`${T.gold}12`,    icon:"🛒", spark: chartData.map(d=>({v:d.ordenes})) },
+    { label:"Ingresos",   value: fmtShort(stats.ingresos),     accent:"#10b981",  bg:"#10b98112",      icon:"💰", spark: chartData.map(d=>({v:d.ventas})) },
+    { label:"Stock bajo", value: stats.stock_bajo ?? 0,        accent:"#dc2626",  bg:"#dc262612",      icon:"⚠️", spark: null },
   ];
 
-  // ── Métricas de citas ─────────────────────────────────────────
   const metricsCitas = citas ? [
-    { label:"Total citas",   value: citas.total,      accent:"#7c3aed", bg:"#7c3aed12" },
-    { label:"Pendientes",    value: citas.pendientes, accent:"#d97706", bg:"#d9770612" },
-    { label:"Confirmadas",   value: citas.confirmadas,accent:T.info,    bg:`${T.info}12` },
-    { label:"Completadas",   value: citas.completadas,accent:T.success, bg:`${T.success}12` },
-    { label:"Hoy",           value: citas.hoy,        accent:T.brand,   bg:`${T.brand}12` },
+    { label:"Total",      value: citas.total,       accent:"#7c3aed", bg:"#7c3aed12" },
+    { label:"Pendientes", value: citas.pendientes,  accent:"#d97706", bg:"#d9770612" },
+    { label:"Confirmadas",value: citas.confirmadas, accent:T.info,    bg:`${T.info}12` },
+    { label:"Completadas",value: citas.completadas, accent:T.success, bg:`${T.success}12` },
+    { label:"Hoy",        value: citas.hoy,         accent:T.brand,   bg:`${T.brand}12` },
   ] : [];
 
-  // ── Estado del mes (barra de progreso vs objetivo) ────────────
-  const ingresosNum = Number(String(stats.ingresos||"0").replace(/[^0-9]/g,"")) || 0;
+  const RANGOS = ["3m","6m","12m"];
 
   return (
     <div className="space-y-5">
 
-      {/* ── FILA 1: Métricas principales ── */}
+      {/* ── FILA 1: Métricas KPI con sparklines ── */}
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">
-        {metrics.map(({label,value,accent,bg,d}) => (
-          <Card key={label} className="p-4 hover:scale-[1.01] transition-transform duration-150 cursor-default">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
-              style={{background:bg, border:`1px solid ${accent}22`}}>
-              <svg className="w-3.5 h-3.5" fill="none" stroke={accent} strokeWidth={1.75} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d={d}/>
-              </svg>
+        {metrics.map(({label,value,accent,bg,icon,spark}) => (
+          <Card key={label} className="p-4 hover:scale-[1.01] transition-transform duration-150 cursor-default overflow-hidden">
+            <div className="flex items-start justify-between mb-2">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
+                style={{background:bg, border:`1px solid ${accent}22`}}>
+                {icon}
+              </div>
+              {tendVentas && (label==="Ingresos") && (
+                <span className="text-xs font-bold px-1.5 py-0.5 rounded-md"
+                  style={{background: Number(tendVentas)>=0 ? T.successBg : T.dangerBg, color: Number(tendVentas)>=0 ? T.success : T.danger}}>
+                  {Number(tendVentas)>=0 ? "▲" : "▼"} {Math.abs(Number(tendVentas))}%
+                </span>
+              )}
             </div>
             <p className="text-xl font-bold tabular-nums leading-none" style={{color:T.text,fontFamily:font.mono}}>{value}</p>
-            <p className="text-xs font-semibold uppercase tracking-wider mt-1.5" style={{color:T.textMuted}}>{label}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider mt-1 mb-2" style={{color:T.textMuted}}>{label}</p>
+            {spark && spark.length > 1 && (
+              <SparkLine data={spark} dataKey="v" color={accent} height={32}/>
+            )}
           </Card>
         ))}
       </div>
 
-      {/* ── FILA 2: KPIs del mes + métricas de citas ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* ── FILA 2: Gráfica de rendimiento ── */}
+      <Card className="p-5">
+        <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
+          <div>
+            <SecTitle sub={`Últimos ${mesesRango} meses`}>Rendimiento del negocio</SecTitle>
+            <div className="flex items-center gap-3">
+              <p className="text-2xl font-bold tabular-nums" style={{color:T.text,fontFamily:font.mono}}>
+                {fmtShort(chartData.reduce((a,b)=>a+b.ventas,0))}
+              </p>
+              {tendVentas && (
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                  style={{background: Number(tendVentas)>=0 ? T.successBg : T.dangerBg, color: Number(tendVentas)>=0 ? T.success : T.danger}}>
+                  {Number(tendVentas)>=0 ? "▲" : "▼"} {Math.abs(Number(tendVentas))}%
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
+              {[{color:T.brand,label:"Ingresos"},{color:T.gold,label:"Órdenes"}].map(l => (
+                <div key={l.label} className="flex items-center gap-1.5">
+                  <span style={{width:10,height:3,borderRadius:2,background:l.color,display:"block"}}/>
+                  <span style={{fontSize:10,color:T.textTer,fontWeight:600}}>{l.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex rounded-xl overflow-hidden" style={{border:`1.5px solid ${T.border}`}}>
+              {RANGOS.map(r => (
+                <button key={r} onClick={() => setRango(r)}
+                  className="px-3 py-1.5 text-xs font-bold uppercase transition-all"
+                  style={{
+                    background: rango===r ? T.brand : "transparent",
+                    color:      rango===r ? "#fff" : T.textTer,
+                  }}>{r}</button>
+              ))}
+            </div>
+          </div>
+        </div>
 
-        {/* KPIs financieros del mes */}
+        {chartData.length === 0 ? (
+          <p className="text-sm text-center py-12" style={{color:T.textMuted}}>Sin datos registrados aún</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <ComposedChart data={chartData} margin={{top:10,right:10,bottom:0,left:0}}>
+              <defs>
+                <linearGradient id="gIngresos" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"  stopColor={T.brand} stopOpacity={0.15}/>
+                  <stop offset="100%" stopColor={T.brand} stopOpacity={0.01}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke={T.borderSub} vertical={false}/>
+              <XAxis dataKey="mes" tick={{fontSize:11,fill:T.textMuted}} axisLine={false} tickLine={false}/>
+              <YAxis yAxisId="ventas" tick={{fontSize:10,fill:T.textMuted}} axisLine={false} tickLine={false}
+                tickFormatter={v => fmtShort(v)} width={52}/>
+              <YAxis yAxisId="ordenes" orientation="right" tick={{fontSize:10,fill:T.textMuted}} axisLine={false} tickLine={false} width={28}/>
+              <Tooltip content={<ChartTooltip/>}/>
+              <ReferenceLine yAxisId="ventas" y={avgVentas} stroke={T.border} strokeDasharray="4 4"
+                label={{value:"Prom.",fill:T.textMuted,fontSize:9,position:"insideTopLeft"}}/>
+              <Area yAxisId="ventas" type="monotone" dataKey="ventas"
+                stroke={T.brand} strokeWidth={2.5} fill="url(#gIngresos)"
+                dot={false} activeDot={{r:4,fill:T.brand,stroke:"#fff",strokeWidth:2}} name="Ingresos"/>
+              <Line yAxisId="ordenes" type="monotone" dataKey="ordenes"
+                stroke={T.gold} strokeWidth={1.5} dot={{r:3,fill:T.gold,stroke:"#fff",strokeWidth:1.5}}
+                activeDot={{r:5,fill:T.gold,stroke:"#fff",strokeWidth:1.5}} name="Órdenes"/>
+            </ComposedChart>
+          </ResponsiveContainer>
+        )}
+
+        {chartData.length > 0 && (
+          <div className="grid grid-cols-4 gap-0 mt-4 pt-4" style={{borderTop:`1px solid ${T.border}`}}>
+            {[
+              { label:"Ingreso prom./mes", value:fmtShort(avgVentas),  color:T.brand },
+              { label:"Órd. prom./mes",   value:avgOrdenes,            color:T.gold },
+              { label:"Mejor mes",        value:fmtShort(Math.max(...chartData.map(d=>d.ventas))), color:T.success },
+              { label:"Tendencia",        value:tendVentas ? `${Number(tendVentas)>0?"+":""}${tendVentas}%` : "—", color: Number(tendVentas)>=0?T.success:T.danger },
+            ].map((m,i) => (
+              <div key={m.label} className="text-center"
+                style={{borderRight: i<3?`1px solid ${T.border}`:"none", padding:"6px 10px"}}>
+                <p className="text-xs font-bold tabular-nums" style={{color:m.color,fontFamily:font.mono}}>{m.value}</p>
+                <p style={{fontSize:9,color:T.textMuted,textTransform:"uppercase",letterSpacing:0.5,marginTop:2}}>{m.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* ── FILA 3: KPIs mes + citas ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {(stats.ganancia_mes != null || stats.iva_mes != null) && (
           <Card className="p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-xs font-bold uppercase tracking-wider" style={{color:T.textMuted}}>Este mes</p>
-              <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                style={{background:T.brandLight, color:T.brand}}>
-                {new Date().toLocaleDateString("es-CO",{month:"long",year:"numeric"})}
-              </span>
+              <SecTitle sub={new Date().toLocaleDateString("es-CO",{month:"long",year:"numeric"})}>Este mes</SecTitle>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label:"Ganancia",      value:fmtShort(stats.ganancia_mes||0), color:T.success, bg:T.successBg,  icon:"📈" },
-                { label:"IVA (19%)",     value:fmtShort(stats.iva_mes||0),      color:T.info,    bg:T.infoBg,     icon:"🧾" },
-                { label:"Ingresos",      value:fmtShort(stats.ingresos||0),     color:T.brand,   bg:T.brandLight, icon:"💰" },
-                { label:"Órdenes hoy",   value: stats.ordenes_recientes?.filter(o=>{
+                { label:"Ganancia",    value:fmtShort(stats.ganancia_mes||0), color:T.success, bg:T.successBg,  icon:"📈" },
+                { label:"IVA (19%)",   value:fmtShort(stats.iva_mes||0),      color:T.info,    bg:T.infoBg,     icon:"🧾" },
+                { label:"Ingresos",    value:fmtShort(stats.ingresos||0),     color:T.brand,   bg:T.brandLight, icon:"💰" },
+                { label:"Órdenes hoy", value: stats.ordenes_recientes?.filter(o=>{
                     const hoy = new Date().toISOString().split("T")[0];
                     return o.created_at?.startsWith(hoy);
                   }).length ?? "—", color:T.gold, bg:T.goldBg, icon:"🛒" },
@@ -304,11 +444,10 @@ function Dashboard() {
           </Card>
         )}
 
-        {/* Métricas de citas */}
         {citas && (
           <Card className="p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-xs font-bold uppercase tracking-wider" style={{color:T.textMuted}}>Citas veterinarias</p>
+              <SecTitle sub="Estado general">Citas veterinarias</SecTitle>
               {citas.pendientes > 0 && (
                 <span className="text-xs px-2 py-0.5 rounded-full font-bold"
                   style={{background:"#fef3c7", color:"#92400e"}}>
@@ -328,18 +467,17 @@ function Dashboard() {
                 </div>
               ))}
             </div>
-            {/* Mini barra de estado de citas */}
             {citas.total > 0 && (
               <div className="mt-4 pt-4" style={{borderTop:`1px solid ${T.border}`}}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-xs" style={{color:T.textMuted}}>Tasa de completadas</p>
+                  <p className="text-xs" style={{color:T.textMuted}}>Tasa completadas</p>
                   <p className="text-xs font-bold tabular-nums" style={{color:T.text,fontFamily:font.mono}}>
                     {Math.round((citas.completadas/citas.total)*100)}%
                   </p>
                 </div>
                 <div className="h-1.5 rounded-full overflow-hidden" style={{background:T.border}}>
-                  <div className="h-full rounded-full transition-all duration-500"
-                    style={{width:`${Math.round((citas.completadas/citas.total)*100)}%`, background:T.brand}}/>
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{width:`${Math.round((citas.completadas/citas.total)*100)}%`, background:`linear-gradient(90deg,${T.brand},#10b981)`}}/>
                 </div>
               </div>
             )}
@@ -347,62 +485,8 @@ function Dashboard() {
         )}
       </div>
 
-      {/* ── FILA 3: Gráfica dual ventas / órdenes ── */}
-      <Card className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <SecTitle sub="Últimos 6 meses">Tendencia</SecTitle>
-          {/* Tabs de la gráfica */}
-          <div className="flex rounded-lg overflow-hidden" style={{border:`1px solid ${T.border}`}}>
-            {[{k:"ventas",label:"Ingresos"},{k:"ordenes",label:"Órdenes"}].map(t => (
-              <button key={t.k} onClick={() => setTabGraf(t.k)}
-                className="text-xs font-semibold px-3 py-1.5 transition-colors"
-                style={{
-                  background: tabGraf===t.k ? T.brand : T.surface,
-                  color:      tabGraf===t.k ? "#fff" : T.textTer,
-                }}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {chartData.length === 0 ? (
-          <div className="flex flex-col items-center py-12 gap-2">
-            <p className="text-sm" style={{color:T.textMuted}}>Sin datos registrados aún</p>
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={chartData} margin={{top:4,right:4,bottom:0,left:0}}>
-              <defs>
-                <linearGradient id="gv" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor={T.brand} stopOpacity={0.15}/>
-                  <stop offset="95%" stopColor={T.brand} stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="go" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor={T.gold}  stopOpacity={0.15}/>
-                  <stop offset="95%" stopColor={T.gold}  stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={T.border}/>
-              <XAxis dataKey="mes" tick={{fontSize:11,fill:T.textMuted}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fontSize:11,fill:T.textMuted}} axisLine={false} tickLine={false}
-                tickFormatter={v => tabGraf==="ventas" ? fmtShort(v) : v}/>
-              <Tooltip
-                formatter={v => tabGraf==="ventas" ? [fmt(v),"Ingresos"] : [v,"Órdenes"]}
-                contentStyle={{borderRadius:10,border:`1px solid ${T.border}`,fontSize:12,background:T.surface}}/>
-              {tabGraf === "ventas"
-                ? <Area type="monotone" dataKey="ventas"  stroke={T.brand} strokeWidth={2} fill="url(#gv)" name="Ingresos"/>
-                : <Area type="monotone" dataKey="ordenes" stroke={T.gold}  strokeWidth={2} fill="url(#go)" name="Órdenes"/>
-              }
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
-      </Card>
-
       {/* ── FILA 4: Órdenes recientes + Stock crítico + Citas pendientes ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-        {/* Órdenes recientes */}
         <Card className="p-5">
           <SecTitle sub="Últimas transacciones">Órdenes recientes</SecTitle>
           {!stats.ordenes_recientes?.length
@@ -425,34 +509,26 @@ function Dashboard() {
           }
         </Card>
 
-        {/* Stock crítico */}
         <Card className="p-5">
           <SecTitle sub="Productos por reponer">Stock crítico</SecTitle>
           {!stats.productos_stock_bajo?.length
             ? <div className="flex flex-col items-center py-8 gap-2">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-base"
-                  style={{background:T.successBg}}>✓</div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-base" style={{background:T.successBg}}>✓</div>
                 <p className="text-sm font-medium" style={{color:T.success}}>Todo el stock está bien</p>
               </div>
             : <div className="space-y-1.5">
                 {stats.productos_stock_bajo.map(p => (
                   <div key={p.id} className="flex items-center gap-2 py-2 px-3 rounded-xl"
                     style={{background:T.dangerBg,border:`1px solid ${T.dangerBorder}`}}>
-                    {/* Barra de stock visual */}
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate" style={{color:T.text}}>{p.nombre}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <div className="flex-1 h-1 rounded-full" style={{background:T.border}}>
                           <div className="h-full rounded-full"
-                            style={{
-                              width:`${Math.min(100,Math.round((p.stock/Math.max(p.stock_minimo,1))*100))}%`,
-                              background:T.danger,
-                            }}/>
+                            style={{width:`${Math.min(100,Math.round((p.stock/Math.max(p.stock_minimo,1))*100))}%`,background:T.danger}}/>
                         </div>
                         <span className="text-xs font-bold tabular-nums flex-shrink-0"
-                          style={{color:T.danger,fontFamily:font.mono}}>
-                          {p.stock}/{p.stock_minimo}
-                        </span>
+                          style={{color:T.danger,fontFamily:font.mono}}>{p.stock}/{p.stock_minimo}</span>
                       </div>
                     </div>
                   </div>
@@ -461,17 +537,14 @@ function Dashboard() {
           }
         </Card>
 
-        {/* Citas pendientes de confirmación */}
         <Card className="p-5">
-          <SecTitle sub="Esperan confirmación del veterinario">Citas pendientes</SecTitle>
+          <SecTitle sub="Esperan confirmación">Citas pendientes</SecTitle>
           {!citas || citas.pendientes === 0
             ? <div className="flex flex-col items-center py-8 gap-2">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-base"
-                  style={{background:T.successBg}}>✓</div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-base" style={{background:T.successBg}}>✓</div>
                 <p className="text-sm font-medium" style={{color:T.success}}>Sin citas pendientes</p>
               </div>
             : <div className="space-y-1.5">
-                {/* Resumen por estado */}
                 {[
                   { label:"Pendientes de confirmar", val:citas.pendientes, color:"#d97706", bg:"#fef3c7" },
                   { label:"Confirmadas",             val:citas.confirmadas,color:T.info,    bg:T.infoBg },
@@ -483,9 +556,7 @@ function Dashboard() {
                     <p className="text-sm font-bold tabular-nums" style={{color:r.color,fontFamily:font.mono}}>{r.val}</p>
                   </div>
                 ))}
-                <button
-                  onClick={() => {/* navegar a veterinarios */}}
-                  className="w-full text-xs font-semibold py-2 mt-1 rounded-xl transition-colors"
+                <button className="w-full text-xs font-semibold py-2 mt-1 rounded-xl transition-colors"
                   style={{background:T.brandLight, color:T.brand, border:`1px solid ${T.brandBorder}`}}>
                   Ver panel veterinario →
                 </button>
@@ -712,8 +783,10 @@ function Productos() {
 
   const VACIO={nombre:"",slug:"",descripcion:"",descripcion_corta:"",categoria_id:"",proveedor_id:"",
     precio:"",precio_antes:"",precio_costo:"",stock:"",stock_minimo:"5",imagen_url:"",
-    marca:"",unidad:"",especie:"",destacado:false,activo:true,requiere_formula:false};
+    marca:"",unidad:"",especie:"",destacado:false,activo:true,requiere_formula:false,codigo_barra:""};
   const [form,setForm]=useState(VACIO);
+  const barraRef=useRef(null);
+  const [scanEstado,setScanEstado]=useState(null); // null | "ok"
 
   const cargar=useCallback(async()=>{
     setCargando(true);
@@ -730,15 +803,20 @@ function Productos() {
 
   useEffect(()=>{cargar();},[cargar]);
   const showMsg=(texto,tipo="ok")=>{setMsg({texto,tipo});setTimeout(()=>setMsg({}),4000);};
-  const abrirNuevo=()=>{setForm(VACIO);setEditando(null);setFieldErrors({});setModal(true);};
+  const abrirNuevo=()=>{
+    setForm(VACIO);setEditando(null);setFieldErrors({});setScanEstado(null);setModal(true);
+    setTimeout(()=>barraRef.current?.focus(),80);
+  };
   const abrirEditar=(p)=>{
     setForm({nombre:p.nombre,slug:p.slug||"",descripcion:p.descripcion||"",
       descripcion_corta:p.descripcion_corta||"",categoria_id:p.categoria_id||"",proveedor_id:p.proveedor_id||"",
       precio:p.precio,precio_antes:p.precio_antes||"",precio_costo:p.precio_costo||"",
       stock:p.stock,stock_minimo:p.stock_minimo||5,imagen_url:p.imagen_url||"",
       marca:p.marca||"",unidad:p.unidad||"",especie:p.especie||"",
-      destacado:!!p.destacado,activo:p.activo!==0,requiere_formula:!!p.requiere_formula});
-    setEditando(p); setFieldErrors({}); setModal(true);
+      destacado:!!p.destacado,activo:p.activo!==0,requiere_formula:!!p.requiere_formula,
+      codigo_barra:p.codigo_barra||""});
+    setEditando(p); setFieldErrors({}); setScanEstado(p.codigo_barra?"ok":null); setModal(true);
+    setTimeout(()=>barraRef.current?.focus(),80);
   };
 
   // Validación con mensajes por campo
@@ -775,6 +853,8 @@ function Productos() {
       if(form.marca)             p.marca=form.marca;
       if(form.unidad)            p.unidad=form.unidad;
       if(form.especie)           p.especie=form.especie;
+      if(form.codigo_barra)      p.codigo_barra=form.codigo_barra;
+      else                       p.codigo_barra=null;
       p.destacado=form.destacado?1:0; p.activo=form.activo?1:0; p.requiere_formula=form.requiere_formula?1:0;
       if(!p.slug&&p.nombre) p.slug=p.nombre.toLowerCase().normalize("NFD")
         .replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
@@ -793,6 +873,13 @@ function Productos() {
   const toggleActivo=async(p)=>{await api.put(`/productos/${p.id}`,{activo:p.activo?0:1});cargar();};
   const ff=k=>e=>setForm({...form,[k]:e.target.value});
   const fc=k=>e=>setForm({...form,[k]:e.target.checked});
+  const handleScanBarra=e=>{
+    if(e.key==="Enter"&&form.codigo_barra.trim()){
+      e.preventDefault();
+      setScanEstado("ok");
+    }
+  };
+  const limpiarBarra=()=>{setForm(f=>({...f,codigo_barra:""}));setScanEstado(null);setTimeout(()=>barraRef.current?.focus(),50);};
 
   return (
     <div className="space-y-5">
@@ -897,6 +984,41 @@ function Productos() {
             </div>
           )}
 
+          {/* ── Lector de código de barras ── */}
+          <div className="rounded-xl p-3.5 transition-all duration-300"
+            style={{background:scanEstado==="ok"?T.successBg:T.surfaceAlt,
+              border:`1.5px solid ${scanEstado==="ok"?T.successBorder:T.border}`}}>
+            <div className="flex items-center gap-2 mb-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+                style={{color:scanEstado==="ok"?T.success:T.brand}}>
+                <path strokeLinecap="round" d="M4 6h1v12H4zm3 0h1v12H7zm3 0h2v12h-2zm4 0h1v12h-1zm3 0h1v12h-1zm3 0h1v12h-1z"/>
+              </svg>
+              <span className="text-xs font-semibold uppercase tracking-wider"
+                style={{color:scanEstado==="ok"?T.success:T.textTer}}>
+                {scanEstado==="ok"?"Código de barras registrado ✓":"Código de barras"}
+              </span>
+              {scanEstado==="ok"&&(
+                <button onClick={limpiarBarra}
+                  className="ml-auto text-xs px-2 py-0.5 rounded-lg"
+                  style={{background:T.dangerBg,color:T.danger,border:`1px solid ${T.dangerBorder}`}}>
+                  Limpiar
+                </button>
+              )}
+            </div>
+            <input ref={barraRef} value={form.codigo_barra}
+              onChange={e=>{setForm(f=>({...f,codigo_barra:e.target.value}));if(scanEstado==="ok")setScanEstado(null);}}
+              onKeyDown={handleScanBarra}
+              placeholder="Enfoca aquí y escanea, o escribe el código y presiona Enter..."
+              className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none"
+              style={{border:`1.5px solid ${scanEstado==="ok"?T.successBorder:T.border}`,
+                background:T.surface,color:T.text,fontFamily:"monospace"}}/>
+            <p className="text-xs mt-1.5" style={{color:T.textMuted}}>
+              {scanEstado==="ok"
+                ?`Código capturado: ${form.codigo_barra} · Puedes editarlo manualmente`
+                :"Escanea con el lector inalámbrico o escribe el código y presiona Enter"}
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <Input label="Nombre del producto *" value={form.nombre} onChange={ff("nombre")}
@@ -989,6 +1111,11 @@ function Ordenes() {
   const [lista,setLista]=useState([]); const [total,setTotal]=useState(0);
   const [pagina,setPagina]=useState(1); const [filtro,setFiltro]=useState("");
   const [cargando,setCargando]=useState(true);
+  const [detalle,setDetalle]=useState(null);
+  const [cargandoDetalle,setCargandoDetalle]=useState(false);
+  const [nuevoEnvio,setNuevoEnvio]=useState("");
+  const [guardandoEnvio,setGuardandoEnvio]=useState(false);
+  const [msgEnvio,setMsgEnvio]=useState("");
 
   const cargar=useCallback(async()=>{
     setCargando(true);
@@ -998,52 +1125,186 @@ function Ordenes() {
   },[pagina,filtro]);
 
   useEffect(()=>{cargar();},[cargar]);
-  const cambiarEstado=async(id,estado)=>{await api.patch(`/admin/ordenes/${id}/estado`,{estado});cargar();};
+
+  const cambiarEstado=async(id,estado)=>{
+    await api.patch(`/admin/ordenes/${id}/estado`,{estado});
+    cargar();
+    if(detalle?.id===id) setDetalle(p=>({...p,estado}));
+  };
+
+  const abrirDetalle=async(id)=>{
+    setCargandoDetalle(true);
+    setDetalle(null); setMsgEnvio("");
+    try{
+      const{data}=await api.get(`/admin/ordenes/${id}`);
+      setDetalle(data);
+      setNuevoEnvio(String(data.costo_envio??0));
+    }finally{setCargandoDetalle(false);}
+  };
+
+  const guardarEnvio=async()=>{
+    const costo=parseFloat(nuevoEnvio);
+    if(isNaN(costo)||costo<0){setMsgEnvio("err:Valor inválido.");return;}
+    setGuardandoEnvio(true); setMsgEnvio("");
+    try{
+      const{data}=await api.patch(`/admin/ordenes/${detalle.id}/envio`,{costo_envio:costo});
+      setDetalle(p=>({...p,costo_envio:data.costo_envio,total:data.total}));
+      setMsgEnvio("ok:Envío actualizado.");
+      cargar();
+    }catch(err){
+      setMsgEnvio("err:"+(err.response?.data?.error||"Error."));
+    }finally{setGuardandoEnvio(false);}
+  };
 
   return (
     <div className="space-y-5">
       <div className="flex gap-3 items-center flex-wrap">
         <Sel value={filtro} onChange={e=>{setFiltro(e.target.value);setPagina(1);}}>
           <option value="">Todos los estados</option>
-          {ESTADOS.map(e=><option key={e} value={e} className="capitalize">{e}</option>)}
+          {ESTADOS.map(e=><option key={e} value={e}>{ESTADO_LABEL[e] || e}</option>)}
         </Sel>
         <span className="text-xs font-medium" style={{color:T.textMuted}}>{total} órdenes</span>
       </div>
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <THead cols={["Código","Cliente","Total","Método","Estado","Fecha","Cambiar estado"]}/>
-            <tbody>
-              {cargando ? <tr><td colSpan={7}><Spinner/></td></tr>
-              : lista.length===0 ? <tr><td colSpan={7} className="text-center py-16 text-sm" style={{color:T.textMuted}}>Sin órdenes</td></tr>
-              : lista.map((o,i)=>(
-                <tr key={o.id} className="transition-colors"
-                  style={{borderBottom:`1px solid ${T.borderSub}`,background:i%2===0?T.surface:T.surfaceAlt}}
-                  onMouseEnter={e=>e.currentTarget.style.background=T.surfaceHover}
-                  onMouseLeave={e=>e.currentTarget.style.background=i%2===0?T.surface:T.surfaceAlt}>
-                  <td className="py-3.5 px-4 font-mono text-xs font-bold" style={{color:T.brand}}>{o.codigo}</td>
-                  <td className="py-3.5 px-4">
-                    <p className="text-xs font-semibold" style={{color:T.text}}>{o.cliente}</p>
-                    <p className="text-xs" style={{color:T.textMuted}}>{o.email}</p>
-                  </td>
-                  <td className="py-3.5 px-4 text-xs font-bold tabular-nums" style={{color:T.text}}>{fmt(o.total)}</td>
-                  <td className="py-3.5 px-4 text-xs capitalize" style={{color:T.textTer}}>{o.metodo_pago||"—"}</td>
-                  <td className="py-3.5 px-4"><Badge estado={o.estado}/></td>
-                  <td className="py-3.5 px-4 text-xs whitespace-nowrap" style={{color:T.textMuted}}>{fdoc(o.created_at)}</td>
-                  <td className="py-3.5 px-4">
-                    <select value={o.estado} onChange={e=>cambiarEstado(o.id,e.target.value)}
-                      className="text-xs rounded-lg px-2.5 py-1.5 outline-none"
-                      style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}>
-                      {ESTADOS.map(e=><option key={e} value={e}>{e}</option>)}
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="px-6 py-4"><Paginacion pagina={pagina} total={total} limite={12} onChange={setPagina}/></div>
-      </Card>
+
+      <div className="flex gap-4 items-start">
+        {/* Tabla */}
+        <Card className="flex-1 min-w-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <THead cols={["Código","Cliente","Total","Estado","Fecha","Estado →"]}/>
+              <tbody>
+                {cargando ? <tr><td colSpan={6}><Spinner/></td></tr>
+                : lista.length===0 ? <tr><td colSpan={6} className="text-center py-16 text-sm" style={{color:T.textMuted}}>Sin órdenes</td></tr>
+                : lista.map((o,i)=>{
+                  const activa=detalle?.id===o.id;
+                  return(
+                  <tr key={o.id} className="transition-colors cursor-pointer"
+                    style={{borderBottom:`1px solid ${T.borderSub}`,background:activa?T.brandLight:i%2===0?T.surface:T.surfaceAlt}}
+                    onClick={()=>abrirDetalle(o.id)}
+                    onMouseEnter={e=>{if(!activa)e.currentTarget.style.background=T.surfaceHover;}}
+                    onMouseLeave={e=>{if(!activa)e.currentTarget.style.background=i%2===0?T.surface:T.surfaceAlt;}}>
+                    <td className="py-3 px-4 font-mono text-xs font-bold" style={{color:T.brand}}>{o.codigo}</td>
+                    <td className="py-3 px-4">
+                      <p className="text-xs font-semibold" style={{color:T.text}}>{o.cliente}</p>
+                      <p className="text-xs" style={{color:T.textMuted}}>{o.email}</p>
+                    </td>
+                    <td className="py-3 px-4 text-xs font-bold tabular-nums" style={{color:T.text}}>{fmt(o.total)}</td>
+                    <td className="py-3 px-4"><Badge estado={o.estado||"pendiente"}/></td>
+                    <td className="py-3 px-4 text-xs whitespace-nowrap" style={{color:T.textMuted}}>{fdoc(o.created_at)}</td>
+                    <td className="py-3 px-4" onClick={e=>e.stopPropagation()}>
+                      <select value={o.estado||"pendiente"} onChange={e=>cambiarEstado(o.id,e.target.value)}
+                        className="text-xs rounded-lg px-2 py-1.5 outline-none"
+                        style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}>
+                        {ESTADOS.map(e=><option key={e} value={e}>{ESTADO_LABEL[e]||e}</option>)}
+                      </select>
+                    </td>
+                  </tr>
+                );})}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-6 py-4"><Paginacion pagina={pagina} total={total} limite={12} onChange={setPagina}/></div>
+        </Card>
+
+        {/* Panel detalle */}
+        {(cargandoDetalle || detalle) && (
+          <div style={{width:320,flexShrink:0,background:T.surface,border:`1px solid ${T.border}`,borderRadius:16,boxShadow:"0 4px 20px rgba(0,0,0,0.08)",position:"sticky",top:24}}>
+            {cargandoDetalle ? <Spinner/> : detalle && (<>
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4" style={{borderBottom:`1px solid ${T.border}`}}>
+                <div>
+                  <p className="text-xs font-mono font-bold" style={{color:T.brand}}>{detalle.codigo}</p>
+                  <p className="text-xs" style={{color:T.textMuted}}>{fdoc(detalle.created_at)}</p>
+                </div>
+                <button onClick={()=>setDetalle(null)} className="text-lg leading-none" style={{color:T.textMuted,background:"none",border:"none",cursor:"pointer"}}>✕</button>
+              </div>
+
+              <div className="px-5 py-4 space-y-4">
+                {/* Cliente */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{color:T.textMuted}}>Cliente</p>
+                  <p className="text-sm font-semibold" style={{color:T.text}}>{detalle.cliente}</p>
+                  <p className="text-xs" style={{color:T.textMuted}}>{detalle.email}</p>
+                  {detalle.telefono && <p className="text-xs" style={{color:T.textMuted}}>{detalle.telefono}</p>}
+                  {detalle.direccion_entrega && (
+                    <p className="text-xs mt-1" style={{color:T.textTer}}>
+                      📍 {detalle.direccion_entrega}{detalle.ciudad_entrega?`, ${detalle.ciudad_entrega}`:""}
+                    </p>
+                  )}
+                </div>
+
+                {/* Estado + método */}
+                <div className="flex gap-2 flex-wrap items-center">
+                  <Badge estado={detalle.estado||"pendiente"}/>
+                  <span className="text-xs capitalize" style={{color:T.textTer}}>{detalle.metodo_pago||"—"}</span>
+                </div>
+
+                {/* Cambiar estado inline */}
+                <select value={detalle.estado||"pendiente"} onChange={e=>cambiarEstado(detalle.id,e.target.value)}
+                  className="w-full text-xs rounded-xl px-3 py-2 outline-none"
+                  style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}>
+                  {ESTADOS.map(e=><option key={e} value={e}>{ESTADO_LABEL[e]||e}</option>)}
+                </select>
+
+                {/* Ítems */}
+                {detalle.items?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{color:T.textMuted}}>Productos</p>
+                    <div className="space-y-1">
+                      {detalle.items.map((it,i)=>(
+                        <div key={i} className="flex justify-between items-center text-xs">
+                          <span style={{color:T.textSec}}>{it.nombre_snap} ×{it.cantidad}</span>
+                          <span className="font-semibold tabular-nums" style={{color:T.text,fontFamily:font.mono}}>{fmt(it.subtotal)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Totales */}
+                <div className="rounded-xl p-3 space-y-1.5" style={{background:T.surfaceAlt,border:`1px solid ${T.border}`}}>
+                  <div className="flex justify-between text-xs" style={{color:T.textTer}}>
+                    <span>Subtotal</span><span className="tabular-nums">{fmt(detalle.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs" style={{color:T.textTer}}>
+                    <span>Envío</span>
+                    <span className="tabular-nums" style={{color:detalle.costo_envio>0?T.warning:T.success}}>
+                      {detalle.costo_envio>0?fmt(detalle.costo_envio):"Gratis"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold" style={{color:T.text,borderTop:`1px solid ${T.border}`,paddingTop:6,marginTop:4}}>
+                    <span>Total</span><span className="tabular-nums" style={{fontFamily:font.mono}}>{fmt(detalle.total)}</span>
+                  </div>
+                </div>
+
+                {/* Editar costo envío */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{color:T.textMuted}}>Ajustar costo de envío</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="number" min="0" step="100"
+                      value={nuevoEnvio}
+                      onChange={e=>setNuevoEnvio(e.target.value)}
+                      className="flex-1 px-3 py-2 text-sm rounded-xl outline-none tabular-nums"
+                      style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}
+                      onFocus={e=>e.target.style.borderColor=T.brand}
+                      onBlur={e=>e.target.style.borderColor=T.border}
+                      placeholder="0"
+                    />
+                    <Btn onClick={guardarEnvio} disabled={guardandoEnvio} size="sm">
+                      {guardandoEnvio?"...":"Guardar"}
+                    </Btn>
+                  </div>
+                  <p className="text-xs mt-1" style={{color:T.textMuted}}>0 = envío gratis. Actualiza el total automáticamente.</p>
+                  {msgEnvio && (
+                    <Msg texto={msgEnvio.slice(4)} tipo={msgEnvio.startsWith("ok")?"ok":"err"}/>
+                  )}
+                </div>
+              </div>
+            </>)}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1289,6 +1550,429 @@ function Proveedores() {
   );
 }
 
+// ─── VETERINARIOS & CITAS ─────────────────────────────────────
+const CITA_ESTADOS = {
+  pendiente:         { bg:"#fef3c7", text:"#92400e", border:"#fde68a", label:"Pendiente" },
+  confirmada:        { bg:"#dbeafe", text:"#1e40af", border:"#bfdbfe", label:"Confirmada" },
+  completada:        { bg:"#dcfce7", text:"#14532d", border:"#bbf7d0", label:"Completada" },
+  rechazada:         { bg:"#fee2e2", text:"#7f1d1d", border:"#fecaca", label:"Rechazada" },
+  cancelada_cliente: { bg:"#f3f4f6", text:"#374151", border:"#d1d5db", label:"Cancelada cliente" },
+  no_asistio:        { bg:"#f3f4f6", text:"#374151", border:"#d1d5db", label:"No asistió" },
+};
+
+function BadgeCita({ estado }) {
+  const s = CITA_ESTADOS[estado] || CITA_ESTADOS.pendiente;
+  return (
+    <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+      style={{ background:s.bg, color:s.text, border:`1px solid ${s.border}` }}>
+      {s.label || estado}
+    </span>
+  );
+}
+
+function Veterinarios() {
+  const [vets, setVets]       = useState([]);
+  const [citas, setCitas]     = useState([]);
+  const [filtroEstado, setFiltroEstado] = useState("pendiente");
+  const [cargando, setCargando] = useState(true);
+  const [tab, setTab]         = useState("citas");
+  const [msg, setMsg]         = useState({});
+  const [modalVet, setModalVet] = useState(null);
+  const [formVet, setFormVet] = useState({ especialidad:"", duracion_cita:30, descripcion:"" });
+  const [candidatos, setCandidatos] = useState([]);
+  const [modalNuevo, setModalNuevo] = useState(false);
+  const [formNuevo, setFormNuevo]   = useState({ usuario_id:"", especialidad:"Medicina General", duracion_cita:30, descripcion:"" });
+  const [modalReagendar, setModalReagendar] = useState(null);
+  const [formReagendar, setFormReagendar]   = useState({ motivo:"", nueva_fecha:"", nueva_hora:"", proponer_fecha:false });
+  const [enviandoReagendamiento, setEnviandoReagendamiento] = useState(false);
+
+  const cargarVets = async () => {
+    const { data } = await api.get("/admin/veterinarios");
+    setVets(data);
+  };
+
+  const cargarCitas = async (estado) => {
+    const { data } = await api.get(`/admin/citas?estado=${estado}`);
+    setCitas(data);
+  };
+
+  const cargarCandidatos = async () => {
+    const { data } = await api.get("/admin/veterinarios/candidatos");
+    setCandidatos(data);
+  };
+
+  useEffect(() => {
+    setCargando(true);
+    Promise.all([cargarVets(), cargarCitas(filtroEstado)])
+      .finally(() => setCargando(false));
+  }, []);
+
+  useEffect(() => { cargarCitas(filtroEstado); }, [filtroEstado]);
+
+  const guardarVet = async () => {
+    if (!modalVet) return;
+    try {
+      await api.put(`/admin/veterinarios/${modalVet.vet_id}`, formVet);
+      setMsg({ texto:"Perfil actualizado.", tipo:"ok" });
+      setModalVet(null);
+      cargarVets();
+    } catch (err) {
+      setMsg({ texto: err.response?.data?.error || "Error.", tipo:"err" });
+    }
+  };
+
+  const crearVet = async () => {
+    if (!formNuevo.usuario_id) return;
+    try {
+      await api.post("/admin/veterinarios", formNuevo);
+      setMsg({ texto:"Veterinario creado.", tipo:"ok" });
+      setModalNuevo(false);
+      cargarVets(); cargarCandidatos();
+    } catch (err) {
+      setMsg({ texto: err.response?.data?.error || "Error.", tipo:"err" });
+    }
+  };
+
+  const enviarReagendamiento = async () => {
+    if (!formReagendar.motivo.trim()) return;
+    setEnviandoReagendamiento(true);
+    try {
+      await api.post(`/admin/citas/${modalReagendar.id}/reagendar`, {
+        motivo:      formReagendar.motivo.trim(),
+        nueva_fecha: formReagendar.proponer_fecha ? formReagendar.nueva_fecha : null,
+        nueva_hora:  formReagendar.proponer_fecha ? formReagendar.nueva_hora  : null,
+      });
+      setMsg({ texto:"Notificación de reagendamiento enviada al cliente.", tipo:"ok" });
+      setModalReagendar(null);
+      setFormReagendar({ motivo:"", nueva_fecha:"", nueva_hora:"", proponer_fecha:false });
+      cargarCitas(filtroEstado);
+    } catch (err) {
+      setMsg({ texto: err.response?.data?.error || "Error al enviar notificación.", tipo:"err" });
+    } finally {
+      setEnviandoReagendamiento(false);
+    }
+  };
+
+  const FILTROS_CITA = [
+    { k:"pendiente",  l:"Pendientes" },
+    { k:"confirmada", l:"Confirmadas" },
+    { k:"completada", l:"Completadas" },
+    { k:"rechazada",  l:"Rechazadas" },
+    { k:"",           l:"Todas" },
+  ];
+
+  return (
+    <div className="space-y-5">
+      {/* Modal editar vet */}
+      {modalVet && (
+        <div style={{ position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:24 }}
+          onClick={() => setModalVet(null)}>
+          <div style={{ background:T.surface,borderRadius:20,width:"100%",maxWidth:440,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}
+            onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold mb-4" style={{ color:T.text }}>
+              Editar perfil — {modalVet.nombre} {modalVet.apellido}
+            </h3>
+            <div className="space-y-3">
+              <Input label="Especialidad" value={formVet.especialidad}
+                onChange={e => setFormVet(p=>({...p,especialidad:e.target.value}))}/>
+              <Input label="Duración de cita (min)" type="number" value={formVet.duracion_cita}
+                onChange={e => setFormVet(p=>({...p,duracion_cita:Number(e.target.value)}))}/>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>Descripción</label>
+                <textarea rows={3} value={formVet.descripcion}
+                  onChange={e => setFormVet(p=>({...p,descripcion:e.target.value}))}
+                  placeholder="Descripción visible para los clientes..."
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none resize-none"
+                  style={{ border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text }}/>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <Btn variant="outline" onClick={() => setModalVet(null)}>Cancelar</Btn>
+              <Btn onClick={guardarVet}>Guardar cambios</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal nuevo vet */}
+      {modalNuevo && (
+        <div style={{ position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:24 }}
+          onClick={() => setModalNuevo(false)}>
+          <div style={{ background:T.surface,borderRadius:20,width:"100%",maxWidth:440,padding:28 }}
+            onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold mb-4" style={{ color:T.text }}>Asignar veterinario</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>Usuario</label>
+                <select value={formNuevo.usuario_id}
+                  onChange={e => setFormNuevo(p=>({...p,usuario_id:e.target.value}))}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none"
+                  style={{ border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text }}>
+                  <option value="">Seleccionar usuario...</option>
+                  {candidatos.map(c => (
+                    <option key={c.id} value={c.id}>{c.nombre} {c.apellido} ({c.email})</option>
+                  ))}
+                </select>
+              </div>
+              <Input label="Especialidad" value={formNuevo.especialidad}
+                onChange={e => setFormNuevo(p=>({...p,especialidad:e.target.value}))}/>
+              <Input label="Duración cita (min)" type="number" value={formNuevo.duracion_cita}
+                onChange={e => setFormNuevo(p=>({...p,duracion_cita:Number(e.target.value)}))}/>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <Btn variant="outline" onClick={() => setModalNuevo(false)}>Cancelar</Btn>
+              <Btn onClick={crearVet} disabled={!formNuevo.usuario_id}>Crear perfil</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal reagendar cita */}
+      {modalReagendar && (
+        <div style={{ position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",padding:24 }}
+          onClick={() => setModalReagendar(null)}>
+          <div style={{ background:T.surface,borderRadius:20,width:"100%",maxWidth:500,padding:28,boxShadow:"0 24px 64px rgba(0,0,0,0.22)" }}
+            onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold mb-1" style={{ color:T.text }}>Notificar reagendamiento</h3>
+            <p className="text-xs mb-5" style={{ color:T.textMuted }}>
+              Cita <strong style={{color:T.brand}}>{modalReagendar.codigo}</strong> · {modalReagendar.cliente_nombre} {modalReagendar.cliente_apellido} · {modalReagendar.nombre_mascota}
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>
+                  Mensaje / motivo para el cliente *
+                </label>
+                <textarea rows={4} value={formReagendar.motivo}
+                  onChange={e => setFormReagendar(p=>({...p,motivo:e.target.value}))}
+                  placeholder="Ejemplo: Lamentamos informarte que el Dr. García no podrá atenderte el día de tu cita por un percance de salud. Pedimos disculpas por los inconvenientes."
+                  className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none resize-none"
+                  style={{ border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text,lineHeight:1.6 }}
+                  onFocus={e=>{e.target.style.borderColor=T.brand;}} onBlur={e=>{e.target.style.borderColor=T.border;}}
+                  autoFocus/>
+              </div>
+
+              <label style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"10px 14px",borderRadius:10,background:T.surfaceAlt,border:`1px solid ${T.border}` }}>
+                <input type="checkbox" checked={formReagendar.proponer_fecha}
+                  onChange={e => setFormReagendar(p=>({...p,proponer_fecha:e.target.checked}))}
+                  style={{ width:16,height:16,accentColor:T.brand,cursor:"pointer" }}/>
+                <span className="text-sm font-medium" style={{ color:T.textSec }}>Proponer nueva fecha y hora</span>
+              </label>
+
+              {formReagendar.proponer_fecha && (
+                <div className="flex gap-3 flex-wrap">
+                  <div className="flex-1" style={{ minWidth:140 }}>
+                    <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>Nueva fecha</label>
+                    <input type="date" value={formReagendar.nueva_fecha}
+                      onChange={e => setFormReagendar(p=>({...p,nueva_fecha:e.target.value}))}
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none"
+                      style={{ border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text }}
+                      onFocus={e=>{e.target.style.borderColor=T.brand;}} onBlur={e=>{e.target.style.borderColor=T.border;}}/>
+                  </div>
+                  <div className="flex-1" style={{ minWidth:120 }}>
+                    <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>Nueva hora</label>
+                    <input type="time" value={formReagendar.nueva_hora}
+                      onChange={e => setFormReagendar(p=>({...p,nueva_hora:e.target.value}))}
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none"
+                      style={{ border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text }}
+                      onFocus={e=>{e.target.style.borderColor=T.brand;}} onBlur={e=>{e.target.style.borderColor=T.border;}}/>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Btn variant="outline" onClick={() => setModalReagendar(null)}>Cancelar</Btn>
+              <Btn onClick={enviarReagendamiento}
+                disabled={!formReagendar.motivo.trim() || enviandoReagendamiento ||
+                  (formReagendar.proponer_fecha && (!formReagendar.nueva_fecha || !formReagendar.nueva_hora))}>
+                {enviandoReagendamiento ? "Enviando..." : "Enviar notificación al cliente"}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Msg texto={msg.texto} tipo={msg.tipo}/>
+
+      {/* Tabs */}
+      <div className="flex gap-2 flex-wrap">
+        {[{k:"citas",l:"Citas"},{k:"perfiles",l:"Perfiles"}].map(t => (
+          <button key={t.k} onClick={() => setTab(t.k)}
+            className="px-4 py-2 text-xs font-semibold rounded-xl transition-all"
+            style={{ background:tab===t.k?T.brand:T.surfaceAlt, color:tab===t.k?"#fff":T.textSec, border:`1.5px solid ${tab===t.k?T.brand:T.border}` }}>
+            {t.l}
+          </button>
+        ))}
+        {tab === "citas" && (
+          <div className="flex gap-1.5 flex-wrap">
+            {FILTROS_CITA.map(f => (
+              <button key={f.k} onClick={() => setFiltroEstado(f.k)}
+                className="px-3 py-1.5 text-xs rounded-lg transition-all"
+                style={{ background:filtroEstado===f.k?T.brandLight:T.surface, color:filtroEstado===f.k?T.brand:T.textSec, border:`1.5px solid ${filtroEstado===f.k?T.brand:T.border}`, fontWeight:filtroEstado===f.k?700:400 }}>
+                {f.l}
+              </button>
+            ))}
+          </div>
+        )}
+        {tab === "perfiles" && (
+          <button className="ml-auto px-4 py-2 text-xs font-semibold rounded-xl"
+            style={{ background:T.brand,color:"#fff" }}
+            onClick={() => { cargarCandidatos(); setModalNuevo(true); }}>
+            + Asignar veterinario
+          </button>
+        )}
+      </div>
+
+      {/* Contenido */}
+      {cargando ? <Spinner/> : tab === "citas" ? (
+        <Card>
+          {citas.length === 0 ? (
+            <div className="py-16 text-center text-sm" style={{ color:T.textMuted }}>
+              Sin citas con ese filtro
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <THead cols={["Código","Cliente","Mascota","Veterinario","Fecha","Hora","Estado","Acción"]}/>
+                <tbody>
+                  {citas.map((c,i) => (
+                    <tr key={c.id} style={{ borderBottom:`1px solid ${T.borderSub}`,background:c.reagendamiento_estado==="propuesta"?"#fffbeb":i%2===0?T.surface:T.surfaceAlt }}>
+                      <td className="py-3 px-4 font-mono text-xs font-bold" style={{ color:T.brand }}>{c.codigo}</td>
+                      <td className="py-3 px-4">
+                        <p className="text-xs font-semibold" style={{ color:T.text }}>{c.cliente_nombre} {c.cliente_apellido}</p>
+                        <p className="text-xs" style={{ color:T.textMuted }}>{c.cliente_email}</p>
+                      </td>
+                      <td className="py-3 px-4 text-xs" style={{ color:T.textSec }}>
+                        {c.nombre_mascota} <span style={{ color:T.textMuted }}>({c.especie_mascota})</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="text-xs font-semibold" style={{ color:T.text }}>{c.vet_nombre} {c.vet_apellido}</p>
+                        <p className="text-xs" style={{ color:T.textMuted }}>{c.especialidad}</p>
+                      </td>
+                      <td className="py-3 px-4 text-xs tabular-nums" style={{ color:T.textSec }}>{c.fecha}</td>
+                      <td className="py-3 px-4 text-xs tabular-nums" style={{ color:T.textSec }}>{c.hora?.slice(0,5)}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col gap-1">
+                          <BadgeCita estado={c.estado}/>
+                          {c.reagendamiento_estado === "propuesta" && (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                              style={{ background:"#fef3c7",color:"#92400e",border:"1px solid #fde68a" }}>
+                              Esperando cliente
+                            </span>
+                          )}
+                          {c.reagendamiento_estado === "aceptada" && (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                              style={{ background:"#dcfce7",color:"#14532d",border:"1px solid #bbf7d0" }}>
+                              Reagendada ✓
+                            </span>
+                          )}
+                          {c.reagendamiento_estado === "rechazada" && (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                              style={{ background:"#fee2e2",color:"#7f1d1d",border:"1px solid #fecaca" }}>
+                              Propuesta rechazada
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        {["pendiente","confirmada"].includes(c.estado) && c.reagendamiento_estado !== "propuesta" && (
+                          <button
+                            onClick={() => {
+                              setModalReagendar(c);
+                              setFormReagendar({ motivo:"", nueva_fecha:"", nueva_hora:"", proponer_fecha:false });
+                            }}
+                            className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all"
+                            style={{ background:T.warningBg,color:T.warning,border:`1.5px solid ${T.warningBorder}` }}
+                            onMouseEnter={e=>{e.currentTarget.style.background=T.warning;e.currentTarget.style.color="#fff";}}
+                            onMouseLeave={e=>{e.currentTarget.style.background=T.warningBg;e.currentTarget.style.color=T.warning;}}>
+                            Reagendar
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      ) : (
+        /* Perfiles */
+        <div className="grid gap-4" style={{ gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))" }}>
+          {vets.length === 0 ? (
+            <Card className="p-10 text-center col-span-full">
+              <p className="text-sm font-semibold mb-1" style={{ color:T.text }}>Sin veterinarios registrados</p>
+              <p className="text-xs" style={{ color:T.textMuted }}>Usa el botón "Asignar veterinario" para agregar uno.</p>
+            </Card>
+          ) : vets.map(v => (
+            <Card key={v.usuario_id} className="p-5">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
+                  style={{ background:T.brandLight, color:T.brand }}>
+                  {v.nombre?.charAt(0)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold truncate" style={{ color:T.text }}>{v.nombre} {v.apellido}</p>
+                  <p className="text-xs truncate" style={{ color:T.textMuted }}>{v.email}</p>
+                  <p className="text-xs mt-0.5 font-medium" style={{ color:T.brand }}>{v.especialidad || "Sin especialidad"}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {[
+                  { label:"Citas totales", value:v.total_citas ?? 0 },
+                  { label:"Pendientes",    value:v.citas_pendientes ?? 0, highlight:true },
+                  { label:"Duración",      value:`${v.duracion_cita ?? 30} min` },
+                  { label:"Estado",        value:v.vet_activo ? "Activo" : "Inactivo" },
+                ].map(s => (
+                  <div key={s.label} className="rounded-lg px-3 py-2"
+                    style={{ background:s.highlight&&s.value>0?T.warningBg:T.surfaceAlt, border:`1px solid ${s.highlight&&s.value>0?T.warningBorder:T.border}` }}>
+                    <p className="text-xs" style={{ color:T.textMuted }}>{s.label}</p>
+                    <p className="text-sm font-bold tabular-nums" style={{ color:s.highlight&&s.value>0?T.warning:T.text }}>{s.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {v.vet_id ? (
+                <div className="flex gap-2 flex-wrap">
+                  <Btn size="xs" variant="outline" onClick={() => {
+                    setModalVet(v);
+                    setFormVet({ especialidad:v.especialidad||"", duracion_cita:v.duracion_cita||30, descripcion:v.descripcion||"" });
+                  }}>
+                    Editar perfil
+                  </Btn>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await api.put(`/admin/veterinarios/${v.vet_id}`, { activo: v.vet_activo ? 0 : 1 });
+                        cargarVets();
+                      } catch (err) {
+                        setMsg({ texto: err.response?.data?.error || "Error al cambiar estado.", tipo:"err" });
+                      }
+                    }}
+                    className="px-3 py-1 text-xs font-semibold rounded-lg transition-all"
+                    style={{
+                      background: v.vet_activo ? T.dangerBg : T.successBg,
+                      color: v.vet_activo ? T.danger : T.success,
+                      border: `1.5px solid ${v.vet_activo ? T.dangerBorder : T.successBorder}`,
+                    }}>
+                    {v.vet_activo ? "Desactivar" : "Activar"}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs px-3 py-2 rounded-lg" style={{ background:T.dangerBg, color:T.danger, border:`1px solid ${T.dangerBorder}` }}>
+                  Sin perfil veterinario — usa "Asignar veterinario"
+                </p>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── LAYOUT PRINCIPAL ─────────────────────────────────────────
 export default function Admin() {
   const {usuario,esAdmin}=useAuth();
@@ -1310,6 +1994,7 @@ export default function Admin() {
     // ── Galería de imágenes ──
     if(seccion==="galeria")         return <GaleriaAdmin T={T}/>;
     if(seccion==="proveedores")     return <Proveedores/>;
+    if(seccion==="veterinarios")    return <Veterinarios/>;
   };
 
   return (

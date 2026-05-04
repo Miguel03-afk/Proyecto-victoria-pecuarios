@@ -161,11 +161,103 @@ function ModalCancelar({ cita, onCancelar, onCerrar }) {
   );
 }
 
+const DIAS_FULL = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+const MESES_FULL = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+function fmtFechaLarga(f) {
+  const d = new Date(f + "T00:00:00");
+  return `${DIAS_FULL[d.getDay()]} ${d.getDate()} de ${MESES_FULL[d.getMonth()]}`;
+}
+function fmtHora(h) {
+  const [hh, mm] = h.split(":");
+  const n = parseInt(hh);
+  return `${n > 12 ? n-12 : n}:${mm} ${n >= 12 ? "PM" : "AM"}`;
+}
+
+/* ─── Banner de reagendamiento ─────────────────────────────── */
+function BannerReagendamiento({ cita, onResponder }) {
+  const [accionando, setAccionando] = useState(null);
+  const [msg,        setMsg]        = useState("");
+  const tieneFecha = cita.reagendamiento_nueva_fecha && cita.reagendamiento_nueva_hora;
+
+  const responder = async (accion) => {
+    setAccionando(accion);
+    try {
+      await api.patch(`/citas/${cita.id}/${accion}-reagendamiento`);
+      onResponder();
+    } catch (err) {
+      setMsg(err.response?.data?.error || "Error al procesar tu respuesta.");
+      setAccionando(null);
+    }
+  };
+
+  const orange = "#d97706";
+  const orangeBg = "#fffbeb";
+  const orangeBorder = "#fde68a";
+
+  return (
+    <div style={{ margin:"0 0 0", padding:"14px 16px", borderRadius:"0 0 14px 14px", background:orangeBg, borderTop:`2px solid ${orangeBorder}` }}>
+      <div style={{ display:"flex", alignItems:"flex-start", gap:12, flexWrap:"wrap" }}>
+        <div style={{ flex:1, minWidth:200 }}>
+          <p style={{ margin:"0 0 4px", fontSize:11, fontWeight:800, textTransform:"uppercase", letterSpacing:0.8, color:orange }}>
+            Propuesta de reagendamiento
+          </p>
+          <p style={{ margin:"0 0 8px", fontSize:13, color:"#78350f", lineHeight:1.6 }}>
+            {cita.reagendamiento_motivo}
+          </p>
+          {tieneFecha && (
+            <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:10, background:"#fff", border:`1.5px solid ${orangeBorder}` }}>
+              <span style={{ fontSize:11, color:orange, fontWeight:700 }}>Nueva fecha propuesta:</span>
+              <span style={{ fontSize:13, fontWeight:800, color:"#92400e" }}>
+                {fmtFechaLarga(cita.reagendamiento_nueva_fecha)} · {fmtHora(cita.reagendamiento_nueva_hora)}
+              </span>
+            </div>
+          )}
+          {!tieneFecha && (
+            <p style={{ margin:"8px 0 0", fontSize:12, color:"#92400e", fontStyle:"italic" }}>
+              No se propone nueva fecha — puedes contactarnos para reagendar.
+            </p>
+          )}
+          {msg && <p style={{ margin:"8px 0 0", fontSize:12, color:C.danger }}>{msg}</p>}
+        </div>
+
+        {tieneFecha && (
+          <div style={{ display:"flex", flexDirection:"column", gap:7, flexShrink:0 }}>
+            <button
+              onClick={() => responder("aceptar")}
+              disabled={!!accionando}
+              style={{
+                padding:"8px 18px", borderRadius:10, border:"none",
+                background: accionando ? C.surfaceAlt : C.brand, color: accionando ? C.textMuted : "#fff",
+                fontSize:12, fontWeight:700, cursor: accionando ? "default" : "pointer",
+              }}
+            >
+              {accionando === "aceptar" ? "Aceptando..." : "Aceptar nueva fecha"}
+            </button>
+            <button
+              onClick={() => responder("rechazar")}
+              disabled={!!accionando}
+              style={{
+                padding:"8px 18px", borderRadius:10,
+                border:`1.5px solid ${C.dangerBorder}`,
+                background:C.dangerBg, color:C.danger,
+                fontSize:12, fontWeight:600, cursor: accionando ? "default" : "pointer",
+              }}
+            >
+              {accionando === "rechazar" ? "Rechazando..." : "Rechazar y cancelar"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Tarjeta de cita ───────────────────────────────────────── */
 function TarjetaCita({ cita, onCancelar }) {
   const [expandida, setExpandida] = useState(false);
   const [modalCancelar, setModalCancelar] = useState(false);
-  const puedeCancelar = ["pendiente","confirmada"].includes(cita.estado);
+  const puedeCancelar = ["pendiente","confirmada"].includes(cita.estado) && cita.reagendamiento_estado !== "propuesta";
+  const tieneReagendamiento = cita.reagendamiento_estado === "propuesta";
 
   return (
     <>
@@ -178,7 +270,8 @@ function TarjetaCita({ cita, onCancelar }) {
       )}
 
       <div style={{
-        background:C.surface, border:`1px solid ${C.border}`,
+        background:C.surface,
+        border:`1.5px solid ${tieneReagendamiento ? "#fde68a" : C.border}`,
         borderRadius:16, overflow:"hidden", transition:"all 0.2s",
       }}>
         {/* Cabecera */}
@@ -188,6 +281,16 @@ function TarjetaCita({ cita, onCancelar }) {
           <div style={{ flex:1, minWidth:180 }}>
             <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap", marginBottom:6 }}>
               <BadgeEstado estado={cita.estado}/>
+              {tieneReagendamiento && (
+                <span style={{ fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:6, background:"#fef3c7", color:"#92400e", border:"1px solid #fde68a" }}>
+                  ⚠ Esperando tu respuesta
+                </span>
+              )}
+              {cita.reagendamiento_estado === "aceptada" && (
+                <span style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:6, background:C.successBg, color:C.success, border:`1px solid ${C.successBorder}` }}>
+                  Reagendada
+                </span>
+              )}
               <span style={{ fontSize:11, color:C.textMuted, fontFamily:"monospace" }}>{cita.codigo}</span>
             </div>
             <p style={{ margin:"0 0 3px", fontSize:15, fontWeight:800, color:C.text }}>
@@ -228,6 +331,9 @@ function TarjetaCita({ cita, onCancelar }) {
             </button>
           </div>
         </div>
+
+        {/* Banner de reagendamiento — siempre visible si hay propuesta */}
+        {tieneReagendamiento && <BannerReagendamiento cita={cita} onResponder={onCancelar}/>}
 
         {/* Detalle expandido */}
         {expandida && (

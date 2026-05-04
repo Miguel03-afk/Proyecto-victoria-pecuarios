@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer
+  ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer
 } from "recharts";
 import api from "../services/api";
 
@@ -14,7 +14,25 @@ const mesLabel = (m) => {
   return `${meses[Number(mo)]} ${y}`;
 };
 
-const BAR_COLOR = { verde:"#0A6B40", gris:"#d1d5db" };
+function TradingTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background:"#0a1628", border:"1px solid rgba(255,255,255,0.12)", borderRadius:10, padding:"10px 14px", fontSize:12, boxShadow:"0 8px 24px rgba(0,0,0,0.4)" }}>
+      <p style={{ color:"rgba(255,255,255,0.5)", marginBottom:6, fontSize:10, textTransform:"uppercase", letterSpacing:0.8 }}>
+        {label}
+      </p>
+      {payload.map((p, i) => (
+        <div key={i} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:i < payload.length-1 ? 4 : 0 }}>
+          <span style={{ width:8, height:8, borderRadius:"50%", background:p.color, display:"block", flexShrink:0 }}/>
+          <span style={{ color:"rgba(255,255,255,0.7)", fontSize:11 }}>{p.name}:</span>
+          <span style={{ color:"#fff", fontWeight:700, fontFamily:"monospace" }}>
+            {typeof p.value === "number" && p.value > 10000 ? `$${Number(p.value).toLocaleString("es-CO")}` : p.value?.toLocaleString?.("es-CO") ?? p.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function BarraProgreso({ label, real, meta, formato = "numero", color = "#0A6B40" }) {
   const porcentaje = pct(real, meta);
@@ -253,24 +271,94 @@ export default function Objetivos() {
         ))}
       </div>
 
-      {/* Gráfica histórica */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5">
-        <h3 className="text-sm font-bold text-gray-800 mb-4">Meta vs real — últimos 6 meses</h3>
-        {historial.length === 0
-          ? <p className="text-sm text-gray-400 text-center py-8">Sin datos históricos aún</p>
-          : <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={historial.map(h => ({ ...h, mes: mesLabel(h.mes) }))}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="mes" tick={{ fontSize:11, fill:"#9ca3af" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize:11, fill:"#9ca3af" }} axisLine={false} tickLine={false}
-                  tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-                <Tooltip formatter={v => fmt(v)} contentStyle={{ borderRadius:12, border:"1px solid #e5e7eb", fontSize:12 }} />
-                <Legend wrapperStyle={{ fontSize:12 }} />
-                <Bar dataKey="meta_ventas" name="Meta" fill={BAR_COLOR.gris} radius={[4,4,0,0]} />
-                <Bar dataKey="ventas_real" name="Real" fill={BAR_COLOR.verde} radius={[4,4,0,0]} />
-              </BarChart>
+      {/* Gráfica histórica — estilo trading */}
+      <div style={{
+        background:"#0a1628",
+        border:"1px solid rgba(255,255,255,0.07)",
+        borderRadius:16,
+        overflow:"hidden",
+      }}>
+        {/* Header */}
+        <div style={{padding:"16px 20px", borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+          <div style={{display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:16, flexWrap:"wrap"}}>
+            <div>
+              <div style={{display:"flex", alignItems:"center", gap:8, marginBottom:4}}>
+                <div style={{width:8, height:8, borderRadius:"50%", background:"#10b981"}}/>
+                <span style={{fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:1, color:"rgba(255,255,255,0.4)"}}>
+                  Análisis histórico · Ventas vs Meta
+                </span>
+              </div>
+              <p style={{fontSize:20, fontWeight:700, color:"#fff", fontFamily:"monospace", margin:0}}>
+                {fmt(historial.reduce((a,h)=>a+(h.ventas_real||0),0))}
+              </p>
+              <p style={{fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2}}>Total acumulado en historial</p>
+            </div>
+            <div style={{display:"flex", alignItems:"center", gap:16}}>
+              <div style={{display:"flex", alignItems:"center", gap:6}}>
+                <span style={{width:12, height:3, borderRadius:2, display:"block", background:"#10b981"}}/>
+                <span style={{fontSize:10, color:"rgba(255,255,255,0.45)", fontWeight:600}}>Real</span>
+              </div>
+              <div style={{display:"flex", alignItems:"center", gap:6}}>
+                <span style={{width:14, display:"block", borderTop:"2px dashed rgba(255,255,255,0.35)"}}/>
+                <span style={{fontSize:10, color:"rgba(255,255,255,0.45)", fontWeight:600}}>Meta</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Chart */}
+        <div style={{padding:"24px 16px 16px"}}>
+          {historial.length === 0 ? (
+            <p style={{color:"rgba(255,255,255,0.3)", textAlign:"center", padding:"48px 0", fontSize:13, margin:0}}>
+              Sin datos históricos aún
+            </p>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <ComposedChart data={historial.map(h => ({ ...h, mes: mesLabel(h.mes) }))} margin={{top:10,right:10,bottom:0,left:0}}>
+                <defs>
+                  <linearGradient id="gVentasObj" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.35}/>
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.02}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="1 4" stroke="rgba(255,255,255,0.05)" vertical={false}/>
+                <XAxis dataKey="mes" tick={{fontSize:11,fill:"rgba(255,255,255,0.35)",fontWeight:600}} axisLine={false} tickLine={false}/>
+                <YAxis tick={{fontSize:10,fill:"rgba(255,255,255,0.25)"}} axisLine={false} tickLine={false}
+                  tickFormatter={v => `$${(v/1000).toFixed(0)}k`} width={52}/>
+                <Tooltip content={<TradingTooltip/>}/>
+                <Line type="monotone" dataKey="meta_ventas" stroke="rgba(255,255,255,0.35)" strokeWidth={1.5}
+                  strokeDasharray="6 4" dot={false} name="Meta"/>
+                <Area type="monotone" dataKey="ventas_real" stroke="#10b981" strokeWidth={2.5}
+                  fill="url(#gVentasObj)" dot={false}
+                  activeDot={{r:4,fill:"#10b981",stroke:"#fff",strokeWidth:2}} name="Real"/>
+              </ComposedChart>
             </ResponsiveContainer>
-        }
+          )}
+        </div>
+
+        {/* Footer métricas */}
+        {historial.length > 0 && (() => {
+          const totalReal = historial.reduce((a,h)=>a+(h.ventas_real||0),0);
+          const totalMeta = historial.reduce((a,h)=>a+(h.meta_ventas||0),0);
+          const cumpl = totalMeta > 0 ? Math.round((totalReal/totalMeta)*100) : 0;
+          const mejor = [...historial].sort((a,b)=>(b.ventas_real||0)-(a.ventas_real||0))[0];
+          const stats = [
+            { label:"Total real",   value:fmt(totalReal),               color:"#10b981" },
+            { label:"Total meta",   value:fmt(totalMeta),               color:"rgba(255,255,255,0.4)" },
+            { label:"Cumplimiento", value:`${cumpl}%`,                  color: cumpl>=100?"#10b981":cumpl>=70?"#f59e0b":"#ef4444" },
+            { label:"Mejor mes",    value:mejor?mesLabel(mejor.mes):"—", color:"#6366f1" },
+          ];
+          return (
+            <div style={{display:"flex", borderTop:"1px solid rgba(255,255,255,0.05)"}}>
+              {stats.map((s,i) => (
+                <div key={s.label} style={{flex:1, textAlign:"center", borderRight: i<3?"1px solid rgba(255,255,255,0.05)":"none", padding:"10px 8px"}}>
+                  <p style={{fontSize:12, fontWeight:700, fontFamily:"monospace", color:s.color, margin:0}}>{s.value}</p>
+                  <p style={{fontSize:9, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:0.5, marginTop:3, marginBottom:0}}>{s.label}</p>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Modal configurar metas */}

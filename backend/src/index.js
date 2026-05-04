@@ -11,6 +11,7 @@ import citasRouter          from "./routes/citas.routes.js";
 import veterinarioRouter    from "./routes/veterinario.routes.js";
 import adminVetsRouter      from "./routes/admin.veterinarios.routes.js";
 import cajeroRouter         from "./routes/cajero.routes.js";
+import pagosRoutes          from "./routes/pagos.routes.js";
 
 
 dotenv.config();
@@ -18,7 +19,7 @@ dotenv.config();
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors({ origin: ["http://localhost:5173","http://localhost:5174","http://localhost:5175"], credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -32,6 +33,7 @@ app.use("/api/categorias", categoriasRoutes);
 app.use("/api/admin",      adminRoutes);
 app.use("/api/metas",      metasRoutes);
 app.use('/api/reportes', reportesRoutes);
+app.use("/api/pagos",   pagosRoutes);
 
 app.get("/", (req, res) => {
   res.json({ mensaje: "API Victoria Pecuarios activa", version: "2.0" });

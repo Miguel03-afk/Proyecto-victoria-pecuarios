@@ -127,27 +127,27 @@ router.post("/", verificarToken, soloAdmin, async (req, res) => {
     nombre, slug, descripcion, descripcion_corta, categoria_id, proveedor_id,
     precio, precio_antes, precio_costo, stock, stock_minimo,
     imagen_url, imagenes_extra, marca, unidad, especie,
-    requiere_formula, activo, destacado, variantes,
+    requiere_formula, activo, destacado, variantes, codigo_barra,
   } = req.body;
- 
+
   if (!nombre || !categoria_id || precio == null)
     return res.status(400).json({ error: "nombre, categoria_id y precio son requeridos." });
- 
+
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
- 
+
     const slugFinal = slug || nombre.toLowerCase()
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
       .replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
- 
+
     const [result] = await conn.query(`
       INSERT INTO productos
         (nombre, slug, descripcion, descripcion_corta, categoria_id, proveedor_id,
          precio, precio_antes, precio_costo, stock, stock_minimo,
          imagen_url, imagenes_extra, marca, unidad, especie,
-         requiere_formula, activo, destacado)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         requiere_formula, activo, destacado, codigo_barra)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [nombre, slugFinal, descripcion||null, descripcion_corta||null,
        categoria_id, proveedor_id||null,
        Number(precio), precio_antes||null, precio_costo||0,
@@ -155,7 +155,8 @@ router.post("/", verificarToken, soloAdmin, async (req, res) => {
        imagen_url||null,
        imagenes_extra ? JSON.stringify(imagenes_extra) : null,
        marca||null, unidad||null, especie||null,
-       requiere_formula?1:0, activo!==false?1:0, destacado?1:0]
+       requiere_formula?1:0, activo!==false?1:0, destacado?1:0,
+       codigo_barra||null]
     );
     const producto_id = result.insertId;
  
@@ -190,18 +191,19 @@ router.put("/:id", verificarToken, soloAdmin, async (req, res) => {
     nombre, slug, descripcion, descripcion_corta, categoria_id, proveedor_id,
     precio, precio_antes, precio_costo, stock, stock_minimo,
     imagen_url, imagenes_extra, marca, unidad, especie,
-    requiere_formula, activo, destacado, variantes,
+    requiere_formula, activo, destacado, variantes, codigo_barra,
   } = req.body;
- 
+
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
- 
+
     const sets = [], vals = [];
     const campos = {
       nombre, slug, descripcion, descripcion_corta, categoria_id, proveedor_id,
       precio, precio_antes, precio_costo, stock, stock_minimo,
       imagen_url, marca, unidad, especie, requiere_formula, activo, destacado,
+      codigo_barra,
     };
     for (const [k, v] of Object.entries(campos)) {
       if (v !== undefined) { sets.push(`${k}=?`); vals.push(v); }

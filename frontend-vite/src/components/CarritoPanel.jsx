@@ -1,5 +1,5 @@
 // src/components/CarritoPanel.jsx
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useCarrito } from "../context/CarritoContext";
 
 const C = {
@@ -187,16 +187,17 @@ export default function CarritoPanel() {
                   Agrega productos para comenzar
                 </p>
               </div>
-              <button
+              <Link
+                to="/tienda"
                 onClick={() => setAbierto(false)}
                 style={{
-                  marginTop:4, padding:"10px 24px", borderRadius:12,
+                  display:"inline-block", marginTop:4, padding:"10px 24px", borderRadius:12,
                   background:C.brand, color:"#fff",
-                  border:"none", fontSize:13, fontWeight:700, cursor:"pointer",
+                  textDecoration:"none", fontSize:13, fontWeight:700,
                 }}
               >
                 Explorar tienda
-              </button>
+              </Link>
             </div>
           ) : (
             <div style={{ padding:"8px 16px", display:"flex", flexDirection:"column", gap:8 }}>

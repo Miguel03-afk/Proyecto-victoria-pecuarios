@@ -473,17 +473,32 @@ function PasoEnvio({ onContinuar, onVolver, datosEnvio, setDatosEnvio }) {
   const { usuario } = useAuth();
   const set = (k) => (e) => setDatosEnvio({ ...datosEnvio, [k]: e.target.value });
 
+  // Direcciones guardadas desde el perfil del usuario
+  const [dirsGuardadas] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("vp_direcciones") || "[]"); }
+    catch { return []; }
+  });
+  const [dirSeleccionada, setDirSeleccionada] = useState(null);
+
   useEffect(() => {
-    if (usuario && !datosEnvio.nombre) {
-      setDatosEnvio(p => ({
-        ...p,
-        nombre:   p.nombre   || usuario.nombre   || "",
-        apellido: p.apellido || usuario.apellido || "",
-        telefono: p.telefono || usuario.telefono || "",
-        ciudad:   p.ciudad   || "Ibagué",
-      }));
-    }
+    setDatosEnvio(p => ({
+      ...p,
+      nombre:   p.nombre   || usuario?.nombre   || "",
+      apellido: p.apellido || usuario?.apellido || "",
+      telefono: p.telefono || usuario?.telefono || "",
+      ciudad:   "Ibagué",
+    }));
   }, [usuario]);
+
+  const elegirDireccion = (dir) => {
+    setDirSeleccionada(dir.id);
+    const direccionCompleta = [dir.calle, dir.barrio].filter(Boolean).join(", ");
+    setDatosEnvio(p => ({
+      ...p,
+      direccion: direccionCompleta,
+      ciudad:    dir.ciudad || "Ibagué",
+    }));
+  };
 
   const valido = datosEnvio.nombre && datosEnvio.direccion && datosEnvio.ciudad;
 
@@ -493,6 +508,55 @@ function PasoEnvio({ onContinuar, onVolver, datosEnvio, setDatosEnvio }) {
         <h2 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 800, color: C.text }}>
           Información de envío
         </h2>
+
+        {/* Selector de direcciones guardadas */}
+        {dirsGuardadas.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: C.textTer }}>
+              Tus direcciones guardadas
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {dirsGuardadas.map(dir => {
+                const seleccionada = dirSeleccionada === dir.id;
+                return (
+                  <button
+                    key={dir.id}
+                    onClick={() => elegirDireccion(dir)}
+                    style={{
+                      display: "flex", alignItems: "flex-start", gap: 12,
+                      padding: "12px 16px", borderRadius: 14, cursor: "pointer",
+                      border: `1.5px solid ${seleccionada ? C.brand : C.border}`,
+                      background: seleccionada ? C.brandLight : C.surface,
+                      textAlign: "left", transition: "all 0.15s",
+                    }}
+                  >
+                    <span style={{ fontSize: 18, lineHeight: 1.2, marginTop: 1 }}>📍</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {dir.alias && (
+                        <p style={{ margin: "0 0 2px", fontSize: 12, fontWeight: 700, color: seleccionada ? C.brand : C.textTer, textTransform: "uppercase", letterSpacing: 0.6 }}>
+                          {dir.alias}
+                        </p>
+                      )}
+                      <p style={{ margin: 0, fontSize: 13, color: C.text, fontWeight: 500 }}>
+                        {[dir.calle, dir.barrio].filter(Boolean).join(", ")}
+                      </p>
+                      {dir.referencias && (
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: C.textMuted }}>{dir.referencias}</p>
+                      )}
+                    </div>
+                    {seleccionada && (
+                      <span style={{ fontSize: 16, color: C.brand, flexShrink: 0 }}>✓</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <p style={{ margin: "10px 0 16px", fontSize: 12, color: C.textMuted }}>
+              O ingresa una dirección diferente:
+            </p>
+          </div>
+        )}
+
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <Campo label="Nombre" value={datosEnvio.nombre} onChange={set("nombre")} placeholder="Juan" required/>
@@ -500,9 +564,14 @@ function PasoEnvio({ onContinuar, onVolver, datosEnvio, setDatosEnvio }) {
           </div>
           <Campo label="Teléfono" type="tel" value={datosEnvio.telefono} onChange={set("telefono")} placeholder="300 000 0000"/>
           <Campo label="Dirección" value={datosEnvio.direccion} onChange={set("direccion")} placeholder="Cra. 15 #85-23" required hint="Incluye barrio, apto o torre si aplica"/>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <Campo label="Ciudad" value={datosEnvio.ciudad} onChange={set("ciudad")} placeholder="Ibagué" required/>
-            <Campo label="Departamento" value={datosEnvio.departamento} onChange={set("departamento")} placeholder="Cundinamarca"/>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 14px", borderRadius: 12,
+            background: C.brandLight, border: `1px solid ${C.brandBorder}`,
+            fontSize: 13, color: C.brandDark, fontWeight: 500,
+          }}>
+            <span>📍</span>
+            <span>Envíos únicamente dentro de <strong>Ibagué, Tolima</strong></span>
           </div>
           <Campo label="Notas adicionales" value={datosEnvio.notas} onChange={set("notas")} placeholder="Indicaciones especiales para la entrega..." rows={2}/>
         </div>
@@ -523,16 +592,57 @@ function PasoEnvio({ onContinuar, onVolver, datosEnvio, setDatosEnvio }) {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   PASO 3 — Pago
-   FIX CRÍTICO: cambiado de /admin/facturas → /cajero/facturas
-   y el payload ahora usa { usuario_id, items, metodo_pago, notas }
+   PASO 3 — Pago  (integración ePayco)
+   POST /api/pagos/crear-orden  ←  ruta propia, sin rol cajero
    ════════════════════════════════════════════════════════════════ */
 const METODOS = [
-  { id: "efectivo",      label: "Efectivo / Contraentrega", icon: "💵", desc: "Paga al recibir tu pedido" },
-  { id: "transferencia", label: "Transferencia bancaria",   icon: "🏦", desc: "Te enviamos los datos por correo" },
-  { id: "pse",           label: "PSE",                      icon: "💳", desc: "Débito en línea desde tu banco" },
-  { id: "tarjeta",       label: "Tarjeta débito / crédito", icon: "💳", desc: "Visa, Mastercard, American Express" },
+  {
+    id:   "efectivo",
+    label:"Contraentrega / Efectivo",
+    icon: "💵",
+    desc: "Paga cuando recibas tu pedido en la puerta",
+  },
+  {
+    id:   "transferencia",
+    label:"Transferencia bancaria",
+    icon: "🏦",
+    desc: "Te enviamos los datos de cuenta por correo",
+  },
+  {
+    id:   "epayco",
+    label:"Tarjeta / PSE — pago en línea",
+    icon: "💳",
+    desc: "Visa, Mastercard, American Express y PSE · 100% seguro",
+    badge:"Recomendado",
+  },
 ];
+
+// Precarga el script de ePayco — se llama en useEffect para que esté listo
+// antes de que el usuario haga clic, evitando que el navegador bloquee el popup
+function loadEpaycoScript() {
+  return new Promise((resolve, reject) => {
+    // Ya cargado
+    if (window.ePayco?.checkout) { resolve(window.ePayco); return; }
+    // Script ya en el DOM pero aún inicializando
+    if (document.querySelector('script[src*="checkout.epayco"]')) {
+      const poll = setInterval(() => {
+        if (window.ePayco?.checkout) { clearInterval(poll); resolve(window.ePayco); }
+      }, 80);
+      setTimeout(() => { clearInterval(poll); reject(new Error("ePayco tardó demasiado en cargar.")); }, 6000);
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = "https://checkout.epayco.co/checkout.js";
+    s.onload = () => {
+      const poll = setInterval(() => {
+        if (window.ePayco?.checkout) { clearInterval(poll); resolve(window.ePayco); }
+      }, 80);
+      setTimeout(() => { clearInterval(poll); reject(new Error("ePayco no se inicializó. Revisa tu conexión.")); }, 6000);
+    };
+    s.onerror = () => reject(new Error("No se pudo cargar el módulo de pagos. Verifica tu conexión."));
+    document.head.appendChild(s);
+  });
+}
 
 function PasoPago({ onVolver, datosEnvio }) {
   const { items, totalPrecio, vaciar } = useCarrito();
@@ -544,11 +654,29 @@ function PasoPago({ onVolver, datosEnvio }) {
   const [error,      setError]      = useState("");
   const [orden,      setOrden]      = useState(null);
 
+  // Pre-cargar el script de ePayco mientras el usuario está en el paso de pago
+  useEffect(() => { loadEpaycoScript().catch(() => {}); }, []);
+
   const envioGratis = totalPrecio >= 80000;
   const costoEnvio  = envioGratis ? 0 : 8900;
   const total       = totalPrecio + costoEnvio;
 
-  /* ── FIX: POST /api/cajero/facturas (era /admin/facturas) ── */
+  // Crea la orden en el backend — devuelve { orden_id, codigo, total, subtotal, iva }
+  const crearOrden = () =>
+    api.post("/pagos/crear-orden", {
+      items: items.map(item => ({
+        producto_id: item.producto_id || item.id,
+        cantidad:    item.cantidad,
+      })),
+      metodo_pago: metodo,
+      datos_envio: {
+        direccion:   datosEnvio.direccion,
+        ciudad:      datosEnvio.ciudad,
+        telefono:    datosEnvio.telefono,
+        notas:       datosEnvio.notas || null,
+      },
+    }).then(r => r.data);
+
   const handleConfirmar = async () => {
     if (!usuario) {
       navigate("/login", { state: { desde: "/carrito" } });
@@ -557,31 +685,72 @@ function PasoPago({ onVolver, datosEnvio }) {
     setError(""); setProcesando(true);
 
     try {
-      // Payload que acepta cajero.routes.js POST /facturas
-      const { data } = await api.post("/cajero/facturas", {
-        usuario_id:  usuario.id,           // cliente que compra en línea
-        items: items.map(item => ({
-          producto_id: item.producto_id || item.id,
-          cantidad:    item.cantidad,
-        })),
-        metodo_pago: metodo,
-        notas: [
-          datosEnvio.direccion && `Enviar a: ${datosEnvio.direccion}, ${datosEnvio.ciudad}`,
-          datosEnvio.notas,
-        ].filter(Boolean).join(" | ") || null,
-      });
+      const ordenData = await crearOrden();
 
-      vaciar();
-      setOrden({ codigo: data.codigo, id: data.orden_id });
+      if (metodo === "epayco") {
+        // ── Pago online: lanzar checkout de ePayco ──────────────
+        // El script ya debería estar pre-cargado por el useEffect
+        const epayco = await loadEpaycoScript();
+        if (!epayco?.checkout) throw new Error("No se pudo inicializar el módulo de pagos. Intenta de nuevo.");
+
+        const PUBLIC_KEY  = import.meta.env.VITE_EPAYCO_PUBLIC_KEY || "";
+        const PUBLIC_URL  = import.meta.env.VITE_PUBLIC_URL || window.location.origin;
+
+        if (!PUBLIC_KEY) throw new Error("Clave pública de ePayco no configurada. Revisa VITE_EPAYCO_PUBLIC_KEY en .env.local");
+
+        const handler = epayco.checkout.configure({ key: PUBLIC_KEY, test: true });
+
+        // ePayco espera enteros en COP (sin decimales)
+        const montoEntero = Math.round(ordenData.total);
+        const baseIva     = Math.round(ordenData.subtotal / 1.19);
+        const valorIva    = Math.round(ordenData.subtotal - baseIva);
+
+        // Guardar orden antes de salir — si ePayco no redirige de vuelta,
+        // el banner de recuperación en el navbar le muestra el camino al usuario
+        sessionStorage.setItem("vp_pago_pendiente", JSON.stringify({
+          codigo: ordenData.codigo,
+          total:  ordenData.total,
+        }));
+
+        handler.open({
+          name:        "Victoria Pecuarios",
+          description: `Orden ${ordenData.codigo}`,
+          invoice:     ordenData.codigo,
+          currency:    "cop",
+          amount:      String(montoEntero),
+          tax_base:    String(baseIva),
+          tax:         String(valorIva),
+          country:     "co",
+          lang:        "es",
+          extra1:      ordenData.codigo,
+          external:    "true",
+          response:    `${PUBLIC_URL}/pago/respuesta`,
+          email_billing:       usuario.email,
+          name_billing:        `${usuario.nombre} ${usuario.apellido}`,
+          type_doc_billing:    "cc",
+          mobilephone_billing: datosEnvio.telefono || "",
+          address_billing:     datosEnvio.direccion || "",
+        });
+
+        // Vaciar el carrito después de abrir el popup
+        vaciar();
+        // El flujo continúa en /pago/respuesta tras cerrar el checkout de ePayco
+
+      } else {
+        // ── Contraentrega / Transferencia: éxito inline ────────
+        vaciar();
+        setOrden({ codigo: ordenData.codigo, id: ordenData.orden_id });
+      }
+
     } catch (err) {
-      const msg = err.response?.data?.error || "Error al procesar el pedido. Intenta de nuevo.";
+      const msg = err.response?.data?.error || err.message || "Error al procesar el pedido. Intenta de nuevo.";
       setError(msg);
     } finally {
       setProcesando(false);
     }
   };
 
-  /* ── Pantalla de éxito ─────────────────────────────────────── */
+  /* ── Pantalla de éxito (contraentrega / transferencia) ──────── */
   if (orden) return (
     <div style={{ maxWidth: 520, margin: "0 auto", animation: "fadeUp 0.4s ease" }}>
       <div style={{ background: C.surface, border: `1px solid ${C.successBorder}`, borderRadius: 24, padding: "48px 40px", textAlign: "center", boxShadow: "0 8px 32px rgba(22,163,74,0.1)" }}>
@@ -589,10 +758,12 @@ function PasoPago({ onVolver, datosEnvio }) {
           ✅
         </div>
         <h2 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 800, color: C.text, fontFamily: "'Playfair Display',serif", fontStyle: "italic" }}>
-          ¡Pedido confirmado!
+          ¡Pedido registrado!
         </h2>
         <p style={{ margin: "0 0 20px", color: C.textMuted, fontSize: 14, lineHeight: 1.6 }}>
-          Tu pedido fue registrado exitosamente. Nuestro equipo lo procesará pronto.
+          {metodo === "transferencia"
+            ? "Te enviaremos los datos de transferencia por correo. Una vez confirmado el pago, procesamos tu pedido."
+            : "Nuestro equipo coordinará la entrega y el cobro en tu domicilio."}
         </p>
 
         <div style={{ background: C.brandLight, border: `1px solid ${C.brandBorder}`, borderRadius: 12, padding: "14px 20px", marginBottom: 24 }}>
@@ -603,12 +774,14 @@ function PasoPago({ onVolver, datosEnvio }) {
         </div>
 
         <div style={{ display: "flex", gap: 10 }}>
-          <Link to="/mis-ordenes" style={{ flex: 1, padding: "12px 0", borderRadius: 12, background: C.brand, color: "#fff", textDecoration: "none", fontSize: 13, fontWeight: 700, textAlign: "center", transition: "all 0.2s" }}
+          <Link to="/mis-ordenes"
+            style={{ flex: 1, padding: "12px 0", borderRadius: 12, background: C.brand, color: "#fff", textDecoration: "none", fontSize: 13, fontWeight: 700, textAlign: "center", transition: "all 0.2s" }}
             onMouseEnter={e => { e.currentTarget.style.background = C.brandMid; }}
             onMouseLeave={e => { e.currentTarget.style.background = C.brand; }}>
             Ver mis pedidos
           </Link>
-          <Link to="/tienda" style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, color: C.textSec, textDecoration: "none", fontSize: 13, fontWeight: 500, textAlign: "center" }}>
+          <Link to="/tienda"
+            style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, color: C.textSec, textDecoration: "none", fontSize: 13, fontWeight: 500, textAlign: "center" }}>
             Seguir comprando
           </Link>
         </div>
@@ -637,14 +810,14 @@ function PasoPago({ onVolver, datosEnvio }) {
           </div>
         )}
 
-        {/* Error del backend */}
+        {/* Error */}
         {error && (
           <div style={{ padding: "12px 16px", borderRadius: 12, background: C.dangerBg, border: `1px solid ${C.dangerBorder}`, color: C.danger, fontSize: 13, marginBottom: 16, display: "flex", gap: 8, alignItems: "center" }}>
             <span>⚠️</span>{error}
           </div>
         )}
 
-        {/* Métodos de pago */}
+        {/* Métodos */}
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, padding: "16px", display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
           {METODOS.map(m => (
             <label key={m.id} style={{
@@ -652,6 +825,7 @@ function PasoPago({ onVolver, datosEnvio }) {
               borderRadius: 12, cursor: "pointer", transition: "all 0.15s",
               border: `1.5px solid ${metodo === m.id ? C.brand : C.border}`,
               background: metodo === m.id ? C.brandLight : C.surface,
+              position: "relative",
             }}
               onMouseEnter={e => { if (metodo !== m.id) e.currentTarget.style.borderColor = C.brandBorder; }}
               onMouseLeave={e => { if (metodo !== m.id) e.currentTarget.style.borderColor = C.border; }}
@@ -659,7 +833,18 @@ function PasoPago({ onVolver, datosEnvio }) {
               <input type="radio" name="metodo" value={m.id} checked={metodo === m.id} onChange={() => setMetodo(m.id)} style={{ display: "none" }}/>
               <span style={{ fontSize: 22, flexShrink: 0 }}>{m.icon}</span>
               <div style={{ flex: 1 }}>
-                <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: metodo === m.id ? 700 : 500, color: metodo === m.id ? C.brand : C.text }}>{m.label}</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: metodo === m.id ? 700 : 500, color: metodo === m.id ? C.brand : C.text }}>
+                    {m.label}
+                  </p>
+                  {m.badge && (
+                    <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 5,
+                      background: metodo === m.id ? C.brand : C.lime,
+                      color: "#fff", letterSpacing: 0.5, textTransform: "uppercase" }}>
+                      {m.badge}
+                    </span>
+                  )}
+                </div>
                 <p style={{ margin: 0, fontSize: 12, color: C.textMuted }}>{m.desc}</p>
               </div>
               {metodo === m.id && (
@@ -671,11 +856,30 @@ function PasoPago({ onVolver, datosEnvio }) {
           ))}
         </div>
 
+        {/* Sello de seguridad ePayco cuando está seleccionado */}
+        {metodo === "epayco" && (
+          <div style={{ padding: "11px 16px", borderRadius: 12, background: C.successBg, border: `1px solid ${C.successBorder}`, marginBottom: 16, display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: C.success }}>
+            🔒
+            <span>
+              <strong>Pago 100% seguro</strong> procesado por ePayco ·{" "}
+              <span style={{ color: C.textMuted }}>Modo TEST activo — usa tarjetas de prueba</span>
+            </span>
+          </div>
+        )}
+
+        {/* Tarjetas de prueba ePayco (solo en modo test) */}
+        {metodo === "epayco" && (
+          <div style={{ padding: "12px 16px", borderRadius: 12, background: C.warningBg, border: `1px solid ${C.warningBorder}`, marginBottom: 16, fontSize: 11, color: "#92400e" }}>
+            <p style={{ margin: "0 0 6px", fontWeight: 700 }}>🧪 Tarjetas de prueba ePayco</p>
+            <p style={{ margin: "0 0 2px" }}>VISA:       <code style={{ background: "rgba(0,0,0,0.06)", padding: "1px 5px", borderRadius: 3 }}>4575623182290326</code> · Exp: 28/03 · CVV: 123</p>
+            <p style={{ margin: 0 }}>Mastercard: <code style={{ background: "rgba(0,0,0,0.06)", padding: "1px 5px", borderRadius: 3 }}>5170394490379427</code> · Exp: 28/03 · CVV: 123</p>
+          </div>
+        )}
+
         {/* Dirección confirmada */}
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>📍 Dirección de entrega</h4>
-            {/* FIX DISEÑO: "Cambiar" sin flecha */}
             <button onClick={onVolver} style={{ fontSize: 12, color: C.brand, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Cambiar</button>
           </div>
           <p style={{ margin: "0 0 2px", fontSize: 13, color: C.textSec }}>{datosEnvio.nombre} {datosEnvio.apellido}</p>
@@ -690,7 +894,11 @@ function PasoPago({ onVolver, datosEnvio }) {
           items={items}
           totalPrecio={totalPrecio}
           accion={handleConfirmar}
-          textoBtn={usuario ? "Confirmar pedido" : "Inicia sesión para pagar"}
+          textoBtn={
+            !usuario          ? "Inicia sesión para pagar" :
+            metodo === "epayco" ? "Pagar con ePayco →" :
+            "Confirmar pedido"
+          }
           disabled={!usuario}
           cargando={procesando}
           onVolver={onVolver}

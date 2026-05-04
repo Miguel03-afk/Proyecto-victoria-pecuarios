@@ -1,6 +1,13 @@
 // src/pages/PanelVeterinario.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faInbox, faCalendarDays, faClock, faTriangleExclamation,
+  faCheck, faXmark, faPaw, faChevronDown, faChevronLeft, faChevronRight,
+  faRightFromBracket, faImage, faVideo, faCircleCheck, faCalendarXmark,
+  faClipboardList, faFloppyDisk, faCircleXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
@@ -91,7 +98,8 @@ function Msg({ texto, tipo="ok" }) {
   const esOk = tipo==="ok";
   return (
     <div style={{ display:"flex",alignItems:"center",gap:10, padding:"12px 14px",borderRadius:12, background:esOk?C.successBg:C.dangerBg, border:`1px solid ${esOk?C.successBorder:C.dangerBorder}`, color:esOk?C.success:C.danger, fontSize:13,fontWeight:500,marginBottom:16 }}>
-      <span>{esOk?"✓":"⚠️"}</span>{texto}
+      <FontAwesomeIcon icon={esOk ? faCircleCheck : faCircleXmark}/>
+      {texto}
     </div>
   );
 }
@@ -103,7 +111,7 @@ function Solicitudes({ onActualizar }) {
   const [solicitudes, setSolicitudes] = useState([]);
   const [cargando,    setCargando]    = useState(true);
   const [accionando,  setAccionando]  = useState({});
-  const [rechazoModal, setRechazoModal] = useState(null); // cita a rechazar
+  const [rechazoModal, setRechazoModal] = useState(null);
   const [motivoRechazo, setMotivoRechazo] = useState("");
 
   const cargar = () => {
@@ -159,9 +167,11 @@ function Solicitudes({ onActualizar }) {
               style={{ width:"100%",padding:"11px 14px",borderRadius:12,border:`1.5px solid ${C.border}`,background:C.surfaceAlt,color:C.text,fontSize:13,outline:"none",resize:"none",marginBottom:16 }}
               onFocus={e => { e.target.style.borderColor=C.brand; }} onBlur={e => { e.target.style.borderColor=C.border; }} autoFocus/>
             <div style={{ display:"flex",gap:10 }}>
-              <button onClick={() => setRechazoModal(null)} style={{ flex:1,padding:"11px",borderRadius:12,border:`1.5px solid ${C.border}`,background:C.surface,color:C.textSec,fontSize:13,fontWeight:500,cursor:"pointer" }}>Cancelar</button>
-              <button onClick={rechazar} disabled={!motivoRechazo.trim()} style={{ flex:1,padding:"11px",borderRadius:12,border:"none",background:!motivoRechazo.trim()?C.surfaceAlt:C.danger,color:!motivoRechazo.trim()?C.textMuted:"#fff",fontSize:13,fontWeight:700,cursor:!motivoRechazo.trim()?"default":"pointer" }}>
-                Rechazar
+              <button onClick={() => setRechazoModal(null)} style={{ flex:1,padding:"11px",borderRadius:12,border:`1.5px solid ${C.border}`,background:C.surface,color:C.textSec,fontSize:13,fontWeight:500,cursor:"pointer" }}>
+                Cancelar
+              </button>
+              <button onClick={rechazar} disabled={!motivoRechazo.trim()} style={{ flex:1,padding:"11px",borderRadius:12,border:"none",background:!motivoRechazo.trim()?C.surfaceAlt:C.danger,color:!motivoRechazo.trim()?C.textMuted:"#fff",fontSize:13,fontWeight:700,cursor:!motivoRechazo.trim()?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7 }}>
+                <FontAwesomeIcon icon={faXmark}/> Rechazar
               </button>
             </div>
           </div>
@@ -170,7 +180,7 @@ function Solicitudes({ onActualizar }) {
 
       {solicitudes.length === 0 ? (
         <div style={{ textAlign:"center",padding:"48px 24px",background:C.surfaceAlt,borderRadius:16 }}>
-          <div style={{ fontSize:48,marginBottom:12 }}>✅</div>
+          <FontAwesomeIcon icon={faCircleCheck} style={{ fontSize:42,color:C.success,marginBottom:16,display:"block",margin:"0 auto 16px" }}/>
           <p style={{ fontSize:15,fontWeight:700,color:C.text,margin:"0 0 6px" }}>Sin solicitudes pendientes</p>
           <p style={{ fontSize:13,color:C.textMuted,margin:0 }}>Todas las solicitudes están al día</p>
         </div>
@@ -220,9 +230,12 @@ function Solicitudes({ onActualizar }) {
                     background:C.brand,color:"#fff",
                     fontSize:13,fontWeight:700,cursor:"pointer",transition:"all 0.15s",
                     opacity:accionando[s.id]==="confirmando"?0.7:1,
+                    display:"flex",alignItems:"center",justifyContent:"center",gap:7,
                   }}
                 >
-                  {accionando[s.id]==="confirmando" ? "Confirmando..." : "✓ Confirmar"}
+                  {accionando[s.id]==="confirmando"
+                    ? "Confirmando..."
+                    : <><FontAwesomeIcon icon={faCheck}/> Confirmar</>}
                 </button>
                 <button
                   onClick={() => { setRechazoModal(s); setMotivoRechazo(""); }}
@@ -231,11 +244,12 @@ function Solicitudes({ onActualizar }) {
                     border:`1.5px solid ${C.dangerBorder}`,
                     background:C.dangerBg,color:C.danger,
                     fontSize:13,fontWeight:600,cursor:"pointer",transition:"all 0.15s",
+                    display:"flex",alignItems:"center",justifyContent:"center",gap:7,
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background=C.danger; e.currentTarget.style.color="#fff"; }}
                   onMouseLeave={e => { e.currentTarget.style.background=C.dangerBg; e.currentTarget.style.color=C.danger; }}
                 >
-                  ✗ Rechazar
+                  <FontAwesomeIcon icon={faXmark}/> Rechazar
                 </button>
               </div>
             </div>
@@ -335,8 +349,8 @@ function Agenda() {
             </div>
             <div style={{ display:"flex",gap:10,marginTop:20 }}>
               <button onClick={() => setModalAnom(null)} style={{ flex:1,padding:"11px",borderRadius:12,border:`1.5px solid ${C.border}`,background:C.surface,color:C.textSec,fontSize:13,cursor:"pointer" }}>Cancelar</button>
-              <button onClick={reportarAnom} disabled={!formAnom.descripcion.trim()} style={{ flex:1,padding:"11px",borderRadius:12,border:"none",background:!formAnom.descripcion.trim()?C.surfaceAlt:C.brand,color:!formAnom.descripcion.trim()?C.textMuted:"#fff",fontSize:13,fontWeight:700,cursor:!formAnom.descripcion.trim()?"default":"pointer" }}>
-                Reportar
+              <button onClick={reportarAnom} disabled={!formAnom.descripcion.trim()} style={{ flex:1,padding:"11px",borderRadius:12,border:"none",background:!formAnom.descripcion.trim()?C.surfaceAlt:C.brand,color:!formAnom.descripcion.trim()?C.textMuted:"#fff",fontSize:13,fontWeight:700,cursor:!formAnom.descripcion.trim()?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:7 }}>
+                <FontAwesomeIcon icon={faTriangleExclamation}/> Reportar
               </button>
             </div>
           </div>
@@ -358,7 +372,7 @@ function Agenda() {
 
       {cargando ? <Spinner/> : citas.length === 0 ? (
         <div style={{ textAlign:"center",padding:"48px 24px",background:C.surfaceAlt,borderRadius:16 }}>
-          <div style={{ fontSize:48,marginBottom:12 }}>📅</div>
+          <FontAwesomeIcon icon={faCalendarXmark} style={{ fontSize:42,color:C.textMuted,display:"block",margin:"0 auto 16px" }}/>
           <p style={{ fontSize:15,fontWeight:700,color:C.text,margin:0 }}>Sin citas con ese filtro</p>
         </div>
       ) : (
@@ -387,20 +401,20 @@ function Agenda() {
                   <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap" }}>
                     <Badge estado={c.estado}/>
                     {c.anomalias > 0 && (
-                      <span style={{ fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:6,background:"#fef3c7",color:"#92400e",border:"1px solid #fde68a" }}>
-                        ⚠ {c.anomalias} anomalía{c.anomalias>1?"s":""}
+                      <span style={{ fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:6,background:"#fef3c7",color:"#92400e",border:"1px solid #fde68a",display:"inline-flex",alignItems:"center",gap:5 }}>
+                        <FontAwesomeIcon icon={faTriangleExclamation} style={{ fontSize:9 }}/> {c.anomalias} anomalía{c.anomalias>1?"s":""}
                       </span>
                     )}
                   </div>
                   <p style={{ margin:"0 0 2px",fontSize:14,fontWeight:700,color:C.text }}>
                     {c.cliente_nombre} {c.cliente_apellido}
                   </p>
-                  <p style={{ margin:0,fontSize:12,color:C.textMuted }}>
-                    🐾 {c.nombre_mascota} · {c.cliente_email}
+                  <p style={{ margin:0,fontSize:12,color:C.textMuted,display:"flex",alignItems:"center",gap:5 }}>
+                    <FontAwesomeIcon icon={faPaw} style={{ fontSize:10 }}/> {c.nombre_mascota} · {c.cliente_email}
                   </p>
                 </div>
 
-                <span style={{ fontSize:18,color:C.textMuted,transform:expandida===c.id?"rotate(180deg)":"rotate(0)",transition:"transform 0.2s",flexShrink:0 }}>⌄</span>
+                <FontAwesomeIcon icon={faChevronDown} style={{ fontSize:14,color:C.textMuted,transform:expandida===c.id?"rotate(180deg)":"rotate(0)",transition:"transform 0.2s",flexShrink:0 }}/>
               </button>
 
               {/* Detalle */}
@@ -427,7 +441,7 @@ function Agenda() {
                     <p style={{ margin:0,fontSize:13,color:C.textSec,lineHeight:1.6 }}>{c.motivo}</p>
                   </div>
 
-                  {/* Notas del vet (si ya tiene) */}
+                  {/* Notas del vet */}
                   {c.notas_vet && (
                     <div style={{ padding:"12px 14px",borderRadius:12,background:C.successBg,border:`1px solid ${C.successBorder}` }}>
                       <p style={{ margin:"0 0 4px",fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,color:C.success }}>Tus notas</p>
@@ -439,7 +453,6 @@ function Agenda() {
                   <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
                     {c.estado === "confirmada" && (
                       <>
-                        {/* Completar con notas */}
                         <div style={{ display:"flex",gap:8,flex:1,flexDirection:"column" }}>
                           <textarea
                             value={notas}
@@ -453,9 +466,11 @@ function Agenda() {
                             <button
                               onClick={() => accion(c.id,"completar",{ notas_vet:notas })}
                               disabled={accionando[c.id]==="completar"}
-                              style={{ flex:1,padding:"9px",borderRadius:10,border:"none",background:C.brand,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer" }}
+                              style={{ flex:1,padding:"9px",borderRadius:10,border:"none",background:C.brand,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}
                             >
-                              {accionando[c.id]==="completar"?"...":"✓ Marcar completada"}
+                              {accionando[c.id]==="completar"
+                                ? "Guardando..."
+                                : <><FontAwesomeIcon icon={faCheck}/> Marcar completada</>}
                             </button>
                             <button
                               onClick={() => accion(c.id,"no-asistio")}
@@ -478,9 +493,10 @@ function Agenda() {
                         background:C.warningBg,color:C.warning,
                         fontSize:12,fontWeight:600,cursor:"pointer",
                         alignSelf:"flex-start",
+                        display:"flex",alignItems:"center",gap:6,
                       }}
                     >
-                      ⚠ Reportar anomalía
+                      <FontAwesomeIcon icon={faTriangleExclamation}/> Reportar anomalía
                     </button>
                   </div>
                 </div>
@@ -494,11 +510,15 @@ function Agenda() {
 }
 
 /* ════════════════════════════════════════════════════════════
-   SECCIÓN: Disponibilidad
+   SECCIÓN: Disponibilidad  (multi-bloque por día)
    ════════════════════════════════════════════════════════════ */
 function Disponibilidad() {
   const [config, setConfig] = useState(
-    DIAS_SEMANA.map(d => ({ dia_semana:d.n, activo:false, hora_inicio:"08:00", hora_fin:"17:00" }))
+    DIAS_SEMANA.map(d => ({
+      dia_semana: d.n,
+      activo: false,
+      bloques: [{ hora_inicio:"08:00", hora_fin:"12:00" }],
+    }))
   );
   const [cargando,  setCargando]  = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -509,10 +529,18 @@ function Disponibilidad() {
       .then(r => {
         const guardada = r.data;
         setConfig(DIAS_SEMANA.map(d => {
-          const g = guardada.find(x => x.dia_semana === d.n);
-          return g
-            ? { dia_semana:d.n, activo:true, hora_inicio:g.hora_inicio.slice(0,5), hora_fin:g.hora_fin.slice(0,5) }
-            : { dia_semana:d.n, activo:false, hora_inicio:"08:00", hora_fin:"17:00" };
+          const dBloques = guardada.filter(x => x.dia_semana === d.n);
+          if (dBloques.length > 0) {
+            return {
+              dia_semana: d.n,
+              activo: true,
+              bloques: dBloques.map(b => ({
+                hora_inicio: b.hora_inicio.slice(0,5),
+                hora_fin:    b.hora_fin.slice(0,5),
+              })),
+            };
+          }
+          return { dia_semana:d.n, activo:false, bloques:[{ hora_inicio:"08:00", hora_fin:"12:00" }] };
         }));
       })
       .catch(() => {})
@@ -521,8 +549,13 @@ function Disponibilidad() {
 
   const guardar = async () => {
     setGuardando(true); setMsg({});
+    const disponibilidad = config.flatMap(d =>
+      d.activo
+        ? d.bloques.map(b => ({ dia_semana:d.dia_semana, hora_inicio:b.hora_inicio, hora_fin:b.hora_fin, activo:true }))
+        : []
+    );
     try {
-      await api.put("/veterinario/disponibilidad", { disponibilidad: config });
+      await api.put("/veterinario/disponibilidad", { disponibilidad });
       setMsg({ texto:"Disponibilidad actualizada correctamente.", tipo:"ok" });
       setTimeout(() => setMsg({}), 3000);
     } catch (err) {
@@ -532,8 +565,23 @@ function Disponibilidad() {
     }
   };
 
-  const toggle = (i) => setConfig(p => p.map((d,j) => j===i ? {...d, activo:!d.activo} : d));
-  const setHora = (i, campo, val) => setConfig(p => p.map((d,j) => j===i ? {...d, [campo]:val} : d));
+  const toggle = (i) =>
+    setConfig(p => p.map((d,j) => j===i ? {...d, activo:!d.activo} : d));
+
+  const addBloque = (i) =>
+    setConfig(p => p.map((d,j) => j===i
+      ? { ...d, bloques:[...d.bloques, { hora_inicio:"14:00", hora_fin:"18:00" }] }
+      : d));
+
+  const removeBloque = (i, bi) =>
+    setConfig(p => p.map((d,j) => j===i
+      ? { ...d, bloques:d.bloques.filter((_,k) => k!==bi) }
+      : d));
+
+  const setBloque = (i, bi, campo, val) =>
+    setConfig(p => p.map((d,j) => j===i
+      ? { ...d, bloques:d.bloques.map((b,k) => k===bi ? {...b,[campo]:val} : b) }
+      : d));
 
   if (cargando) return <Spinner/>;
 
@@ -541,50 +589,93 @@ function Disponibilidad() {
     <div>
       <Msg texto={msg.texto} tipo={msg.tipo}/>
       <p style={{ margin:"0 0 20px",fontSize:13,color:C.textMuted }}>
-        Configura los días y horarios en que los clientes pueden agendar citas contigo.
+        Configura los días y horarios en que los clientes pueden agendar citas. Puedes agregar múltiples bloques por día (ej: mañana y tarde).
       </p>
-      <div style={{ display:"flex",flexDirection:"column",gap:10,marginBottom:24 }}>
+
+      <div style={{ display:"flex",flexDirection:"column",gap:12,marginBottom:24 }}>
         {DIAS_SEMANA.map((dia, i) => (
           <div key={dia.n} style={{
-            display:"flex",alignItems:"center",gap:16,
-            padding:"14px 18px",borderRadius:14,
+            borderRadius:14,overflow:"hidden",transition:"all 0.2s",
             background:config[i].activo?C.brandLight:C.surfaceAlt,
             border:`1.5px solid ${config[i].activo?C.brandBorder:C.border}`,
-            transition:"all 0.2s",flexWrap:"wrap",
           }}>
-            {/* Toggle */}
-            <button onClick={() => toggle(i)} style={{
-              width:44,height:24,borderRadius:12,border:"none",cursor:"pointer",
-              background:config[i].activo?C.brand:"rgba(0,0,0,0.15)",
-              position:"relative",transition:"all 0.3s",flexShrink:0,
-            }}>
-              <span style={{
-                position:"absolute",top:3,left:config[i].activo?"22px":"3px",
-                width:18,height:18,borderRadius:"50%",background:"#fff",
-                transition:"left 0.3s",display:"block",
-                boxShadow:"0 1px 4px rgba(0,0,0,0.25)",
-              }}/>
-            </button>
+            {/* Cabecera del día */}
+            <div style={{ display:"flex",alignItems:"center",gap:14,padding:"14px 18px" }}>
+              <button onClick={() => toggle(i)} style={{
+                width:44,height:24,borderRadius:12,border:"none",cursor:"pointer",
+                background:config[i].activo?C.brand:"rgba(0,0,0,0.15)",
+                position:"relative",transition:"all 0.3s",flexShrink:0,
+              }}>
+                <span style={{
+                  position:"absolute",top:3,
+                  left:config[i].activo?"22px":"3px",
+                  width:18,height:18,borderRadius:"50%",background:"#fff",
+                  transition:"left 0.3s",display:"block",
+                  boxShadow:"0 1px 4px rgba(0,0,0,0.25)",
+                }}/>
+              </button>
 
-            {/* Día */}
-            <span style={{ fontSize:14,fontWeight:config[i].activo?700:400,color:config[i].activo?C.brand:C.textMuted,minWidth:80,flexShrink:0 }}>
-              {dia.label}
-            </span>
+              <span style={{ fontSize:14,fontWeight:config[i].activo?700:400,color:config[i].activo?C.brand:C.textMuted,minWidth:90,flexShrink:0 }}>
+                {dia.label}
+              </span>
 
-            {/* Horas */}
+              {config[i].activo && (
+                <span style={{ fontSize:11,color:C.textTer }}>
+                  {config[i].bloques.length} bloque{config[i].bloques.length!==1?"s":""} de atención
+                </span>
+              )}
+            </div>
+
+            {/* Bloques de horario */}
             {config[i].activo && (
-              <div style={{ display:"flex",alignItems:"center",gap:10,flexWrap:"wrap" }}>
-                {[
-                  { label:"Desde", campo:"hora_inicio" },
-                  { label:"Hasta", campo:"hora_fin" },
-                ].map(f => (
-                  <div key={f.campo} style={{ display:"flex",alignItems:"center",gap:6 }}>
-                    <span style={{ fontSize:11,color:C.textTer,fontWeight:600 }}>{f.label}</span>
-                    <input type="time" value={config[i][f.campo]} onChange={e => setHora(i,f.campo,e.target.value)}
-                      style={{ padding:"6px 10px",borderRadius:9,border:`1.5px solid ${C.brandBorder}`,background:C.surface,color:C.text,fontSize:13,outline:"none" }}
-                      onFocus={e=>{e.target.style.borderColor=C.brand;}} onBlur={e=>{e.target.style.borderColor=C.brandBorder;}}/>
+              <div style={{ padding:"0 18px 16px",display:"flex",flexDirection:"column",gap:8 }}>
+                {config[i].bloques.map((bloque, bi) => (
+                  <div key={bi} style={{
+                    display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",
+                    padding:"10px 14px",borderRadius:10,
+                    background:C.surface,border:`1px solid ${C.brandBorder}`,
+                  }}>
+                    <span style={{ fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,color:C.textTer,minWidth:52,flexShrink:0 }}>
+                      Bloque {bi+1}
+                    </span>
+                    {[
+                      { label:"Desde", campo:"hora_inicio" },
+                      { label:"Hasta", campo:"hora_fin"   },
+                    ].map(f => (
+                      <div key={f.campo} style={{ display:"flex",alignItems:"center",gap:6 }}>
+                        <span style={{ fontSize:11,color:C.textTer,fontWeight:600 }}>{f.label}</span>
+                        <input type="time" value={bloque[f.campo]}
+                          onChange={e => setBloque(i,bi,f.campo,e.target.value)}
+                          style={{ padding:"6px 10px",borderRadius:9,border:`1.5px solid ${C.brandBorder}`,background:C.surface,color:C.text,fontSize:13,outline:"none" }}
+                          onFocus={e=>{e.target.style.borderColor=C.brand;}}
+                          onBlur={e=>{e.target.style.borderColor=C.brandBorder;}}
+                        />
+                      </div>
+                    ))}
+
+                    {config[i].bloques.length > 1 && (
+                      <button onClick={() => removeBloque(i,bi)} style={{
+                        marginLeft:"auto",width:28,height:28,borderRadius:8,
+                        border:`1.5px solid ${C.dangerBorder}`,
+                        background:C.dangerBg,color:C.danger,
+                        cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,
+                      }}>
+                        <FontAwesomeIcon icon={faXmark}/>
+                      </button>
+                    )}
                   </div>
                 ))}
+
+                <button onClick={() => addBloque(i)} style={{
+                  alignSelf:"flex-start",
+                  padding:"7px 14px",borderRadius:10,
+                  border:`1.5px dashed ${C.brandBorder}`,
+                  background:"transparent",color:C.brand,
+                  fontSize:12,fontWeight:600,cursor:"pointer",
+                  display:"flex",alignItems:"center",gap:6,
+                }}>
+                  + Agregar bloque de horario
+                </button>
               </div>
             )}
           </div>
@@ -596,8 +687,10 @@ function Disponibilidad() {
         background:guardando?C.brandMid:C.brand,color:"#fff",
         fontSize:13,fontWeight:700,cursor:guardando?"default":"pointer",
         boxShadow:"0 4px 12px rgba(26,92,26,0.2)",
+        display:"flex",alignItems:"center",gap:8,
       }}>
-        {guardando?"Guardando...":"Guardar disponibilidad"}
+        <FontAwesomeIcon icon={faFloppyDisk}/>
+        {guardando ? "Guardando..." : "Guardar disponibilidad"}
       </button>
     </div>
   );
@@ -621,7 +714,7 @@ function Anomalias() {
 
   if (!anomalias.length) return (
     <div style={{ textAlign:"center",padding:"48px 24px",background:C.surfaceAlt,borderRadius:16 }}>
-      <div style={{ fontSize:48,marginBottom:12 }}>📋</div>
+      <FontAwesomeIcon icon={faClipboardList} style={{ fontSize:42,color:C.textMuted,display:"block",margin:"0 auto 16px" }}/>
       <p style={{ fontSize:15,fontWeight:700,color:C.text,margin:"0 0 6px" }}>Sin anomalías reportadas</p>
       <p style={{ fontSize:13,color:C.textMuted,margin:0 }}>Los reportes aparecerán aquí</p>
     </div>
@@ -648,14 +741,14 @@ function Anomalias() {
           <div style={{ display:"flex",gap:10,flexWrap:"wrap" }}>
             {a.imagen_url && (
               <a href={a.imagen_url} target="_blank" rel="noopener noreferrer"
-                style={{ display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:8,background:"#dbeafe",color:"#1e40af",border:"1px solid #bfdbfe",fontSize:12,fontWeight:600,textDecoration:"none" }}>
-                🖼 Ver imagen
+                style={{ display:"inline-flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,background:"#dbeafe",color:"#1e40af",border:"1px solid #bfdbfe",fontSize:12,fontWeight:600,textDecoration:"none" }}>
+                <FontAwesomeIcon icon={faImage}/> Ver imagen
               </a>
             )}
             {a.video_url && (
               <a href={a.video_url} target="_blank" rel="noopener noreferrer"
-                style={{ display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:8,background:"#f3e8ff",color:"#6b21a8",border:"1px solid #e9d5ff",fontSize:12,fontWeight:600,textDecoration:"none" }}>
-                🎥 Ver video
+                style={{ display:"inline-flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,background:"#f3e8ff",color:"#6b21a8",border:"1px solid #e9d5ff",fontSize:12,fontWeight:600,textDecoration:"none" }}>
+                <FontAwesomeIcon icon={faVideo}/> Ver video
               </a>
             )}
           </div>
@@ -669,11 +762,18 @@ function Anomalias() {
    LAYOUT PRINCIPAL
    ════════════════════════════════════════════════════════════ */
 const NAV = [
-  { id:"solicitudes", label:"Solicitudes",   icon:"📥" },
-  { id:"agenda",      label:"Mi agenda",     icon:"📅" },
-  { id:"disponibilidad",label:"Disponibilidad",icon:"⏰" },
-  { id:"anomalias",   label:"Anomalías",     icon:"⚠️" },
+  { id:"solicitudes",    label:"Solicitudes",     icon:faInbox },
+  { id:"agenda",         label:"Mi agenda",        icon:faCalendarDays },
+  { id:"disponibilidad", label:"Disponibilidad",   icon:faClock },
+  { id:"anomalias",      label:"Anomalías",        icon:faTriangleExclamation },
 ];
+
+const TITULOS = {
+  solicitudes:    "Solicitudes pendientes",
+  agenda:         "Mi agenda",
+  disponibilidad: "Mi disponibilidad",
+  anomalias:      "Anomalías reportadas",
+};
 
 export default function PanelVeterinario() {
   const { usuario, logout } = useAuth();
@@ -687,13 +787,6 @@ export default function PanelVeterinario() {
       navigate("/");
     }
   }, [usuario]);
-
-  const TITULOS = {
-    solicitudes:"Solicitudes pendientes",
-    agenda:"Mi agenda",
-    disponibilidad:"Mi disponibilidad",
-    anomalias:"Anomalías reportadas",
-  };
 
   return (
     <>
@@ -737,7 +830,7 @@ export default function PanelVeterinario() {
                   {usuario.nombre?.charAt(0)}
                 </div>
                 <div style={{ minWidth:0 }}>
-                  <p style={{ margin:0,fontSize:11,fontWeight:700,color:C.sidebarTextHi,truncate:true,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{usuario.nombre}</p>
+                  <p style={{ margin:0,fontSize:11,fontWeight:700,color:C.sidebarTextHi,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{usuario.nombre}</p>
                   <p style={{ margin:0,fontSize:9,color:C.gold }}>Veterinario</p>
                 </div>
               </div>
@@ -760,7 +853,7 @@ export default function PanelVeterinario() {
                 onMouseEnter={e => { if (seccion!==n.id) e.currentTarget.style.background=C.sidebarActive; }}
                 onMouseLeave={e => { if (seccion!==n.id) e.currentTarget.style.background="transparent"; }}
               >
-                <span style={{ fontSize:15,flexShrink:0 }}>{n.icon}</span>
+                <FontAwesomeIcon icon={n.icon} style={{ fontSize:14,flexShrink:0 }}/>
                 {!collapsed && <span>{n.label}</span>}
               </button>
             ))}
@@ -773,14 +866,15 @@ export default function PanelVeterinario() {
                 style={{ width:"100%",display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:10,border:"none",cursor:"pointer",background:"transparent",color:C.sidebarText,fontSize:12,transition:"all 0.15s" }}
                 onMouseEnter={e=>{e.currentTarget.style.background=C.sidebarActive;}}
                 onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
-                <span>🚪</span><span>Cerrar sesión</span>
+                <FontAwesomeIcon icon={faRightFromBracket} style={{ fontSize:13 }}/>
+                <span>Cerrar sesión</span>
               </button>
             )}
             <button onClick={() => setCollapsed(v => !v)}
-              style={{ width:"100%",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px",borderRadius:10,border:"none",cursor:"pointer",background:"transparent",color:C.sidebarText,fontSize:14,transition:"all 0.15s" }}
+              style={{ width:"100%",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px",borderRadius:10,border:"none",cursor:"pointer",background:"transparent",color:C.sidebarText,fontSize:13,transition:"all 0.15s" }}
               onMouseEnter={e=>{e.currentTarget.style.background=C.sidebarActive;}}
               onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
-              {collapsed ? "→" : "←"}
+              <FontAwesomeIcon icon={collapsed ? faChevronRight : faChevronLeft}/>
             </button>
           </div>
         </aside>
@@ -798,7 +892,7 @@ export default function PanelVeterinario() {
               </p>
             </div>
             <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-              <div style={{ width:6,height:6,borderRadius:"50%",background:C.success,animation:"pulse 2s infinite" }}/>
+              <div style={{ width:6,height:6,borderRadius:"50%",background:C.success }}/>
               <span style={{ fontSize:11,color:C.textMuted }}>En línea</span>
             </div>
           </header>

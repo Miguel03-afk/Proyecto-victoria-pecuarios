@@ -83,12 +83,13 @@ router.post("/facturas", auth, async (req, res) => {
 
     for (const item of items) {
       const [[prod]] = await conn.query(
-        "SELECT precio, precio_costo, stock FROM productos WHERE id = ? AND activo = 1",
+        "SELECT nombre, precio, precio_costo, stock FROM productos WHERE id = ? AND activo = 1",
         [item.producto_id]
       );
       if (!prod) throw new Error(`Producto ${item.producto_id} no encontrado.`);
       if (prod.stock < item.cantidad)
         throw new Error(`Stock insuficiente para el producto ${item.producto_id}.`);
+      item._nombre       = prod.nombre;
       item._precio       = prod.precio;
       item._precio_costo = prod.precio_costo || 0;
       subtotal += prod.precio * item.cantidad;
@@ -133,13 +134,11 @@ router.post("/facturas", auth, async (req, res) => {
         `INSERT INTO detalle_orden
            (orden_id, producto_id, nombre_snap, cantidad, precio_unit, precio_costo,
             subtotal, iva_porcentaje, iva_valor, ganancia)
-         SELECT ?, id, nombre, ?, ?, ?, ?, ?, ?, ?
-         FROM productos WHERE id = ?`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          orden_id,
+          orden_id, item.producto_id, item._nombre,
           item.cantidad, item._precio, item._precio_costo,
           item_subtotal, IVA_PCT, iva_valor, ganancia,
-          item.producto_id,
         ]
       );
     }

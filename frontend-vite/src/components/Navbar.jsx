@@ -2,7 +2,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCarrito } from "../context/CarritoContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import logoVP from "../assets/WhatsApp Image 2026-04-22 at 1.19.17 PM.jpeg";
 
 const VP = {
@@ -34,6 +34,24 @@ export default function Navbar() {
   const navigate = useNavigate();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const [pagoPendiente, setPagoPendiente] = useState(null);
+
+  // Detectar si el usuario volvió sin que ePayco lo redirigiera.
+  // Usa "pageshow" para capturar también la restauración desde bfcache
+  // (cuando el navegador restaura la página al presionar Atrás).
+  useEffect(() => {
+    const check = () => {
+      const raw = sessionStorage.getItem("vp_pago_pendiente");
+      if (raw) {
+        try { setPagoPendiente(JSON.parse(raw)); } catch { /* ignore */ }
+      } else {
+        setPagoPendiente(null);
+      }
+    };
+    check();
+    window.addEventListener("pageshow", check);
+    return () => window.removeEventListener("pageshow", check);
+  }, []);
 
   const handleLogout = () => { logout(); navigate("/"); };
 
@@ -42,9 +60,44 @@ export default function Navbar() {
       navigate(`/tienda?buscar=${busqueda.trim()}`);
   };
 
+  const cerrarBanner = () => {
+    sessionStorage.removeItem("vp_pago_pendiente");
+    setPagoPendiente(null);
+  };
+
   return (
     <>
       <style>{NAVBAR_STYLE}</style>
+
+      {/* Banner de recuperación: aparece si el usuario volvió sin que ePayco redirigiera */}
+      {pagoPendiente && (
+        <div style={{
+          background: "#064E30", color: "#fff",
+          padding: "10px 20px",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          gap: 12, flexWrap: "wrap", fontSize: 13,
+        }}>
+          <span>
+            Orden <strong style={{ fontFamily: "monospace" }}>{pagoPendiente.codigo}</strong> creada.
+            {" "}Ve a <strong>Mis órdenes</strong> y pega la referencia ePayco para confirmarla.
+          </span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => { navigate("/mis-ordenes"); cerrarBanner(); }}
+              style={{ padding: "5px 14px", borderRadius: 20, background: "#7AC143", color: "#fff", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+            >
+              Ir a mis órdenes →
+            </button>
+            <button
+              onClick={cerrarBanner}
+              style={{ padding: "5px 10px", borderRadius: 20, background: "transparent", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.2)", fontSize: 12, cursor: "pointer" }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Topbar verde lima */}
       <div className="vp-topbar" style={{
         background: VP.lime,

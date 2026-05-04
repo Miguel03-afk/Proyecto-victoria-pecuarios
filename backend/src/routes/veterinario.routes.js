@@ -39,7 +39,7 @@ router.get("/agenda", async (req, res) => {
     }
 
     const [citas] = await pool.query(`
-      SELECT c.id, c.codigo, c.fecha, c.hora, c.motivo,
+      SELECT c.id, c.codigo, DATE_FORMAT(c.fecha,'%Y-%m-%d') AS fecha, c.hora, c.motivo,
              c.nombre_mascota, c.especie_mascota, c.estado,
              c.motivo_cancelacion, c.notas_vet, c.created_at,
              u.nombre AS cliente_nombre, u.apellido AS cliente_apellido,
@@ -66,7 +66,7 @@ router.get("/solicitudes", async (req, res) => {
 
   try {
     const [citas] = await pool.query(`
-      SELECT c.id, c.codigo, c.fecha, c.hora, c.motivo,
+      SELECT c.id, c.codigo, DATE_FORMAT(c.fecha,'%Y-%m-%d') AS fecha, c.hora, c.motivo,
              c.nombre_mascota, c.especie_mascota, c.created_at,
              u.nombre AS cliente_nombre, u.apellido AS cliente_apellido,
              u.email AS cliente_email, u.telefono AS cliente_tel
@@ -224,7 +224,7 @@ router.get("/anomalias", async (req, res) => {
   try {
     const [anomalias] = await pool.query(`
       SELECT a.id, a.descripcion, a.imagen_url, a.video_url, a.created_at,
-             c.codigo, c.fecha, c.hora, c.nombre_mascota,
+             c.codigo, DATE_FORMAT(c.fecha,'%Y-%m-%d') AS fecha, c.hora, c.nombre_mascota,
              u.nombre AS cliente_nombre, u.apellido AS cliente_apellido
       FROM citas_anomalias a
       JOIN citas   c ON c.id = a.cita_id

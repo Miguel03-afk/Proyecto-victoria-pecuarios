@@ -1,7 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useCarrito } from "../context/CarritoContext";
 import api from "../services/api";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faStethoscope, faPills, faDrumstickBite, faMicroscope, faScissors, faTruck,
+  faSoap, faTags, faBone, faStore, faImages, faNewspaper, faPhone,
+  faCartShopping, faCalendarDays, faLocationDot, faEnvelope, faClock,
+  faUser, faBoxOpen, faPlus, faReceipt, faGear, faCheck, faArrowRight, faPaw, faSyringe,
+  faChevronLeft, faChevronRight, faStar, faFire, faBolt, faGift,
+} from "@fortawesome/free-solid-svg-icons";
 
 import img1 from "../assets/carrusel_proyecto2.jpg";
 import img2 from "../assets/carrusel1_proyecto2.jpg";
@@ -41,7 +50,16 @@ const C = {
 
   // Azul — info/confianza (solo soporte, no dominante)
   blue:        "#1B4F8A",
+  blueMid:     "#2563EB",
   blueLight:   "#dce8f7",
+  blueBorder:  "#93c5fd",
+
+  // Rosa — calidez VP del logo, CTAs emocionales
+  rose:        "#D4457A",
+  roseMid:     "#E8608A",
+  roseDark:    "#A83260",
+  roseLight:   "#FFF0F5",
+  roseBorder:  "#F9C0D0",
 
   // Superficies — Green-breath canvas
   canvas:      "#F5FAF7",
@@ -66,27 +84,27 @@ const SLIDES = [
 ];
 
 const SERVICIOS = [
-  { icon: "🏥", titulo: "Consulta Veterinaria",   desc: "Atención profesional con veterinarios especializados", stat: "24h",  color: C.brand },
-  { icon: "💊", titulo: "Farmacología Animal",     desc: "Medicamentos con fórmula y de venta libre",            stat: "200+", color: C.coral },
-  { icon: "🥩", titulo: "Nutrición Especializada", desc: "Dietas personalizadas según raza y edad",              stat: "50+",  color: C.amber },
-  { icon: "🔬", titulo: "Laboratorio Clínico",     desc: "Exámenes y diagnóstico veterinario completo",          stat: "48h",  color: C.blue },
-  { icon: "🐾", titulo: "Peluquería Canina",       desc: "Baño, corte y cuidado estético profesional",           stat: "5★",   color: "#8b5cf6" },
-  { icon: "🚚", titulo: "Domicilio Express",        desc: "Entregas rápidas dentro de Ibagué",                    stat: "Free", color: C.lime },
+  { fa: faStethoscope,   titulo: "Consulta Veterinaria",   desc: "Atención profesional con veterinarios especializados", stat: "24h",  color: C.brand },
+  { fa: faPills,         titulo: "Farmacología Animal",     desc: "Medicamentos con fórmula y de venta libre",            stat: "200+", color: C.coral },
+  { fa: faDrumstickBite, titulo: "Nutrición Especializada", desc: "Dietas personalizadas según raza y edad",              stat: "50+",  color: C.amber },
+  { fa: faMicroscope,    titulo: "Laboratorio Clínico",     desc: "Exámenes y diagnóstico veterinario completo",          stat: "48h",  color: C.blue },
+  { fa: faScissors,      titulo: "Peluquería Canina",       desc: "Baño, corte y cuidado estético profesional",           stat: "5★",   color: C.rose },
+  { fa: faTruck,         titulo: "Domicilio Express",        desc: "Entregas rápidas dentro de Ibagué",                    stat: "Free", color: C.lime },
 ];
 
 const CATEGORIAS_TIENDA = [
-  { icon: "💊", nombre: "Farmacología", color: "#065f46", bg: "#d1fae5", q: "farmacologia" },
-  { icon: "🍖", nombre: "Alimentos",    color: "#92400e", bg: "#fef3c7", q: "alimentos" },
-  { icon: "🧴", nombre: "Higiene",      color: "#1e40af", bg: "#dbeafe", q: "higiene" },
-  { icon: "🎀", nombre: "Accesorios",   color: "#6b21a8", bg: "#f3e8ff", q: "accesorios" },
-  { icon: "🔬", nombre: "Equipos",      color: "#0e7490", bg: "#cffafe", q: "equipos" },
-  { icon: "🛁", nombre: "Peluquería",   color: "#be185d", bg: "#fce7f3", q: "peluqueria" },
+  { fa: faPills,         nombre: "Farmacología", color: "#065f46", bg: "#d1fae5", q: "farmacologia" },
+  { fa: faBone,          nombre: "Alimentos",    color: "#92400e", bg: "#fef3c7", q: "alimentos" },
+  { fa: faSoap,          nombre: "Higiene",      color: "#1e40af", bg: "#dbeafe", q: "higiene" },
+  { fa: faTags,          nombre: "Accesorios",   color: "#6b21a8", bg: "#f3e8ff", q: "accesorios" },
+  { fa: faMicroscope,    nombre: "Equipos",      color: "#0e7490", bg: "#cffafe", q: "equipos" },
+  { fa: faScissors,      nombre: "Peluquería",   color: "#be185d", bg: "#fce7f3", q: "peluqueria" },
 ];
 
 const BLOG = [
-  { cat: "Salud",    titulo: "¿Cada cuánto debe vacunarse mi mascota?",           desc: "Guía completa del calendario de vacunación para perros y gatos en Colombia.", fecha: "02 abr 2026", emoji: "💉", accent: C.brand },
-  { cat: "Nutrición",titulo: "Cómo elegir el mejor alimento para tu perro",       desc: "Factores clave: raza, tamaño, edad y condición de salud.",                   fecha: "28 mar 2026", emoji: "🥩", accent: C.coral },
-  { cat: "Cuidado",  titulo: "Señales de que tu mascota necesita al veterinario", desc: "10 síntomas que no debes ignorar en perros y gatos.",                        fecha: "20 mar 2026", emoji: "🐾", accent: C.amber },
+  { cat: "Salud",    titulo: "¿Cada cuánto debe vacunarse mi mascota?",           desc: "Guía completa del calendario de vacunación para perros y gatos en Colombia.", fecha: "02 abr 2026", fa: faSyringe,       accent: C.blue },
+  { cat: "Nutrición",titulo: "Cómo elegir el mejor alimento para tu perro",       desc: "Factores clave: raza, tamaño, edad y condición de salud.",                   fecha: "28 mar 2026", fa: faDrumstickBite,  accent: C.brand },
+  { cat: "Cuidado",  titulo: "Señales de que tu mascota necesita al veterinario", desc: "10 síntomas que no debes ignorar en perros y gatos.",                        fecha: "20 mar 2026", fa: faPaw,            accent: C.rose },
 ];
 
 /* ─── Hook de reveal al hacer scroll ─────────────────────────────────────── */
@@ -107,12 +125,12 @@ function useReveal(threshold = 0.12) {
 function chipRol(u) {
   const r = u?.rol;
   if (r === "superadmin" || r === "admin")
-    return { label: `Admin · ${u.nombre}`, destino: "/admin",       bg: C.amberLight,  border: C.amber,  color: "#92400e", icon: "⚙️" };
+    return { label: `Admin · ${u.nombre}`, destino: "/admin",       bg: C.amberLight,  border: C.amber,  color: "#92400e", fa: faGear };
   if (r === "cajero")
-    return { label: `Caja · ${u.nombre}`,  destino: "/cajero",      bg: C.amberLight,  border: C.amber,  color: "#78350f", icon: "🧾" };
+    return { label: `Caja · ${u.nombre}`,  destino: "/cajero",      bg: C.amberLight,  border: C.amber,  color: "#78350f", fa: faReceipt };
   if (r === "veterinario")
-    return { label: `Vet · ${u.nombre}`,   destino: "/veterinario", bg: C.brandLight,  border: C.brand,  color: C.brandDark, icon: "🩺" };
-  return { label: `Hola, ${u.nombre}`,     destino: "/perfil",      bg: "rgba(255,255,255,0.15)", border: "rgba(255,255,255,0.3)", color: "#fff", icon: null };
+    return { label: `Vet · ${u.nombre}`,   destino: "/veterinario", bg: C.brandLight,  border: C.brand,  color: C.brandDark, fa: faStethoscope };
+  return { label: `Hola, ${u.nombre}`,     destino: "/perfil",      bg: "rgba(255,255,255,0.15)", border: "rgba(255,255,255,0.3)", color: "#fff", fa: null };
 }
 
 /* ─── Navbar Landing ─────────────────────────────────────────────────────── */
@@ -141,11 +159,11 @@ function NavLanding() {
     : "transparent";
 
   const NAV = [
-    { href: "#tienda",    label: "Tienda",    icon: "🛒" },
-    { href: "#servicios", label: "Servicios", icon: "🏥" },
-    { href: "#galeria",   label: "Galería",   icon: "🖼️" },
-    { href: "#blog",      label: "Blog",      icon: "📰" },
-    { href: "#contacto",  label: "Contacto",  icon: "📞" },
+    { href: "#tienda",    label: "Tienda",    fa: faStore },
+    { href: "#servicios", label: "Servicios", fa: faStethoscope },
+    { href: "#galeria",   label: "Galería",   fa: faImages },
+    { href: "#blog",      label: "Blog",      fa: faNewspaper },
+    { href: "#contacto",  label: "Contacto",  fa: faPhone },
   ];
 
   return (
@@ -201,7 +219,7 @@ function NavLanding() {
                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
               >
                 <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>
-                  {chip.icon || usuario.nombre?.charAt(0).toUpperCase()}
+                  {chip.fa ? <FontAwesomeIcon icon={chip.fa} /> : usuario.nombre?.charAt(0).toUpperCase()}
                 </div>
                 <span className="vp-chip-label">{chip.label}</span>
               </button>
@@ -213,7 +231,7 @@ function NavLanding() {
               onMouseEnter={e => { e.currentTarget.style.background = C.limeDark; e.currentTarget.style.color = "#fff"; e.currentTarget.style.transform = "translateY(-1px)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = C.lime; e.currentTarget.style.color = C.brandDark; e.currentTarget.style.transform = "translateY(0)"; }}
             >
-              🛒 Ver tienda
+              <FontAwesomeIcon icon={faCartShopping} style={{ marginRight: 7 }} /> Ver tienda
             </Link>
 
             {/* Hamburguesa — 3 líneas → X animado */}
@@ -322,7 +340,7 @@ function NavLanding() {
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(5,150,105,0.2)"; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderLeftColor = C.lime; e.currentTarget.style.paddingLeft = "18px"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.82)"; e.currentTarget.style.borderLeftColor = "transparent"; e.currentTarget.style.paddingLeft = "14px"; }}
             >
-              <span style={{ fontSize: 20, width: 28, textAlign: "center" }}>{l.icon}</span>
+              <span style={{ fontSize: 16, width: 28, display: "flex", alignItems: "center", justifyContent: "center" }}><FontAwesomeIcon icon={l.fa} /></span>
               {l.label}
             </a>
           ))}
@@ -338,7 +356,7 @@ function NavLanding() {
                 onMouseEnter={e => { e.currentTarget.style.background = cat.bg + "33"; e.currentTarget.style.borderColor = cat.color + "55"; e.currentTarget.style.color = "#fff"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(255,255,255,0.75)"; }}
               >
-                {cat.icon} {cat.nombre}
+                <FontAwesomeIcon icon={cat.fa} /> {cat.nombre}
               </Link>
             ))}
           </div>
@@ -349,17 +367,17 @@ function NavLanding() {
           <div style={{ padding: "16px 16px 0", borderTop: "1px solid rgba(110,231,183,0.1)", marginTop: 12 }}>
             <p style={{ margin: "0 8px 12px", fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: 1.5, color: "rgba(110,231,183,0.5)" }}>Mi cuenta</p>
             {[
-              { to: "/perfil",       label: "Mi perfil",    icon: "👤" },
-              { to: "/mis-ordenes",  label: "Mis órdenes",  icon: "📦" },
-              { to: "/mis-citas",    label: "Mis citas",    icon: "📅" },
-              { to: "/agendar-cita", label: "Agendar cita", icon: "➕" },
+              { to: "/perfil",       label: "Mi perfil",    fa: faUser },
+              { to: "/mis-ordenes",  label: "Mis órdenes",  fa: faBoxOpen },
+              { to: "/mis-citas",    label: "Mis citas",    fa: faCalendarDays },
+              { to: "/agendar-cita", label: "Agendar cita", fa: faPlus },
             ].map(it => (
               <Link key={it.to} to={it.to} onClick={cerrar}
                 style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 14px", borderRadius: 12, textDecoration: "none", color: "rgba(255,255,255,0.75)", fontSize: 14, fontWeight: 500, transition: "all 0.18s", marginBottom: 3, borderLeft: "3px solid transparent" }}
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderLeftColor = C.brandMid; e.currentTarget.style.paddingLeft = "18px"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.75)"; e.currentTarget.style.borderLeftColor = "transparent"; e.currentTarget.style.paddingLeft = "14px"; }}
               >
-                <span style={{ fontSize: 18, width: 28, textAlign: "center" }}>{it.icon}</span>
+                <span style={{ fontSize: 15, width: 28, display: "flex", alignItems: "center", justifyContent: "center" }}><FontAwesomeIcon icon={it.fa} /></span>
                 {it.label}
               </Link>
             ))}
@@ -370,7 +388,7 @@ function NavLanding() {
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(132,204,22,0.1)"; e.currentTarget.style.borderLeftColor = C.lime; e.currentTarget.style.paddingLeft = "18px"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderLeftColor = "transparent"; e.currentTarget.style.paddingLeft = "14px"; }}
               >
-                <span style={{ fontSize: 18, width: 28, textAlign: "center" }}>🩺</span> Panel veterinario
+                <span style={{ fontSize: 15, width: 28, display: "flex", alignItems: "center", justifyContent: "center" }}><FontAwesomeIcon icon={faStethoscope} /></span> Panel veterinario
               </Link>
             )}
             {usuario.rol === "cajero" && (
@@ -379,7 +397,7 @@ function NavLanding() {
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(245,158,11,0.1)"; e.currentTarget.style.borderLeftColor = C.amber; e.currentTarget.style.paddingLeft = "18px"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderLeftColor = "transparent"; e.currentTarget.style.paddingLeft = "14px"; }}
               >
-                <span style={{ fontSize: 18, width: 28, textAlign: "center" }}>🧾</span> Punto de venta
+                <span style={{ fontSize: 15, width: 28, display: "flex", alignItems: "center", justifyContent: "center" }}><FontAwesomeIcon icon={faReceipt} /></span> Punto de venta
               </Link>
             )}
             {(usuario.rol === "admin" || usuario.rol === "superadmin") && (
@@ -388,7 +406,7 @@ function NavLanding() {
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(245,158,11,0.1)"; e.currentTarget.style.borderLeftColor = C.amber; e.currentTarget.style.paddingLeft = "18px"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderLeftColor = "transparent"; e.currentTarget.style.paddingLeft = "14px"; }}
               >
-                <span style={{ fontSize: 18, width: 28, textAlign: "center" }}>⚙️</span> Panel admin
+                <span style={{ fontSize: 15, width: 28, display: "flex", alignItems: "center", justifyContent: "center" }}><FontAwesomeIcon icon={faGear} /></span> Panel admin
               </Link>
             )}
           </div>
@@ -406,8 +424,8 @@ function NavLanding() {
             </button>
           ) : (
             <Link to="/tienda" onClick={cerrar}
-              style={{ display: "block", textAlign: "center", padding: "13px 0", borderRadius: 11, background: `linear-gradient(135deg, ${C.brand}, ${C.brandMid})`, color: "#fff", textDecoration: "none", fontSize: 14, fontWeight: 800, border: `1px solid ${C.brandBorder}33` }}>
-              🛒 Ir a la tienda
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center", padding: "13px 0", borderRadius: 11, background: `linear-gradient(135deg, ${C.brand}, ${C.brandMid})`, color: "#fff", textDecoration: "none", fontSize: 14, fontWeight: 800, border: `1px solid ${C.brandBorder}33` }}>
+              <FontAwesomeIcon icon={faCartShopping} /> Ir a la tienda
             </Link>
           )}
           <p style={{ margin: "14px 0 0", textAlign: "center", fontSize: 11, color: "rgba(255,255,255,0.2)" }}>
@@ -419,26 +437,91 @@ function NavLanding() {
   );
 }
 
-/* ─── Hero carrusel ──────────────────────────────────────────────────────── */
+/* ─── Hero carrusel — infinite horizontal slide + Ken Burns + hover-pause ── */
 function HeroCarrusel() {
-  const [actual, setActual] = useState(0);
-  const timer = useRef(null);
+  const N = SLIDES.length;
+  const extended = [SLIDES[N - 1], ...SLIDES, SLIDES[0]];
 
-  const reset = () => {
-    clearInterval(timer.current);
-    timer.current = setInterval(() => setActual(a => (a + 1) % SLIDES.length), 5500);
+  const [idx,      setIdx]      = useState(1);
+  const [animated, setAnimated] = useState(true);
+  const timerRef  = useRef(null);
+
+  const INTERVAL = 4000;
+
+  const startTimer = () => {
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => setIdx(i => i + 1), INTERVAL);
   };
-  useEffect(() => { reset(); return () => clearInterval(timer.current); }, []);
-  const ir = (i) => { setActual(i); reset(); };
+
+  useEffect(() => { startTimer(); return () => clearInterval(timerRef.current); }, []);
+
+  const onTransitionEnd = () => {
+    if (idx >= N + 1) { setAnimated(false); setIdx(1); }
+    else if (idx <= 0) { setAnimated(false); setIdx(N); }
+  };
+
+  useEffect(() => {
+    if (!animated) {
+      const id = setTimeout(() => setAnimated(true), 20);
+      return () => clearTimeout(id);
+    }
+  }, [animated]);
+
+  const goNext = () => { setIdx(i => i + 1); startTimer(); };
+  const goPrev = () => { setIdx(i => i - 1); startTimer(); };
+  const goTo   = (i) => { setIdx(i + 1);     startTimer(); };
+
+  // Actual visible slide (0-indexed into SLIDES)
+  const actual = idx <= 0 ? N - 1 : idx >= N + 1 ? 0 : idx - 1;
 
   return (
     <div style={{ position: "relative", height: "100vh", minHeight: 600, overflow: "hidden" }}>
-      {SLIDES.map((s, i) => (
-        <div key={i} style={{
-          position: "absolute", inset: 0, opacity: i === actual ? 1 : 0, transition: "opacity 0.9s ease",
-          background: `url(${s.img}) center/cover no-repeat`,
-        }} />
-      ))}
+
+      {/* Indicador eliminado — carrusel siempre en movimiento */}
+      {false && (
+        <div style={{ position:"absolute", top:24, right:88, zIndex:20, display:"flex", alignItems:"center", gap:6,
+          padding:"5px 12px", borderRadius:999, background:"rgba(0,0,0,0.45)", backdropFilter:"blur(8px)",
+          border:"1px solid rgba(255,255,255,0.15)", color:"rgba(255,255,255,0.8)", fontSize:11, fontWeight:700,
+          letterSpacing:0.5, pointerEvents:"none" }}>
+          <span style={{ width:8, height:8, display:"flex", gap:2 }}>
+            <span style={{ display:"block", width:3, height:8, background:"currentColor", borderRadius:1 }}/>
+            <span style={{ display:"block", width:3, height:8, background:"currentColor", borderRadius:1 }}/>
+          </span>
+          Pausado
+        </div>
+      )}
+
+      {/* ── Sliding track ── */}
+      <div
+        onTransitionEnd={onTransitionEnd}
+        style={{
+          display: "flex",
+          height: "100%",
+          transform: `translateX(-${idx * 100}%)`,
+          transition: animated ? "transform 0.88s cubic-bezier(0.77,0,0.175,1)" : "none",
+          willChange: "transform",
+        }}
+      >
+        {extended.map((s, i) => {
+          const isActive = i === idx;
+          return (
+            <div key={i} style={{ width:"100vw", minWidth:"100vw", height:"100%", flexShrink:0, overflow:"hidden", position:"relative" }}>
+              <div
+                key={isActive ? `kb-${idx}` : `bg-${i}`}
+                style={{
+                  position:"absolute", inset:"-6%",
+                  backgroundImage:`url(${s.img})`,
+                  backgroundSize:"cover", backgroundPosition:"center",
+                  animationName: isActive ? `kenBurns${(i % 4) + 1}` : "none",
+                  animationDuration:"12s",
+                  animationTimingFunction:"ease-in-out",
+                  animationFillMode:"forwards",
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
 
       {/* Gradiente verde esmeralda sobre la foto */}
       <div style={{ position: "absolute", inset: 0, background: `linear-gradient(125deg, rgba(6,78,59,0.88) 0%, rgba(5,150,105,0.55) 60%, rgba(0,0,0,0.1) 100%)` }} />
@@ -467,32 +550,40 @@ function HeroCarrusel() {
 
         {/* Botones */}
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", animation: "fadeSlide 0.9s ease" }}>
-          <Link to="/tienda" style={{ padding: "16px 40px", borderRadius: 14, background: `linear-gradient(135deg, ${C.lime}, #65a30d)`, color: "#fff", textDecoration: "none", fontSize: 15, fontWeight: 800, border: `2px solid ${C.limeDark}`, transition: "all 0.22s", letterSpacing: 0.3, boxShadow: `0 8px 24px rgba(122,193,67,0.4)`, animation: "pulseLime 2.4s ease 2s infinite" }}
+          <Link to="/tienda" style={{ display: "inline-flex", alignItems: "center", gap: 11, padding: "16px 40px", borderRadius: 14, background: `linear-gradient(135deg, ${C.lime}, #65a30d)`, color: "#fff", textDecoration: "none", fontSize: 15, fontWeight: 800, border: `2px solid ${C.limeDark}`, transition: "all 0.22s", letterSpacing: 0.3, boxShadow: `0 8px 24px rgba(122,193,67,0.4)`, animation: "pulseLime 2.4s ease 2s infinite" }}
             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px) scale(1.02)"; e.currentTarget.style.boxShadow = `0 18px 36px rgba(122,193,67,0.5)`; e.currentTarget.style.animation="none"; }}
             onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0) scale(1)"; e.currentTarget.style.boxShadow = `0 8px 24px rgba(122,193,67,0.4)`; e.currentTarget.style.animation="pulseLime 2.4s ease infinite"; }}
           >
-            🛒 Ver tienda
+            <FontAwesomeIcon icon={faCartShopping} /> Ver tienda
           </Link>
-          <Link to="/agendar-cita" style={{ padding: "15px 28px", borderRadius: 14, background: "rgba(255,255,255,0.1)", backdropFilter: "blur(10px)", border: "1.5px solid rgba(255,255,255,0.28)", color: "#fff", textDecoration: "none", fontSize: 15, fontWeight: 600, transition: "all 0.22s" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.18)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
+          <Link to="/agendar-cita" style={{ display: "inline-flex", alignItems: "center", gap: 11, padding: "15px 28px", borderRadius: 14, background: `linear-gradient(135deg, ${C.rose}, ${C.roseDark})`, border: `1.5px solid ${C.roseMid}`, color: "#fff", textDecoration: "none", fontSize: 15, fontWeight: 700, transition: "all 0.22s", boxShadow:`0 6px 20px rgba(212,69,122,0.32)` }}
+            onMouseEnter={e => { e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow=`0 14px 32px rgba(212,69,122,0.48)`; }}
+            onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)";     e.currentTarget.style.boxShadow=`0 6px 20px rgba(212,69,122,0.32)`; }}
           >
-            📅 Agendar cita
+            <FontAwesomeIcon icon={faCalendarDays} /> Agendar cita
           </Link>
         </div>
 
         {/* Trust bar */}
         <div style={{ display: "flex", gap: 22, marginTop: 28, flexWrap: "wrap" }}>
-          {["✓ Envío gratis +$80K", "✓ Pago seguro", "✓ Atención 24h", "✓ Solo Ibagué"].map(t => (
-            <span key={t} style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", fontWeight: 600, letterSpacing: 0.2 }}>{t}</span>
+          {[
+            { t: "Envío gratis +$80K", c: C.lime },
+            { t: "Pago seguro",        c: C.blue },
+            { t: "Atención 24h",       c: C.lime },
+            { t: "Solo Ibagué",        c: C.rose },
+          ].map(({ t, c }) => (
+            <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "rgba(255,255,255,0.6)", fontWeight: 600, letterSpacing: 0.2 }}>
+              <FontAwesomeIcon icon={faCheck} style={{ color: c, fontSize: 10 }} />
+              {t}
+            </span>
           ))}
         </div>
       </div>
 
       {/* Dots */}
-      <div style={{ position: "absolute", bottom: 36, left: "10vw", display: "flex", gap: 8, alignItems: "center" }}>
+      <div style={{ position:"absolute", bottom:18, left:"10vw", display:"flex", gap:8, alignItems:"center", zIndex:10 }}>
         {SLIDES.map((_, i) => (
-          <button key={i} onClick={() => ir(i)} style={{ width: i === actual ? 32 : 8, height: 8, borderRadius: 999, background: i === actual ? C.lime : "rgba(255,255,255,0.3)", border: "none", cursor: "pointer", transition: "all 0.35s", padding: 0 }} />
+          <button key={i} onClick={() => goTo(i)} style={{ width: i === actual ? 28 : 8, height: 8, borderRadius: 999, background: i === actual ? C.lime : "rgba(255,255,255,0.3)", border: "none", cursor: "pointer", transition: "all 0.35s", padding: 0 }} />
         ))}
       </div>
 
@@ -505,15 +596,20 @@ function HeroCarrusel() {
       </div>
 
       {/* Flechas */}
-      {[{ dir: -1, sym: "‹" }, { dir: 1, sym: "›" }].map(f => (
-        <button key={f.sym} onClick={() => ir((actual + f.dir + SLIDES.length) % SLIDES.length)}
-          style={{ position: "absolute", top: "50%", [f.dir === -1 ? "left" : "right"]: 20, transform: "translateY(-50%)", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", fontSize: 30, width: 52, height: 52, borderRadius: "50%", cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
-          onMouseEnter={e => { e.currentTarget.style.background = `rgba(10,107,64,0.5)`; e.currentTarget.style.borderColor = C.brandBorder; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; }}
+      {[{ dir: -1, fn: goPrev, icon: faChevronLeft }, { dir: 1, fn: goNext, icon: faChevronRight }].map(f => (
+        <button key={f.dir} onClick={f.fn}
+          style={{ position: "absolute", top: "50%", [f.dir === -1 ? "left" : "right"]: 20, transform: "translateY(-50%)", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.22)", color: "#fff", fontSize: 17, width: 52, height: 52, borderRadius: "50%", cursor: "pointer", transition: "all 0.22s", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10 }}
+          onMouseEnter={e => { e.currentTarget.style.background = `rgba(10,107,64,0.55)`; e.currentTarget.style.borderColor = C.brandBorder; e.currentTarget.style.transform = "translateY(-50%) scale(1.08)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; e.currentTarget.style.transform = "translateY(-50%) scale(1)"; }}
         >
-          {f.sym}
+          <FontAwesomeIcon icon={f.icon} />
         </button>
       ))}
+
+      {/* Barra de progreso del slide */}
+      <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:"rgba(255,255,255,0.08)", zIndex:10 }}>
+        <div key={actual} style={{ height:"100%", background:`linear-gradient(90deg,${C.lime},${C.rose})`, animation:"slideProgress 4s linear forwards", transformOrigin:"left", transform:"scaleX(0)" }} />
+      </div>
     </div>
   );
 }
@@ -521,20 +617,20 @@ function HeroCarrusel() {
 /* ─── Ticker ─────────────────────────────────────────────────────────────── */
 function Ticker() {
   const items = [
-    { t: "🚚 Envío gratis desde $80.000",             hot: false },
-    { t: "🔥 Descuentos hasta 40% en farmacología",   hot: true  },
-    { t: "💊 Medicamentos veterinarios certificados",  hot: false },
-    { t: "⭐ Atención profesional las 24 horas",      hot: false },
-    { t: "🐾 Más de 500 productos en stock",           hot: false },
-    { t: "⚡ ¡Últimas unidades disponibles!",          hot: true  },
-    { t: "🎁 Beneficios exclusivos para miembros",     hot: false },
+    { icon: faTruck,         t: "Envío gratis desde $80.000",             hot: false },
+    { icon: faFire,          t: "Descuentos hasta 40% en farmacología",   hot: true  },
+    { icon: faPills,         t: "Medicamentos veterinarios certificados",  hot: false },
+    { icon: faStar,          t: "Atención profesional las 24 horas",      hot: false },
+    { icon: faPaw,           t: "Más de 500 productos en stock",           hot: false },
+    { icon: faBolt,          t: "¡Últimas unidades disponibles!",          hot: true  },
+    { icon: faGift,          t: "Beneficios exclusivos para miembros",     hot: false },
   ];
   return (
     <div style={{ background: `linear-gradient(90deg, ${C.brandDark} 0%, ${C.brand} 50%, ${C.brandDark} 100%)`, overflow: "hidden", padding: "10px 0", borderTop: `2px solid ${C.brandMid}`, borderBottom: `2px solid ${C.brandMid}` }}>
       <div style={{ display: "flex", gap: 44, animation: "ticker 32s linear infinite", whiteSpace: "nowrap" }}>
         {[...items, ...items].map((it, i) => (
-          <span key={i} style={{ fontSize: 12, fontWeight: it.hot ? 800 : 600, color: it.hot ? C.lime : "rgba(255,255,255,0.82)", display: "inline-flex", alignItems: "center", gap: 0 }}>
-            {it.hot && <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: C.coral, marginRight: 8, flexShrink: 0, boxShadow: `0 0 8px ${C.coral}` }} />}
+          <span key={i} style={{ fontSize: 12, fontWeight: it.hot ? 800 : 600, color: it.hot ? C.rose : "rgba(255,255,255,0.82)", display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <FontAwesomeIcon icon={it.icon} style={{ color: it.hot ? C.rose : C.lime, fontSize: 11, opacity: 0.9 }} />
             {it.t}
           </span>
         ))}
@@ -555,9 +651,9 @@ function Stats() {
 
   const items = [
     { val: "2.500+", label: "Clientes satisfechos",   color: C.lime },
-    { val: "500+",   label: "Productos disponibles",   color: C.coral },
+    { val: "500+",   label: "Productos disponibles",   color: C.rose },
     { val: "8",      label: "Años de experiencia",     color: C.amber },
-    { val: "98%",    label: "Calificación de servicio", color: C.brandMid },
+    { val: "98%",    label: "Calificación de servicio", color: C.blue },
   ];
 
   return (
@@ -588,14 +684,230 @@ function Stats() {
   );
 }
 
+/* ─── Carrusel continuo productos destacados (Landing) ───────────────────── */
+const Lcarr_W   = 220;
+const Lcarr_GAP = 16;
+
+function LandingCarruselCard({ producto }) {
+  const navigate = useNavigate();
+  const { agregar } = useCarrito();
+  const [agregado, setAgregado] = useState(false);
+  const [hover,    setHover]    = useState(false);
+
+  const precio      = Number(producto.variantes?.[0]?.precio      ?? producto.precio      ?? 0);
+  const precioAntes = Number(producto.variantes?.[0]?.precio_antes ?? producto.precio_antes ?? 0);
+  const stock       = Number(producto.variantes?.[0]?.stock        ?? producto.stock        ?? 0);
+  const agotado     = stock === 0;
+  const descuento   = precioAntes > precio && precioAntes > 0
+    ? Math.round((1 - precio / precioAntes) * 100) : null;
+
+  const handleAgregar = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (agotado || agregado) return;
+    agregar({ id: producto.id, nombre: producto.nombre, precio,
+      precio_antes: precioAntes || null, imagen_url: producto.imagen_url || null,
+      slug: producto.slug, stock }, 1);
+    setAgregado(true);
+    setTimeout(() => setAgregado(false), 1800);
+  };
+
+  return (
+    <div
+      onClick={() => navigate(`/producto/${producto.slug}`)}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        width: Lcarr_W, flexShrink: 0, cursor: "pointer",
+        background: C.surface,
+        border: `1.5px solid ${hover ? C.brandBorder : C.border}`,
+        borderRadius: 16, overflow: "hidden",
+        transition: "all 0.22s cubic-bezier(0.16,1,0.3,1)",
+        transform: hover ? "translateY(-6px)" : "translateY(0)",
+        boxShadow: hover
+          ? "0 14px 36px rgba(10,107,64,0.14), 0 2px 8px rgba(0,0,0,0.05)"
+          : "0 1px 4px rgba(0,0,0,0.05)",
+        userSelect: "none", position: "relative",
+        display: "flex", flexDirection: "column",
+      }}
+    >
+      {descuento && descuento > 0 && (
+        <div style={{ position:"absolute", top:8, left:8, zIndex:2,
+          background:"linear-gradient(135deg,#dc2626,#b91c1c)",
+          color:"#fff", fontSize:9, fontWeight:800,
+          padding:"3px 8px", borderRadius:6,
+          boxShadow:"0 2px 8px rgba(220,38,38,0.5)",
+          display:"flex", alignItems:"center", gap:4 }}>
+          <FontAwesomeIcon icon={faBolt} style={{ fontSize:7 }} />
+          -{descuento}%
+        </div>
+      )}
+      {(producto.destacado === 1 || producto.destacado === true) && !descuento && (
+        <div style={{ position:"absolute", top:8, right:8, zIndex:2,
+          background:`linear-gradient(135deg,${C.lime},${C.limeDark})`,
+          color:"#fff", fontSize:9, fontWeight:800,
+          padding:"3px 8px", borderRadius:6,
+          display:"flex", alignItems:"center", gap:4 }}>
+          <FontAwesomeIcon icon={faStar} style={{ fontSize:7 }} /> Destacado
+        </div>
+      )}
+      <div style={{ background: C.surfaceAlt, height: 148, overflow: "hidden", position: "relative" }}>
+        {producto.imagen_url ? (
+          <img src={producto.imagen_url} alt={producto.nombre}
+            style={{ width:"100%", height:"100%", objectFit:"contain", padding:10,
+              transition:"transform 0.35s ease",
+              transform: hover ? "scale(1.08)" : "scale(1)" }}
+            onError={e => { e.target.style.display = "none"; }}
+          />
+        ) : (
+          <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <span style={{ fontSize:40, opacity:0.15 }}>🐾</span>
+          </div>
+        )}
+        {agotado && (
+          <div style={{ position:"absolute", inset:0, background:"rgba(245,250,247,0.88)",
+            display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <span style={{ fontSize:10, fontWeight:800, color:"#dc2626",
+              background:"#fef2f2", border:"1px solid rgba(220,38,38,0.2)",
+              padding:"3px 9px", borderRadius:6 }}>AGOTADO</span>
+          </div>
+        )}
+      </div>
+      <div style={{ padding:"11px 13px 14px", flex:1, display:"flex", flexDirection:"column", gap:3,
+        borderTop:`1px solid ${C.border}` }}>
+        {producto.marca && (
+          <span style={{ fontSize:9, color:C.textMuted, textTransform:"uppercase", letterSpacing:1, fontWeight:700 }}>
+            {producto.marca}
+          </span>
+        )}
+        <p style={{ fontSize:13, fontWeight:600, color:C.text, margin:0, lineHeight:1.35,
+          display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", minHeight:34 }}>
+          {producto.nombre}
+        </p>
+        <div style={{ display:"flex", alignItems:"baseline", gap:5, marginTop:3 }}>
+          <span style={{ fontSize:17, fontWeight:800, color: agotado ? C.textMuted : C.brand,
+            fontFamily:"'JetBrains Mono','Fira Code',monospace" }}>
+            ${precio.toLocaleString("es-CO")}
+          </span>
+          {precioAntes > precio && (
+            <span style={{ fontSize:10, textDecoration:"line-through", fontFamily:"monospace",
+              opacity:0.7, color:C.textMuted }}>
+              ${precioAntes.toLocaleString("es-CO")}
+            </span>
+          )}
+        </div>
+        <button onClick={handleAgregar} disabled={agotado}
+          style={{
+            marginTop:"auto", padding:"8px 0", borderRadius:10, border:"none",
+            background: agotado
+              ? C.surfaceAlt
+              : agregado
+                ? `linear-gradient(135deg,${C.brand},${C.brandMid})`
+                : `linear-gradient(135deg,${C.lime},${C.limeDark})`,
+            color: agotado ? C.textMuted : "#fff",
+            fontSize:12, fontWeight:700, cursor: agotado ? "default" : "pointer",
+            transition:"all 0.2s", letterSpacing:0.2,
+            boxShadow: agotado ? "none" : "0 4px 12px rgba(10,107,64,0.22)",
+          }}>
+          {agotado ? "Sin stock" : agregado
+            ? <><FontAwesomeIcon icon={faCheck} style={{ marginRight:5 }} />¡Agregado!</>
+            : <><FontAwesomeIcon icon={faCartShopping} style={{ marginRight:5 }} />Agregar</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function LandingDestacadosCarrusel({ productos }) {
+  const stripRef  = useRef(null);
+  const pausedRef = useRef(false);
+  const rafRef    = useRef(null);
+  const xRef      = useRef(0);
+  const SPEED  = 0.6;
+  const single = (Lcarr_W + Lcarr_GAP) * productos.length;
+
+  const items = [...productos, ...productos];
+
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip || !productos.length) return;
+    xRef.current = 0;
+    const tick = () => {
+      if (!pausedRef.current) {
+        xRef.current += SPEED;
+        if (xRef.current >= single) xRef.current -= single;
+        strip.style.transform = `translateX(-${xRef.current}px)`;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [productos.length, single]);
+
+  const scroll = (dir) => {
+    xRef.current += dir * (Lcarr_W + Lcarr_GAP);
+    if (xRef.current < 0)       xRef.current += single;
+    if (xRef.current >= single) xRef.current -= single;
+    if (stripRef.current) stripRef.current.style.transform = `translateX(-${xRef.current}px)`;
+  };
+
+  return (
+    <div style={{ marginBottom:36, borderRadius:18,
+      border:`1px solid ${C.border}`, overflow:"hidden",
+      background:C.surface, boxShadow:"0 2px 12px rgba(10,107,64,0.06)" }}>
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+        padding:"14px 20px 12px", borderBottom:`1px solid ${C.border}` }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ width:28, height:28, borderRadius:8, background:C.brandLight,
+            border:`1px solid ${C.brandBorder}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <FontAwesomeIcon icon={faStar} style={{ color:C.brand, fontSize:12 }} />
+          </div>
+          <div>
+            <span style={{ fontSize:13, fontWeight:800, color:C.text, display:"block", lineHeight:1.2 }}>
+              Productos destacados
+            </span>
+            <span style={{ fontSize:10, color:C.textMuted, fontWeight:500 }}>
+              Selección premium · Pasa el cursor para pausar
+            </span>
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:6 }}>
+          {[["‹", -1], ["›", 1]].map(([icon, dir]) => (
+            <button key={dir} onClick={() => scroll(Number(dir))}
+              style={{ width:32, height:32, borderRadius:9, border:`1.5px solid ${C.border}`,
+                background:C.surface, cursor:"pointer", fontSize:19, color:C.textSec,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                transition:"all 0.15s", lineHeight:1 }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor=C.brand; e.currentTarget.style.color=C.brand; e.currentTarget.style.background=C.brandLight; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor=C.border; e.currentTarget.style.color=C.textSec; e.currentTarget.style.background=C.surface; }}>
+              {icon}
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* Strip */}
+      <div style={{ position:"relative" }}
+        onMouseEnter={() => { pausedRef.current = true; }}
+        onMouseLeave={() => { pausedRef.current = false; }}>
+        <div style={{ position:"absolute", left:0, top:0, bottom:0, width:72, zIndex:3, pointerEvents:"none",
+          background:`linear-gradient(to right,${C.surface},transparent)` }}/>
+        <div style={{ position:"absolute", right:0, top:0, bottom:0, width:72, zIndex:3, pointerEvents:"none",
+          background:`linear-gradient(to left,${C.surface},transparent)` }}/>
+        <div style={{ overflow:"hidden", padding:"16px 20px 20px" }}>
+          <div ref={stripRef} style={{ display:"flex", gap:Lcarr_GAP, willChange:"transform" }}>
+            {items.map((p, i) => <LandingCarruselCard key={`${p.id}-${i}`} producto={p}/>)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Sección Tienda ─────────────────────────────────────────────────────── */
 function SeccionTienda() {
   const [revRef, revVis] = useReveal(0.08);
   const [destacados, setDestacados] = useState([]);
   const [cargando,   setCargando]   = useState(true);
-  const [idx,        setIdx]        = useState(0);
-  const autoRef = useRef(null);
-  const VISIBLE = 4;
 
   useEffect(() => {
     api.get("/productos/destacados/lista")
@@ -603,21 +915,6 @@ function SeccionTienda() {
       .catch(() => {})
       .finally(() => setCargando(false));
   }, []);
-
-  const maxIdx = Math.max(0, destacados.length - VISIBLE);
-
-  const mover = (dir) => {
-    setIdx(prev => Math.max(0, Math.min(maxIdx, prev + dir)));
-    clearInterval(autoRef.current);
-    autoRef.current = setInterval(() => setIdx(p => p >= maxIdx ? 0 : p + 1), 2800);
-  };
-
-  useEffect(() => {
-    if (destacados.length > VISIBLE) {
-      autoRef.current = setInterval(() => setIdx(p => p >= maxIdx ? 0 : p + 1), 2800);
-    }
-    return () => clearInterval(autoRef.current);
-  }, [destacados.length, maxIdx]);
 
   return (
     <section id="tienda" ref={revRef} style={{ padding: "80px 24px", background: C.canvas }}>
@@ -642,90 +939,21 @@ function SeccionTienda() {
             </p>
           </div>
           <Link to="/tienda"
-            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 28px", borderRadius: 12, background: C.brand, color: "#fff", textDecoration: "none", fontSize: 14, fontWeight: 700, border: `1px solid ${C.brandDark}`, transition: "all 0.2s", boxShadow:`0 4px 16px rgba(10,107,64,0.25)` }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "13px 28px", borderRadius: 12, background: C.brand, color: "#fff", textDecoration: "none", fontSize: 14, fontWeight: 700, border: `1px solid ${C.brandDark}`, transition: "all 0.2s", boxShadow:`0 4px 16px rgba(10,107,64,0.25)` }}
             onMouseEnter={e => { e.currentTarget.style.background = C.brandMid; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow=`0 8px 24px rgba(10,107,64,0.35)`; }}
             onMouseLeave={e => { e.currentTarget.style.background = C.brand; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow=`0 4px 16px rgba(10,107,64,0.25)`;}}
           >
-            Ver catálogo completo
+            Ver catálogo completo <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 12 }} />
           </Link>
         </div>
 
-        {/* Carrusel */}
+        {/* Carrusel continuo */}
         {cargando ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 32 }}>
-            {[1,2,3,4].map(i => (
-              <div key={i} style={{ height: 260, borderRadius: 16, background: `linear-gradient(90deg,${C.surfaceAlt} 25%,#c3ead4 50%,${C.surfaceAlt} 75%)`, backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
-            ))}
-          </div>
-        ) : destacados.length > 0 ? (
-          <div style={{ marginBottom: 36 }}>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 14 }}>
-              {[{ d: -1, s: "‹" }, { d: 1, s: "›" }].map(b => (
-                <button key={b.s} onClick={() => mover(b.d)}
-                  disabled={b.d === -1 ? idx === 0 : idx === maxIdx}
-                  style={{ width: 36, height: 36, borderRadius: "50%", border: `1.5px solid ${C.border}`, background: C.surface, cursor: "pointer", fontSize: 20, display: "flex", alignItems: "center", justifyContent: "center", color: (b.d === -1 ? idx === 0 : idx === maxIdx) ? C.textMuted : C.brand, transition: "all 0.15s" }}
-                  onMouseEnter={e => { if (!(b.d === -1 ? idx === 0 : idx === maxIdx)) { e.currentTarget.style.background = C.brandLight; e.currentTarget.style.borderColor = C.brandBorder; } }}
-                  onMouseLeave={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.border; }}
-                >{b.s}</button>
-              ))}
-            </div>
-
-            <div style={{ overflow: "hidden" }}
-              onMouseEnter={() => clearInterval(autoRef.current)}
-              onMouseLeave={() => { autoRef.current = setInterval(() => setIdx(p => p >= maxIdx ? 0 : p + 1), 2800); }}
-            >
-              <div style={{ display: "flex", gap: 16, transform: `translateX(calc(-${idx} * (100% / ${VISIBLE} + ${16 / VISIBLE}px)))`, transition: "transform 0.4s cubic-bezier(0.4,0,0.2,1)" }}>
-                {destacados.map(p => {
-                  const precio = Number(p.variantes?.[0]?.precio ?? p.precio ?? 0);
-                  const precioAntes = Number(p.variantes?.[0]?.precio_antes ?? p.precio_antes ?? 0);
-                  const descuento = precioAntes > precio && precioAntes > 0 ? Math.round((1 - precio / precioAntes) * 100) : null;
-                  return (
-                    <Link key={p.id} to={`/producto/${p.slug}`}
-                      style={{ flex: `0 0 calc(${100 / VISIBLE}% - ${16 * (VISIBLE - 1) / VISIBLE}px)`, minWidth: 0, textDecoration: "none" }}
-                    >
-                      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, overflow: "hidden", transition: "all 0.22s", position: "relative", display: "flex", flexDirection: "column" }}
-                        onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.borderColor = C.brandBorder; e.currentTarget.style.boxShadow = `0 12px 32px rgba(5,150,105,0.12)`; }}
-                        onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = C.border; e.currentTarget.style.boxShadow = "none"; }}
-                      >
-                        {descuento && (
-                          <div style={{ position: "absolute", top: 10, left: 10, zIndex: 2, background: C.coral, color: "#fff", fontSize: 10, fontWeight: 800, padding: "3px 9px", borderRadius: 7, animation: "pulseOrange 2s infinite", letterSpacing: 0.3 }}>
-                            -{descuento}%
-                          </div>
-                        )}
-                        <div style={{ height: 180, background: C.surfaceAlt, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                          {p.imagen_url
-                            ? <img src={p.imagen_url} alt={p.nombre} style={{ width: "100%", height: "100%", objectFit: "contain", padding: 12, transition: "transform 0.3s" }}
-                                onError={e => { e.target.style.display = "none"; }}
-                                onMouseEnter={e => { e.target.style.transform = "scale(1.06)"; }}
-                                onMouseLeave={e => { e.target.style.transform = "scale(1)"; }}
-                              />
-                            : <span style={{ fontSize: 44, opacity: 0.3 }}>🐾</span>
-                          }
-                        </div>
-                        <div style={{ padding: "13px 15px 17px", flex: 1, display: "flex", flexDirection: "column", gap: 5 }}>
-                          {p.marca && <span style={{ fontSize: 10, color: C.textMuted, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700 }}>{p.marca}</span>}
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text, lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.nombre}</p>
-                          <div style={{ display: "flex", alignItems: "baseline", gap: 7, marginTop: "auto", paddingTop: 7 }}>
-                            <span style={{ fontSize: 17, fontWeight: 800, color: C.brand, fontFamily: "'JetBrains Mono', monospace" }}>${precio.toLocaleString("es-CO")}</span>
-                            {precioAntes > precio && <span style={{ fontSize: 11, color: C.textMuted, textDecoration: "line-through", fontFamily: "monospace" }}>${precioAntes.toLocaleString("es-CO")}</span>}
-                          </div>
-                          <span style={{ fontSize: 10, color: C.textMuted }}>+ IVA 19%</span>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-
-            {maxIdx > 0 && (
-              <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20 }}>
-                {Array.from({ length: maxIdx + 1 }).map((_, i) => (
-                  <button key={i} onClick={() => setIdx(i)} style={{ width: i === idx ? 22 : 7, height: 7, borderRadius: 999, border: "none", background: i === idx ? C.brand : C.border, cursor: "pointer", padding: 0, transition: "all 0.3s" }} />
-                ))}
-              </div>
-            )}
-          </div>
+          <div style={{ height:248, borderRadius:18, marginBottom:36,
+            background:`linear-gradient(90deg,${C.surfaceAlt} 25%,#c3ead4 50%,${C.surfaceAlt} 75%)`,
+            backgroundSize:"200% 100%", animation:"shimmer 1.4s infinite" }} />
+        ) : destacados.length >= 2 ? (
+          <LandingDestacadosCarrusel productos={destacados}/>
         ) : null}
 
         {/* Chips de categoría */}
@@ -736,7 +964,7 @@ function SeccionTienda() {
               onMouseEnter={e => { e.currentTarget.style.borderColor = `${cat.color}77`; e.currentTarget.style.transform = "translateY(-2px)"; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = `${cat.color}30`; e.currentTarget.style.transform = "translateY(0)"; }}
             >
-              <span style={{ fontSize: 15 }}>{cat.icon}</span>
+              <span style={{ fontSize: 13, color: cat.color, display: "flex", alignItems: "center" }}><FontAwesomeIcon icon={cat.fa} /></span>
               <span style={{ fontSize: 13, fontWeight: 700, color: cat.color }}>{cat.nombre}</span>
             </Link>
           ))}
@@ -745,7 +973,7 @@ function SeccionTienda() {
             onMouseEnter={e => { e.currentTarget.style.background = C.brand; e.currentTarget.style.borderColor = C.brand; }}
             onMouseLeave={e => { e.currentTarget.style.background = C.brandLight; e.currentTarget.style.borderColor = C.brandBorder; }}
           >
-            <span style={{ fontSize: 15 }}>🏪</span>
+            <span style={{ fontSize: 13, color: C.brand, display: "flex", alignItems: "center" }}><FontAwesomeIcon icon={faStore} /></span>
             <span style={{ fontSize: 13, fontWeight: 700, color: C.brand }}>Ver todo</span>
           </Link>
         </div>
@@ -774,11 +1002,11 @@ function SeccionTienda() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "stretch", minWidth: 210 }}>
               <Link to="/tienda"
-                style={{ padding: "16px 36px", borderRadius: 14, background: `linear-gradient(135deg, ${C.lime}, #65a30d)`, color: "#fff", textDecoration: "none", fontSize: 16, fontWeight: 800, border: `1px solid ${C.limeDark}`, transition: "all 0.2s", textAlign: "center", boxShadow: `0 6px 20px rgba(132,204,22,0.3)` }}
+                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px 36px", borderRadius: 14, background: `linear-gradient(135deg, ${C.lime}, #65a30d)`, color: "#fff", textDecoration: "none", fontSize: 16, fontWeight: 800, border: `1px solid ${C.limeDark}`, transition: "all 0.2s", textAlign: "center", boxShadow: `0 6px 20px rgba(132,204,22,0.3)` }}
                 onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 12px 28px rgba(132,204,22,0.4)`; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 6px 20px rgba(132,204,22,0.3)`; }}
               >
-                🛒 Ir a la tienda
+                <FontAwesomeIcon icon={faCartShopping} /> Ir a la tienda
               </Link>
               <Link to="/registro"
                 style={{ padding: "11px 20px", borderRadius: 11, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.85)", textDecoration: "none", fontSize: 13, fontWeight: 600, transition: "all 0.18s", textAlign: "center" }}
@@ -834,7 +1062,7 @@ function SeccionServicios() {
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderTopColor = `${s.color}55`; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-                <div style={{ width:52, height:52, borderRadius:14, background:`${s.color}15`, border:`1px solid ${s.color}25`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 }}>{s.icon}</div>
+                <div style={{ width:52, height:52, borderRadius:14, background:`${s.color}15`, border:`1px solid ${s.color}25`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, color:s.color }}><FontAwesomeIcon icon={s.fa} /></div>
                 <div style={{ background: `${s.color}18`, border: `1px solid ${s.color}33`, borderRadius: 10, padding: "5px 12px", textAlign: "center" }}>
                   <div style={{ fontSize: 16, fontWeight: 900, color: s.color, fontFamily: "'JetBrains Mono', monospace" }}>{s.stat}</div>
                 </div>
@@ -981,9 +1209,9 @@ function SeccionBlog() {
               onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.boxShadow = `0 16px 40px ${b.accent}1a`; e.currentTarget.style.borderColor = `${b.accent}44`; }}
               onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = C.border; }}
             >
-              <div style={{ height: 140, background: `linear-gradient(135deg,${b.accent}18,${b.accent}08)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 58, position:"relative", overflow:"hidden" }}>
+              <div style={{ height: 140, background: `linear-gradient(135deg,${b.accent}18,${b.accent}08)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 52, position:"relative", overflow:"hidden", color: b.accent }}>
                 <div style={{ position:"absolute", top:-20, right:-20, width:100, height:100, borderRadius:"50%", background:`${b.accent}0a` }} />
-                {b.emoji}
+                <FontAwesomeIcon icon={b.fa} style={{ opacity: 0.75 }} />
               </div>
               <div style={{ padding: "20px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, alignItems:"center" }}>
@@ -1037,14 +1265,14 @@ function SeccionContacto() {
         }}>
           <div>
             {[
-              { icon: "📍", label: "Dirección",  val: "Ibagué, Tolima, Colombia" },
-              { icon: "📞", label: "Teléfono",   val: "+57 300 000 0000" },
-              { icon: "📧", label: "Correo",     val: "info@victoriapets.com" },
-              { icon: "🕐", label: "Horario",    val: "Lun–Sáb 8am – 6pm" },
+              { fa: faLocationDot, label: "Dirección",  val: "Ibagué, Tolima, Colombia" },
+              { fa: faPhone,       label: "Teléfono",   val: "+57 300 000 0000" },
+              { fa: faEnvelope,    label: "Correo",     val: "info@victoriapets.com" },
+              { fa: faClock,       label: "Horario",    val: "Lun–Sáb 8am – 6pm" },
             ].map(it => (
               <div key={it.label} style={{ display: "flex", gap: 16, marginBottom: 26, alignItems: "flex-start" }}>
-                <div style={{ width: 48, height: 48, borderRadius: 14, background: C.brandLight, border: `1px solid ${C.brandBorder}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
-                  {it.icon}
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: C.brandLight, border: `1px solid ${C.brandBorder}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, color: C.brand }}>
+                  <FontAwesomeIcon icon={it.fa} />
                 </div>
                 <div>
                   <div style={{ fontSize: 10, color: C.textMuted, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3, fontWeight: 700 }}>{it.label}</div>
@@ -1143,15 +1371,22 @@ export default function Landing() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=JetBrains+Mono:wght@600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,600&family=JetBrains+Mono:wght@600&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
         html { scroll-behavior: smooth; }
+        body, input, button, textarea, select { font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; }
         @keyframes ticker     { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         @keyframes shimmer    { to { background-position: -200% 0; } }
         @keyframes fadeSlide  { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
         @keyframes pulseOrange{ 0%,100% { box-shadow:0 0 0 0 rgba(249,115,22,0.5); } 60% { box-shadow:0 0 0 7px rgba(249,115,22,0); } }
         @keyframes scrollDot  { 0%{opacity:1;transform:translateY(0)} 80%{opacity:0;transform:translateY(14px)} 100%{opacity:0} }
         @keyframes pulseLime  { 0%,100%{box-shadow:0 0 0 0 rgba(122,193,67,0.45)} 60%{box-shadow:0 0 0 9px rgba(122,193,67,0)} }
+        @keyframes kenBurns1  { from { transform: scale(1.09) translate(1.5%,  0.5%); } to { transform: scale(1)    translate(-1%,   -0.5%); } }
+        @keyframes kenBurns2  { from { transform: scale(1)    translate(-1%,   0.5%); } to { transform: scale(1.09) translate(1.5%,  -0.5%); } }
+        @keyframes kenBurns3  { from { transform: scale(1.07) translate(0.5%,  1%);   } to { transform: scale(1)    translate(-0.5%, -1%);   } }
+        @keyframes kenBurns4  { from { transform: scale(1)    translate(0.5%, -1%);   } to { transform: scale(1.07) translate(-1.5%, 0.5%);  } }
+        @keyframes slideProgress { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+        @keyframes pawFloat { 0%,100%{transform:translateY(0) rotate(0deg);opacity:0.04} 50%{transform:translateY(-12px) rotate(8deg);opacity:0.07} }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: ${C.canvas}; }
         ::-webkit-scrollbar-thumb { background: ${C.brand}55; border-radius: 3px; }

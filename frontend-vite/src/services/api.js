@@ -12,11 +12,12 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Interceptor: si el token expiró, limpia sesión
+// Interceptor: si el token expiró (401), limpia sesión
+// No actuar en 403 — puede ser rol insuficiente o email no verificado, el componente lo maneja
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 || err.response?.status === 403) {
+    if (err.response?.status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("usuario");
       window.location.href = "/login";

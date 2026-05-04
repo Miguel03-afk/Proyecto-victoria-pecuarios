@@ -3,6 +3,7 @@
 import { Router } from "express";
 import pool from "../db.js";
 import { verificarToken } from "../middlewares/auth.middleware.js";
+import { enviarNotificacionVetReagendamiento } from "../services/email.js";
 
 const router = Router();
 
@@ -49,16 +50,20 @@ router.get("/veterinarios", async (req, res) => {
       WHERE activo = 1
     `);
 
-    const vetsConDisp = vets.map(v => ({
-      ...v,
-      disponibilidad: disp
-        .filter(d => d.veterinario_id === v.id)
-        .map(d => ({
-          dia: d.dia_semana,
-          inicio: d.hora_inicio,
-          fin: d.hora_fin,
-        })),
-    }));
+    // Agrupar por vet: { dia, bloques: [{hora_inicio, hora_fin}] }
+    const vetsConDisp = vets.map(v => {
+      const vetRows = disp.filter(d => d.veterinario_id === v.id);
+      const diasMap  = {};
+      for (const row of vetRows) {
+        const d = row.dia_semana;
+        if (!diasMap[d]) diasMap[d] = { dia: d, bloques: [] };
+        diasMap[d].bloques.push({
+          hora_inicio: row.hora_inicio.slice(0, 5),
+          hora_fin:    row.hora_fin.slice(0, 5),
+        });
+      }
+      return { ...v, disponibilidad: Object.values(diasMap).sort((a,b) => a.dia - b.dia) };
+    });
 
     res.json(vetsConDisp);
   } catch (err) {
@@ -78,15 +83,34 @@ router.get("/disponibilidad", async (req, res) => {
     const fechaObj   = new Date(fecha + "T00:00:00");
     const diaSemana  = fechaObj.getDay(); // 0=Dom … 6=Sáb
 
-    // Disponibilidad del día
-    const [[dispDia]] = await pool.query(`
-      SELECT vd.hora_inicio, vd.hora_fin, v.duracion_cita
+    // Todos los bloques del día (pueden ser varios)
+    const [bloques] = await pool.query(`
+      SELECT vd.hora_inicio, vd.hora_fin, v.duracion_cita,
+             (SELECT GROUP_CONCAT(DISTINCT dia_semana ORDER BY dia_semana)
+              FROM veterinario_disponibilidad
+              WHERE veterinario_id = ? AND activo = 1) AS dias_activos
       FROM veterinario_disponibilidad vd
       JOIN veterinarios v ON v.id = vd.veterinario_id
       WHERE vd.veterinario_id = ? AND vd.dia_semana = ? AND vd.activo = 1
-    `, [veterinario_id, diaSemana]);
+      ORDER BY vd.hora_inicio
+    `, [veterinario_id, veterinario_id, diaSemana]);
 
-    if (!dispDia) return res.json({ slots: [], mensaje: "Sin disponibilidad ese día." });
+    if (!bloques.length) {
+      // Construir lista de días disponibles para el mensaje
+      const [[{ dias_raw }]] = await pool.query(
+        `SELECT GROUP_CONCAT(DISTINCT dia_semana ORDER BY dia_semana) AS dias_raw
+         FROM veterinario_disponibilidad WHERE veterinario_id = ? AND activo = 1`,
+        [veterinario_id]
+      );
+      const NOMBRE_DIA = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+      const diasLabel = dias_raw
+        ? dias_raw.split(",").map(n => NOMBRE_DIA[parseInt(n)]).join(", ")
+        : "sin días configurados";
+      return res.json({
+        slots: [],
+        mensaje: `El veterinario no atiende ese día. Días disponibles: ${diasLabel}`,
+      });
+    }
 
     // Citas ya ocupadas ese día
     const [ocupadas] = await pool.query(`
@@ -96,10 +120,18 @@ router.get("/disponibilidad", async (req, res) => {
     `, [veterinario_id, fecha]);
 
     const horasOcupadas = new Set(ocupadas.map(c => c.hora.slice(0, 5)));
-    const todos  = slotsDia(dispDia.hora_inicio, dispDia.hora_fin, dispDia.duracion_cita);
+    const duracion = bloques[0].duracion_cita;
+
+    // Generar slots de todos los bloques y unirlos
+    let todos = [];
+    for (const b of bloques) {
+      todos = todos.concat(slotsDia(b.hora_inicio.slice(0,5), b.hora_fin.slice(0,5), duracion));
+    }
+    // Deduplicar y ordenar
+    todos = [...new Set(todos)].sort();
     const libres = todos.filter(s => !horasOcupadas.has(s));
 
-    res.json({ slots: libres, duracion: dispDia.duracion_cita });
+    res.json({ slots: libres, duracion });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Error al consultar disponibilidad." });
@@ -153,9 +185,12 @@ router.get("/mis-citas", async (req, res) => {
   const cliente_id = req.usuario.id;
   try {
     const [citas] = await pool.query(`
-      SELECT c.id, c.codigo, c.fecha, c.hora, c.motivo,
+      SELECT c.id, c.codigo, DATE_FORMAT(c.fecha,'%Y-%m-%d') AS fecha, c.hora, c.motivo,
              c.nombre_mascota, c.especie_mascota, c.estado,
              c.motivo_cancelacion, c.notas_vet, c.created_at,
+             c.reagendamiento_motivo, c.reagendamiento_estado,
+             DATE_FORMAT(c.reagendamiento_nueva_fecha,'%Y-%m-%d') AS reagendamiento_nueva_fecha,
+             c.reagendamiento_nueva_hora,
              u.nombre AS vet_nombre, u.apellido AS vet_apellido,
              v.especialidad, v.foto_url AS vet_foto
       FROM citas c
@@ -169,6 +204,93 @@ router.get("/mis-citas", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Error al obtener citas." });
+  }
+});
+
+/* ─── PATCH /api/citas/:id/aceptar-reagendamiento ─────────── */
+// Cliente acepta la propuesta de nueva fecha/hora
+router.patch("/:id/aceptar-reagendamiento", async (req, res) => {
+  const cliente_id = req.usuario.id;
+  try {
+    const [[cita]] = await pool.query(
+      `SELECT c.id, c.codigo, c.cliente_id, c.nombre_mascota,
+              c.reagendamiento_estado, c.reagendamiento_nueva_fecha, c.reagendamiento_nueva_hora,
+              u.nombre AS cliente_nombre, u.apellido AS cliente_apellido,
+              uv.email AS vet_email, uv.nombre AS vet_nombre
+       FROM citas c
+       JOIN veterinarios v ON v.id = c.veterinario_id
+       JOIN usuarios uv    ON uv.id = v.usuario_id
+       JOIN usuarios u     ON u.id = c.cliente_id
+       WHERE c.id = ?`,
+      [req.params.id]
+    );
+
+    if (!cita) return res.status(404).json({ error: "Cita no encontrada." });
+    if (cita.cliente_id !== cliente_id)
+      return res.status(403).json({ error: "Sin acceso." });
+    if (cita.reagendamiento_estado !== "propuesta")
+      return res.status(400).json({ error: "No hay propuesta pendiente." });
+    if (!cita.reagendamiento_nueva_fecha || !cita.reagendamiento_nueva_hora)
+      return res.status(400).json({ error: "La propuesta no incluye nueva fecha." });
+
+    await pool.query(
+      `UPDATE citas SET
+         fecha = reagendamiento_nueva_fecha,
+         hora  = reagendamiento_nueva_hora,
+         reagendamiento_estado = 'aceptada',
+         estado = 'confirmada'
+       WHERE id = ?`,
+      [req.params.id]
+    );
+
+    try {
+      await enviarNotificacionVetReagendamiento(
+        cita.vet_email,
+        cita.vet_nombre,
+        cita,
+        cita.reagendamiento_nueva_fecha,
+        cita.reagendamiento_nueva_hora
+      );
+    } catch (emailErr) {
+      console.error("Email vet reagendamiento:", emailErr.message);
+    }
+
+    res.json({ mensaje: "Cita reagendada correctamente." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al aceptar el reagendamiento." });
+  }
+});
+
+/* ─── PATCH /api/citas/:id/rechazar-reagendamiento ─────────── */
+// Cliente rechaza la propuesta — la cita queda cancelada
+router.patch("/:id/rechazar-reagendamiento", async (req, res) => {
+  const cliente_id = req.usuario.id;
+  try {
+    const [[cita]] = await pool.query(
+      "SELECT id, cliente_id, reagendamiento_estado FROM citas WHERE id = ?",
+      [req.params.id]
+    );
+
+    if (!cita) return res.status(404).json({ error: "Cita no encontrada." });
+    if (cita.cliente_id !== cliente_id)
+      return res.status(403).json({ error: "Sin acceso." });
+    if (cita.reagendamiento_estado !== "propuesta")
+      return res.status(400).json({ error: "No hay propuesta pendiente." });
+
+    await pool.query(
+      `UPDATE citas SET
+         reagendamiento_estado = 'rechazada',
+         estado = 'cancelada_cliente',
+         motivo_cancelacion = 'El cliente rechazó la propuesta de reagendamiento'
+       WHERE id = ?`,
+      [req.params.id]
+    );
+
+    res.json({ mensaje: "Propuesta rechazada. La cita ha sido cancelada." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al rechazar el reagendamiento." });
   }
 });
 
