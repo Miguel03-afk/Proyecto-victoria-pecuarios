@@ -2,6 +2,7 @@ import { Router } from "express";
 import db          from "../db.js";
 import crypto      from "crypto";
 import { verificarToken } from "../middlewares/auth.middleware.js";
+import { enviarConfirmacionCompra } from "../services/email.js";
 
 const router  = Router();
 const IVA_PCT = 19;
@@ -205,6 +206,21 @@ router.post("/confirmacion", async (req, res) => {
         await db.query(
           "UPDATE ordenes SET items_pendientes_json=NULL WHERE id=?", [ord.id]
         );
+
+        // Email de confirmación de compra
+        try {
+          const [[cliente]] = await db.query(
+            "SELECT u.email, u.nombre, o.subtotal, o.costo_envio, o.total, o.codigo FROM ordenes o JOIN usuarios u ON u.id = o.usuario_id WHERE o.id = ?",
+            [ord.id]
+          );
+          const itemsEmail = items.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio }));
+          await enviarConfirmacionCompra(cliente.email, cliente.nombre, {
+            codigo: cliente.codigo, subtotal: cliente.subtotal,
+            costo_envio: cliente.costo_envio, total: cliente.total,
+          }, itemsEmail);
+        } catch (emailErr) {
+          console.error("[email] Confirmación compra webhook:", emailErr.message);
+        }
       }
     }
 
@@ -282,6 +298,21 @@ router.post("/finalizar-respuesta", verificarToken, async (req, res) => {
       await db.query(
         "UPDATE ordenes SET items_pendientes_json=NULL WHERE id=?", [ord.id]
       );
+
+      // Email de confirmación de compra
+      try {
+        const [[ordInfo]] = await db.query(
+          "SELECT u.email, u.nombre, o.subtotal, o.costo_envio, o.total FROM ordenes o JOIN usuarios u ON u.id = o.usuario_id WHERE o.id = ?",
+          [ord.id]
+        );
+        const itemsEmail = itemsPendientes.map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio }));
+        await enviarConfirmacionCompra(ordInfo.email, ordInfo.nombre, {
+          codigo, subtotal: ordInfo.subtotal,
+          costo_envio: ordInfo.costo_envio, total: ordInfo.total,
+        }, itemsEmail);
+      } catch (emailErr) {
+        console.error("[email] Confirmación compra finalizar:", emailErr.message);
+      }
     }
 
     console.log(`[finalizar-respuesta] Orden ${codigo} → ${estado}`);

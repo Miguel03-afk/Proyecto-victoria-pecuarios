@@ -1,5 +1,5 @@
 // src/pages/MisCitas.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import api from "../services/api";
 import Navbar from "../components/Navbar";
@@ -173,19 +173,60 @@ function fmtHora(h) {
   return `${n > 12 ? n-12 : n}:${mm} ${n >= 12 ? "PM" : "AM"}`;
 }
 
+/* ─── Countdown hook ────────────────────────────────────────── */
+function useCountdown(expiraEn) {
+  const calcRest = () => {
+    if (!expiraEn) return null;
+    const diff = new Date(expiraEn) - new Date();
+    return diff > 0 ? diff : 0;
+  };
+  const [restMs, setRestMs] = useState(calcRest);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    ref.current = setInterval(() => setRestMs(calcRest()), 1000);
+    return () => clearInterval(ref.current);
+  }, [expiraEn]);
+
+  if (restMs === null) return null;
+  if (restMs === 0) return { expirado: true, texto: "Propuesta expirada" };
+
+  const totalSeg = Math.floor(restMs / 1000);
+  const horas    = Math.floor(totalSeg / 3600);
+  const minutos  = Math.floor((totalSeg % 3600) / 60);
+  const segundos = totalSeg % 60;
+  const pad = (n) => String(n).padStart(2, "0");
+  return { expirado: false, texto: `${pad(horas)}:${pad(minutos)}:${pad(segundos)}` };
+}
+
 /* ─── Banner de reagendamiento ─────────────────────────────── */
 function BannerReagendamiento({ cita, onResponder }) {
-  const [accionando, setAccionando] = useState(null);
-  const [msg,        setMsg]        = useState("");
-  const tieneFecha = cita.reagendamiento_nueva_fecha && cita.reagendamiento_nueva_hora;
+  const [accionando,    setAccionando]    = useState(null);
+  const [msg,           setMsg]           = useState("");
+  const [rechazando,    setRechazando]    = useState(false); // muestra mini-form
+  const [motivoRechazo, setMotivoRechazo] = useState("");
+  const tieneFecha  = cita.reagendamiento_nueva_fecha && cita.reagendamiento_nueva_hora;
+  const countdown   = useCountdown(cita.reagendamiento_expira_en);
+  const expirado    = countdown?.expirado === true;
 
-  const responder = async (accion) => {
-    setAccionando(accion);
+  const aceptar = async () => {
+    setAccionando("aceptar");
     try {
-      await api.patch(`/citas/${cita.id}/${accion}-reagendamiento`);
+      await api.patch(`/citas/${cita.id}/aceptar-reagendamiento`);
       onResponder();
     } catch (err) {
       setMsg(err.response?.data?.error || "Error al procesar tu respuesta.");
+      setAccionando(null);
+    }
+  };
+
+  const confirmarRechazo = async () => {
+    setAccionando("rechazar");
+    try {
+      await api.patch(`/citas/${cita.id}/rechazar-reagendamiento`, { motivo: motivoRechazo });
+      onResponder();
+    } catch (err) {
+      setMsg(err.response?.data?.error || "Error al rechazar.");
       setAccionando(null);
     }
   };
@@ -195,56 +236,122 @@ function BannerReagendamiento({ cita, onResponder }) {
   const orangeBorder = "#fde68a";
 
   return (
-    <div style={{ margin:"0 0 0", padding:"14px 16px", borderRadius:"0 0 14px 14px", background:orangeBg, borderTop:`2px solid ${orangeBorder}` }}>
+    <div style={{ padding:"14px 16px", borderRadius:"0 0 14px 14px", background: expirado ? "#f9fafb" : orangeBg, borderTop:`2px solid ${expirado ? "#d1d5db" : orangeBorder}` }}>
+
+      {/* Header con cuenta regresiva */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10, flexWrap:"wrap", gap:8 }}>
+        <p style={{ margin:0, fontSize:11, fontWeight:800, textTransform:"uppercase", letterSpacing:0.8, color: expirado ? "#6b7280" : orange }}>
+          {expirado ? "Propuesta de reagendamiento" : "⏳ Reagendamiento pendiente de respuesta"}
+        </p>
+        {countdown && (
+          <span style={{
+            fontSize:12, fontWeight:800, fontFamily:"monospace",
+            padding:"3px 10px", borderRadius:8,
+            background: expirado ? "#f3f4f6" : "#fff",
+            color: expirado ? "#9ca3af" : countdown.expirado ? "#dc2626" : (Number(countdown.texto.split(":")[1]) < 10 && Number(countdown.texto.split(":")[0]) === 0) ? "#dc2626" : orange,
+            border:`1px solid ${expirado ? "#e5e7eb" : orangeBorder}`,
+          }}>
+            {expirado ? "Expirada" : `Expira en ${countdown.texto}`}
+          </span>
+        )}
+      </div>
+
       <div style={{ display:"flex", alignItems:"flex-start", gap:12, flexWrap:"wrap" }}>
         <div style={{ flex:1, minWidth:200 }}>
-          <p style={{ margin:"0 0 4px", fontSize:11, fontWeight:800, textTransform:"uppercase", letterSpacing:0.8, color:orange }}>
-            Propuesta de reagendamiento
-          </p>
-          <p style={{ margin:"0 0 8px", fontSize:13, color:"#78350f", lineHeight:1.6 }}>
+          <p style={{ margin:"0 0 8px", fontSize:13, color: expirado ? "#6b7280" : "#78350f", lineHeight:1.6 }}>
             {cita.reagendamiento_motivo}
           </p>
           {tieneFecha && (
-            <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:10, background:"#fff", border:`1.5px solid ${orangeBorder}` }}>
-              <span style={{ fontSize:11, color:orange, fontWeight:700 }}>Nueva fecha propuesta:</span>
-              <span style={{ fontSize:13, fontWeight:800, color:"#92400e" }}>
+            <div style={{ display:"inline-flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:10, background:"#fff", border:`1.5px solid ${expirado ? "#e5e7eb" : orangeBorder}` }}>
+              <span style={{ fontSize:11, color: expirado ? "#9ca3af" : orange, fontWeight:700 }}>Nueva fecha propuesta:</span>
+              <span style={{ fontSize:13, fontWeight:800, color: expirado ? "#9ca3af" : "#92400e" }}>
                 {fmtFechaLarga(cita.reagendamiento_nueva_fecha)} · {fmtHora(cita.reagendamiento_nueva_hora)}
               </span>
             </div>
           )}
-          {!tieneFecha && (
+          {!tieneFecha && !expirado && (
             <p style={{ margin:"8px 0 0", fontSize:12, color:"#92400e", fontStyle:"italic" }}>
-              No se propone nueva fecha — puedes contactarnos para reagendar.
+              No se propone nueva fecha — contáctanos para reagendar.
+            </p>
+          )}
+          {expirado && (
+            <p style={{ margin:"8px 0 0", fontSize:12, color:"#9ca3af", fontStyle:"italic" }}>
+              El tiempo para responder ha expirado. Contáctanos si aún deseas reagendar.
             </p>
           )}
           {msg && <p style={{ margin:"8px 0 0", fontSize:12, color:C.danger }}>{msg}</p>}
         </div>
 
-        {tieneFecha && (
-          <div style={{ display:"flex", flexDirection:"column", gap:7, flexShrink:0 }}>
-            <button
-              onClick={() => responder("aceptar")}
-              disabled={!!accionando}
-              style={{
-                padding:"8px 18px", borderRadius:10, border:"none",
-                background: accionando ? C.surfaceAlt : C.brand, color: accionando ? C.textMuted : "#fff",
-                fontSize:12, fontWeight:700, cursor: accionando ? "default" : "pointer",
-              }}
-            >
-              {accionando === "aceptar" ? "Aceptando..." : "Aceptar nueva fecha"}
-            </button>
-            <button
-              onClick={() => responder("rechazar")}
-              disabled={!!accionando}
-              style={{
-                padding:"8px 18px", borderRadius:10,
-                border:`1.5px solid ${C.dangerBorder}`,
-                background:C.dangerBg, color:C.danger,
-                fontSize:12, fontWeight:600, cursor: accionando ? "default" : "pointer",
-              }}
-            >
-              {accionando === "rechazar" ? "Rechazando..." : "Rechazar y cancelar"}
-            </button>
+        {tieneFecha && !expirado && (
+          <div style={{ display:"flex", flexDirection:"column", gap:7, flexShrink:0, minWidth:180 }}>
+            {!rechazando ? (
+              <>
+                <button
+                  onClick={aceptar}
+                  disabled={!!accionando}
+                  style={{
+                    padding:"8px 18px", borderRadius:10, border:"none",
+                    background: accionando ? C.surfaceAlt : C.brand, color: accionando ? C.textMuted : "#fff",
+                    fontSize:12, fontWeight:700, cursor: accionando ? "default" : "pointer",
+                  }}
+                >
+                  {accionando === "aceptar" ? "Aceptando..." : "✓ Aceptar nueva fecha"}
+                </button>
+                <button
+                  onClick={() => setRechazando(true)}
+                  disabled={!!accionando}
+                  style={{
+                    padding:"8px 18px", borderRadius:10,
+                    border:`1.5px solid ${C.dangerBorder}`,
+                    background:C.dangerBg, color:C.danger,
+                    fontSize:12, fontWeight:600, cursor: accionando ? "default" : "pointer",
+                  }}
+                >
+                  ✕ Rechazar y cancelar
+                </button>
+              </>
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+                <textarea
+                  value={motivoRechazo}
+                  onChange={e => setMotivoRechazo(e.target.value)}
+                  placeholder="Motivo del rechazo (opcional)..."
+                  rows={2}
+                  style={{
+                    width:"100%", padding:"8px 10px", borderRadius:10,
+                    border:`1.5px solid ${C.dangerBorder}`,
+                    background:C.dangerBg, color:C.text,
+                    fontSize:12, outline:"none", resize:"none",
+                  }}
+                  onFocus={e => { e.target.style.borderColor=C.danger; }}
+                  onBlur={e => { e.target.style.borderColor=C.dangerBorder; }}
+                  autoFocus
+                />
+                <button
+                  onClick={confirmarRechazo}
+                  disabled={!!accionando}
+                  style={{
+                    padding:"8px 18px", borderRadius:10, border:"none",
+                    background: accionando ? C.surfaceAlt : C.danger, color: accionando ? C.textMuted : "#fff",
+                    fontSize:12, fontWeight:700, cursor: accionando ? "default" : "pointer",
+                  }}
+                >
+                  {accionando === "rechazar" ? "Rechazando..." : "Confirmar rechazo"}
+                </button>
+                <button
+                  onClick={() => setRechazando(false)}
+                  disabled={!!accionando}
+                  style={{
+                    padding:"7px 18px", borderRadius:10,
+                    border:`1.5px solid ${C.border}`,
+                    background:C.surface, color:C.textSec,
+                    fontSize:12, fontWeight:500, cursor: accionando ? "default" : "pointer",
+                  }}
+                >
+                  Volver
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -448,6 +555,43 @@ export default function MisCitas() {
               + Agendar cita
             </Link>
           </div>
+
+          {/* Banner global si hay propuestas activas */}
+          {(() => {
+            const propuestas = citas.filter(c => c.reagendamiento_estado === "propuesta");
+            const expiradas  = propuestas.filter(c => c.reagendamiento_expira_en && new Date() > new Date(c.reagendamiento_expira_en));
+            const activas    = propuestas.filter(c => !c.reagendamiento_expira_en || new Date() <= new Date(c.reagendamiento_expira_en));
+            if (activas.length === 0 && expiradas.length === 0) return null;
+            return (
+              <div style={{ marginBottom:20, padding:"14px 18px", borderRadius:16, background:"#fffbeb", border:"2px solid #fde68a" }}>
+                <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+                  <span style={{ fontSize:22, flexShrink:0 }}>📬</span>
+                  <div style={{ flex:1 }}>
+                    {activas.length > 0 && (
+                      <>
+                        <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:800, color:"#92400e" }}>
+                          Tienes {activas.length} propuesta{activas.length > 1 ? "s" : ""} de reagendamiento activa{activas.length > 1 ? "s" : ""}
+                        </p>
+                        <p style={{ margin:0, fontSize:12, color:"#78350f", lineHeight:1.6 }}>
+                          Por favor confirma antes de que expire el tiempo. Revisa tus citas abajo y acepta o rechaza la propuesta.
+                        </p>
+                      </>
+                    )}
+                    {expiradas.length > 0 && activas.length === 0 && (
+                      <>
+                        <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:700, color:"#6b7280" }}>
+                          Tienes {expiradas.length} propuesta{expiradas.length > 1 ? "s" : ""} de reagendamiento expirada{expiradas.length > 1 ? "s" : ""}
+                        </p>
+                        <p style={{ margin:0, fontSize:12, color:"#9ca3af" }}>
+                          El tiempo para responder ha vencido. Contáctanos si aún deseas reagendar.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Filtros */}
           <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4, marginBottom:20, scrollbarWidth:"none" }}>

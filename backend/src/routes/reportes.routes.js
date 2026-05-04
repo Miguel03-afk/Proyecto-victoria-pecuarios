@@ -52,14 +52,15 @@ router.get('/ventas', verificarToken, soloAdmin, async (req, res) => {
     params
   );
 
-  // Totales del período
+  // Totales del período — financieros solo de órdenes realmente cobradas
+  const ESTADOS_PAGADOS = "('pagada','procesando','enviada','entregada')";
   const [totales] = await db.query(
     `SELECT
        COUNT(*) AS total_ordenes,
-       COALESCE(SUM(total), 0)          AS ingresos_totales,
-       COALESCE(SUM(iva_total), 0)      AS iva_total_periodo,
-       COALESCE(SUM(ganancia_total), 0) AS ganancia_total_periodo,
-       COALESCE(SUM(subtotal), 0)       AS subtotal_periodo
+       COALESCE(SUM(CASE WHEN o.estado IN ${ESTADOS_PAGADOS} THEN o.total          ELSE 0 END), 0) AS ingresos_totales,
+       COALESCE(SUM(CASE WHEN o.estado IN ${ESTADOS_PAGADOS} THEN o.iva_total      ELSE 0 END), 0) AS iva_total_periodo,
+       COALESCE(SUM(CASE WHEN o.estado IN ${ESTADOS_PAGADOS} THEN o.ganancia_total ELSE 0 END), 0) AS ganancia_total_periodo,
+       COALESCE(SUM(CASE WHEN o.estado IN ${ESTADOS_PAGADOS} THEN o.subtotal       ELSE 0 END), 0) AS subtotal_periodo
      FROM ordenes o
      ${whereClause}`,
     params

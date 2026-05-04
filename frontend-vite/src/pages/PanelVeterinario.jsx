@@ -1,24 +1,26 @@
 // src/pages/PanelVeterinario.jsx
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faInbox, faCalendarDays, faClock, faTriangleExclamation,
   faCheck, faXmark, faPaw, faChevronDown, faChevronLeft, faChevronRight,
   faRightFromBracket, faImage, faVideo, faCircleCheck, faCalendarXmark,
-  faClipboardList, faFloppyDisk, faCircleXmark,
+  faClipboardList, faFloppyDisk, faCircleXmark, faCamera,
 } from "@fortawesome/free-solid-svg-icons";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import logo from "../assets/WhatsApp Image 2026-04-22 at 1.19.17 PM.jpeg";
 
+const STATIC = "http://localhost:3000";
+
+/* ─── Tokens de diseño ────────────────────────────────────── */
 const C = {
   brand:        "#0A6B40",
   brandMid:     "#138553",
   brandDark:    "#064E30",
   brandLight:   "#E4F5EC",
   brandBorder:  "#95CCAD",
-  lime:         "#7AC143",
-  limeDark:     "#5a9030",
   canvas:       "#F5FAF7",
   surface:      "#ffffff",
   surfaceAlt:   "#EDF6F1",
@@ -32,8 +34,8 @@ const C = {
   sidebar:      "#064E30",
   sidebarBorder:"rgba(255,255,255,0.07)",
   sidebarActive:"rgba(255,255,255,0.10)",
-  sidebarText:  "rgba(255,255,255,0.60)",
-  sidebarTextHi:"#fff",
+  sidebarText:  "rgba(255,255,255,0.55)",
+  sidebarTextHi:"#ffffff",
   gold:         "#b08a24",
   goldBorder:   "rgba(176,138,36,0.3)",
   danger:       "#dc2626",
@@ -188,7 +190,6 @@ function Solicitudes({ onActualizar }) {
         <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
           {solicitudes.map(s => (
             <div key={s.id} style={{ background:C.surface,border:`1.5px solid ${C.warningBorder}`,borderRadius:16,padding:"18px 20px",display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-start" }}>
-              {/* Info cliente */}
               <div style={{ flex:1,minWidth:200 }}>
                 <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:8 }}>
                   <div style={{ width:36,height:36,borderRadius:10,background:C.brandLight,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,color:C.brand,flexShrink:0 }}>
@@ -199,7 +200,6 @@ function Solicitudes({ onActualizar }) {
                     <p style={{ margin:0,fontSize:11,color:C.textMuted }}>{s.cliente_email} · {s.cliente_tel || "Sin tel."}</p>
                   </div>
                 </div>
-
                 <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10 }}>
                   {[
                     { label:"Mascota", val:`${s.nombre_mascota} (${s.especie_mascota})` },
@@ -213,39 +213,22 @@ function Solicitudes({ onActualizar }) {
                     </div>
                   ))}
                 </div>
-
                 <div style={{ padding:"10px 12px",borderRadius:10,background:C.surfaceAlt,border:`1px solid ${C.border}` }}>
                   <p style={{ margin:"0 0 3px",fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,color:C.textMuted }}>Motivo</p>
                   <p style={{ margin:0,fontSize:12,color:C.textSec,lineHeight:1.5 }}>{s.motivo}</p>
                 </div>
               </div>
-
-              {/* Acciones */}
               <div style={{ display:"flex",flexDirection:"column",gap:8,flexShrink:0,minWidth:140 }}>
                 <button
                   onClick={() => confirmar(s.id)}
                   disabled={accionando[s.id]==="confirmando"}
-                  style={{
-                    padding:"10px 16px",borderRadius:12,border:"none",
-                    background:C.brand,color:"#fff",
-                    fontSize:13,fontWeight:700,cursor:"pointer",transition:"all 0.15s",
-                    opacity:accionando[s.id]==="confirmando"?0.7:1,
-                    display:"flex",alignItems:"center",justifyContent:"center",gap:7,
-                  }}
+                  style={{ padding:"10px 16px",borderRadius:12,border:"none",background:C.brand,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all 0.15s",opacity:accionando[s.id]==="confirmando"?0.7:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7 }}
                 >
-                  {accionando[s.id]==="confirmando"
-                    ? "Confirmando..."
-                    : <><FontAwesomeIcon icon={faCheck}/> Confirmar</>}
+                  {accionando[s.id]==="confirmando" ? "Confirmando..." : <><FontAwesomeIcon icon={faCheck}/> Confirmar</>}
                 </button>
                 <button
                   onClick={() => { setRechazoModal(s); setMotivoRechazo(""); }}
-                  style={{
-                    padding:"10px 16px",borderRadius:12,
-                    border:`1.5px solid ${C.dangerBorder}`,
-                    background:C.dangerBg,color:C.danger,
-                    fontSize:13,fontWeight:600,cursor:"pointer",transition:"all 0.15s",
-                    display:"flex",alignItems:"center",justifyContent:"center",gap:7,
-                  }}
+                  style={{ padding:"10px 16px",borderRadius:12,border:`1.5px solid ${C.dangerBorder}`,background:C.dangerBg,color:C.danger,fontSize:13,fontWeight:600,cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",justifyContent:"center",gap:7 }}
                   onMouseEnter={e => { e.currentTarget.style.background=C.danger; e.currentTarget.style.color="#fff"; }}
                   onMouseLeave={e => { e.currentTarget.style.background=C.dangerBg; e.currentTarget.style.color=C.danger; }}
                 >
@@ -323,7 +306,6 @@ function Agenda() {
     <div>
       <Msg texto={msg.texto} tipo={msg.tipo}/>
 
-      {/* Modal anomalía */}
       {modalAnom && (
         <div style={{ position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",padding:24 }} onClick={() => setModalAnom(null)}>
           <div style={{ background:C.surface,borderRadius:20,width:"100%",maxWidth:480,padding:"28px" }} onClick={e => e.stopPropagation()}>
@@ -357,7 +339,6 @@ function Agenda() {
         </div>
       )}
 
-      {/* Filtros */}
       <div style={{ display:"flex",gap:6,overflowX:"auto",paddingBottom:4,marginBottom:20,scrollbarWidth:"none" }}>
         {FILTROS_AGENDA.map(f => (
           <button key={f.key} onClick={() => setFiltro(f.key)} style={{
@@ -379,27 +360,29 @@ function Agenda() {
         <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
           {citas.map(c => (
             <div key={c.id} style={{ background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,overflow:"hidden" }}>
-              {/* Cabecera */}
               <button
                 onClick={() => setExpandida(v => v===c.id?null:c.id)}
                 style={{ width:"100%",display:"flex",alignItems:"center",gap:14,padding:"16px 20px",background:"none",border:"none",cursor:"pointer",textAlign:"left",flexWrap:"wrap" }}
               >
-                {/* Fecha */}
-                <div style={{ display:"flex",flexDirection:"column",alignItems:"center",width:48,flexShrink:0,padding:"8px 6px",background:C.brandLight,borderRadius:10,border:`1px solid ${C.brandBorder}` }}>
-                  <span style={{ fontSize:18,fontWeight:900,color:C.brand,lineHeight:1 }}>
+                <div style={{ display:"flex",flexDirection:"column",alignItems:"center",width:48,flexShrink:0,padding:"8px 6px",background:c.reagendamiento_estado==="aceptada"?"#eff6ff":C.brandLight,borderRadius:10,border:`1px solid ${c.reagendamiento_estado==="aceptada"?"#bfdbfe":C.brandBorder}` }}>
+                  <span style={{ fontSize:18,fontWeight:900,color:c.reagendamiento_estado==="aceptada"?"#1d4ed8":C.brand,lineHeight:1 }}>
                     {new Date(c.fecha+"T00:00:00").getDate()}
                   </span>
                   <span style={{ fontSize:9,color:C.textTer,textTransform:"uppercase" }}>
                     {new Date(c.fecha+"T00:00:00").toLocaleDateString("es-CO",{month:"short"})}
                   </span>
-                  <span style={{ fontSize:10,fontWeight:700,color:C.brand,marginTop:4 }}>
+                  <span style={{ fontSize:10,fontWeight:700,color:c.reagendamiento_estado==="aceptada"?"#1d4ed8":C.brand,marginTop:4 }}>
                     {fmt(c.hora)}
                   </span>
                 </div>
-
                 <div style={{ flex:1,minWidth:160 }}>
                   <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap" }}>
                     <Badge estado={c.estado}/>
+                    {c.reagendamiento_estado === "aceptada" && (
+                      <span style={{ fontSize:10,fontWeight:800,padding:"2px 9px",borderRadius:6,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe",display:"inline-flex",alignItems:"center",gap:5 }}>
+                        📅 Reagendada forzada
+                      </span>
+                    )}
                     {c.anomalias > 0 && (
                       <span style={{ fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:6,background:"#fef3c7",color:"#92400e",border:"1px solid #fde68a",display:"inline-flex",alignItems:"center",gap:5 }}>
                         <FontAwesomeIcon icon={faTriangleExclamation} style={{ fontSize:9 }}/> {c.anomalias} anomalía{c.anomalias>1?"s":""}
@@ -413,14 +396,11 @@ function Agenda() {
                     <FontAwesomeIcon icon={faPaw} style={{ fontSize:10 }}/> {c.nombre_mascota} · {c.cliente_email}
                   </p>
                 </div>
-
                 <FontAwesomeIcon icon={faChevronDown} style={{ fontSize:14,color:C.textMuted,transform:expandida===c.id?"rotate(180deg)":"rotate(0)",transition:"transform 0.2s",flexShrink:0 }}/>
               </button>
 
-              {/* Detalle */}
               {expandida === c.id && (
                 <div style={{ padding:"16px 20px 20px",borderTop:`1px solid ${C.border}`,background:C.surfaceAlt,display:"flex",flexDirection:"column",gap:14 }}>
-                  {/* Datos */}
                   <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10 }}>
                     {[
                       { label:"Cliente", val:`${c.cliente_nombre} ${c.cliente_apellido}` },
@@ -435,13 +415,11 @@ function Agenda() {
                     ))}
                   </div>
 
-                  {/* Motivo */}
                   <div style={{ padding:"12px 14px",borderRadius:12,background:C.surface,border:`1px solid ${C.border}` }}>
                     <p style={{ margin:"0 0 4px",fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,color:C.textMuted }}>Motivo de consulta</p>
                     <p style={{ margin:0,fontSize:13,color:C.textSec,lineHeight:1.6 }}>{c.motivo}</p>
                   </div>
 
-                  {/* Notas del vet */}
                   {c.notas_vet && (
                     <div style={{ padding:"12px 14px",borderRadius:12,background:C.successBg,border:`1px solid ${C.successBorder}` }}>
                       <p style={{ margin:"0 0 4px",fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,color:C.success }}>Tus notas</p>
@@ -449,52 +427,45 @@ function Agenda() {
                     </div>
                   )}
 
-                  {/* Acciones según estado */}
+                  {c.motivo_cancelacion && (
+                    <div style={{ padding:"12px 14px",borderRadius:12,background:C.dangerBg,border:`1px solid ${C.dangerBorder}` }}>
+                      <p style={{ margin:"0 0 4px",fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5,color:C.danger }}>Motivo de cancelación / rechazo</p>
+                      <p style={{ margin:0,fontSize:13,color:"#7f1d1d",lineHeight:1.6 }}>{c.motivo_cancelacion}</p>
+                    </div>
+                  )}
+
                   <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
                     {c.estado === "confirmada" && (
-                      <>
-                        <div style={{ display:"flex",gap:8,flex:1,flexDirection:"column" }}>
-                          <textarea
-                            value={notas}
-                            onChange={e => setNotas(e.target.value)}
-                            placeholder="Notas de la consulta (opcional)..."
-                            rows={2}
-                            style={{ width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${C.border}`,background:C.surface,color:C.text,fontSize:13,outline:"none",resize:"none" }}
-                            onFocus={e=>{e.target.style.borderColor=C.brand;}} onBlur={e=>{e.target.style.borderColor=C.border;}}
-                          />
-                          <div style={{ display:"flex",gap:8 }}>
-                            <button
-                              onClick={() => accion(c.id,"completar",{ notas_vet:notas })}
-                              disabled={accionando[c.id]==="completar"}
-                              style={{ flex:1,padding:"9px",borderRadius:10,border:"none",background:C.brand,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}
-                            >
-                              {accionando[c.id]==="completar"
-                                ? "Guardando..."
-                                : <><FontAwesomeIcon icon={faCheck}/> Marcar completada</>}
-                            </button>
-                            <button
-                              onClick={() => accion(c.id,"no-asistio")}
-                              disabled={accionando[c.id]==="no-asistio"}
-                              style={{ flex:1,padding:"9px",borderRadius:10,border:`1.5px solid ${C.border}`,background:C.surfaceAlt,color:C.textSec,fontSize:12,fontWeight:500,cursor:"pointer" }}
-                            >
-                              No asistió
-                            </button>
-                          </div>
+                      <div style={{ display:"flex",gap:8,flex:1,flexDirection:"column" }}>
+                        <textarea
+                          value={notas}
+                          onChange={e => setNotas(e.target.value)}
+                          placeholder="Notas de la consulta (opcional)..."
+                          rows={2}
+                          style={{ width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${C.border}`,background:C.surface,color:C.text,fontSize:13,outline:"none",resize:"none" }}
+                          onFocus={e=>{e.target.style.borderColor=C.brand;}} onBlur={e=>{e.target.style.borderColor=C.border;}}
+                        />
+                        <div style={{ display:"flex",gap:8 }}>
+                          <button
+                            onClick={() => accion(c.id,"completar",{ notas_vet:notas })}
+                            disabled={accionando[c.id]==="completar"}
+                            style={{ flex:1,padding:"9px",borderRadius:10,border:"none",background:C.brand,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6 }}
+                          >
+                            {accionando[c.id]==="completar" ? "Guardando..." : <><FontAwesomeIcon icon={faCheck}/> Marcar completada</>}
+                          </button>
+                          <button
+                            onClick={() => accion(c.id,"no-asistio")}
+                            disabled={accionando[c.id]==="no-asistio"}
+                            style={{ flex:1,padding:"9px",borderRadius:10,border:`1.5px solid ${C.border}`,background:C.surfaceAlt,color:C.textSec,fontSize:12,fontWeight:500,cursor:"pointer" }}
+                          >
+                            No asistió
+                          </button>
                         </div>
-                      </>
+                      </div>
                     )}
-
-                    {/* Reportar anomalía — siempre disponible */}
                     <button
                       onClick={() => setModalAnom(c.id)}
-                      style={{
-                        padding:"9px 16px",borderRadius:10,
-                        border:`1.5px solid ${C.warningBorder}`,
-                        background:C.warningBg,color:C.warning,
-                        fontSize:12,fontWeight:600,cursor:"pointer",
-                        alignSelf:"flex-start",
-                        display:"flex",alignItems:"center",gap:6,
-                      }}
+                      style={{ padding:"9px 16px",borderRadius:10,border:`1.5px solid ${C.warningBorder}`,background:C.warningBg,color:C.warning,fontSize:12,fontWeight:600,cursor:"pointer",alignSelf:"flex-start",display:"flex",alignItems:"center",gap:6 }}
                     >
                       <FontAwesomeIcon icon={faTriangleExclamation}/> Reportar anomalía
                     </button>
@@ -599,7 +570,6 @@ function Disponibilidad() {
             background:config[i].activo?C.brandLight:C.surfaceAlt,
             border:`1.5px solid ${config[i].activo?C.brandBorder:C.border}`,
           }}>
-            {/* Cabecera del día */}
             <div style={{ display:"flex",alignItems:"center",gap:14,padding:"14px 18px" }}>
               <button onClick={() => toggle(i)} style={{
                 width:44,height:24,borderRadius:12,border:"none",cursor:"pointer",
@@ -614,11 +584,9 @@ function Disponibilidad() {
                   boxShadow:"0 1px 4px rgba(0,0,0,0.25)",
                 }}/>
               </button>
-
               <span style={{ fontSize:14,fontWeight:config[i].activo?700:400,color:config[i].activo?C.brand:C.textMuted,minWidth:90,flexShrink:0 }}>
                 {dia.label}
               </span>
-
               {config[i].activo && (
                 <span style={{ fontSize:11,color:C.textTer }}>
                   {config[i].bloques.length} bloque{config[i].bloques.length!==1?"s":""} de atención
@@ -626,7 +594,6 @@ function Disponibilidad() {
               )}
             </div>
 
-            {/* Bloques de horario */}
             {config[i].activo && (
               <div style={{ padding:"0 18px 16px",display:"flex",flexDirection:"column",gap:8 }}>
                 {config[i].bloques.map((bloque, bi) => (
@@ -652,7 +619,6 @@ function Disponibilidad() {
                         />
                       </div>
                     ))}
-
                     {config[i].bloques.length > 1 && (
                       <button onClick={() => removeBloque(i,bi)} style={{
                         marginLeft:"auto",width:28,height:28,borderRadius:8,
@@ -665,14 +631,10 @@ function Disponibilidad() {
                     )}
                   </div>
                 ))}
-
                 <button onClick={() => addBloque(i)} style={{
-                  alignSelf:"flex-start",
-                  padding:"7px 14px",borderRadius:10,
-                  border:`1.5px dashed ${C.brandBorder}`,
-                  background:"transparent",color:C.brand,
-                  fontSize:12,fontWeight:600,cursor:"pointer",
-                  display:"flex",alignItems:"center",gap:6,
+                  alignSelf:"flex-start",padding:"7px 14px",borderRadius:10,
+                  border:`1.5px dashed ${C.brandBorder}`,background:"transparent",color:C.brand,
+                  fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6,
                 }}>
                   + Agregar bloque de horario
                 </button>
@@ -735,9 +697,7 @@ function Anomalias() {
             </div>
             <span style={{ fontSize:11,color:C.textMuted,flexShrink:0 }}>{fdoc(a.created_at)}</span>
           </div>
-
           <p style={{ margin:"0 0 12px",fontSize:13,color:C.textSec,lineHeight:1.6 }}>{a.descripcion}</p>
-
           <div style={{ display:"flex",gap:10,flexWrap:"wrap" }}>
             {a.imagen_url && (
               <a href={a.imagen_url} target="_blank" rel="noopener noreferrer"
@@ -775,11 +735,40 @@ const TITULOS = {
   anomalias:      "Anomalías reportadas",
 };
 
+function NavBtn({ item, activo, collapsed, onClick }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      title={collapsed ? item.label : undefined}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        width:"100%",display:"flex",alignItems:"center",gap:10,
+        padding:"10px 10px",borderRadius:10,border:"none",cursor:"pointer",
+        background: activo || hover ? C.sidebarActive : "transparent",
+        color: activo ? C.sidebarTextHi : hover ? "rgba(255,255,255,0.8)" : C.sidebarText,
+        borderLeft: activo ? `2px solid rgba(255,255,255,0.5)` : "2px solid transparent",
+        fontSize:12,fontWeight:activo?700:500,
+        transition:"all 0.15s",
+        justifyContent:collapsed?"center":"flex-start",
+      }}
+    >
+      <FontAwesomeIcon icon={item.icon} style={{ fontSize:14,flexShrink:0 }}/>
+      {!collapsed && <span>{item.label}</span>}
+    </button>
+  );
+}
+
 export default function PanelVeterinario() {
   const { usuario, logout } = useAuth();
   const navigate = useNavigate();
-  const [seccion, setSeccion] = useState("solicitudes");
+  const [seccion, setSeccion]     = useState("solicitudes");
   const [collapsed, setCollapsed] = useState(false);
+  const [vetPerfil, setVetPerfil] = useState(null);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [hoverFoto, setHoverFoto] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (!usuario) { navigate("/login"); return; }
@@ -788,89 +777,224 @@ export default function PanelVeterinario() {
     }
   }, [usuario]);
 
+  useEffect(() => {
+    api.get("/veterinario/perfil")
+      .then(r => setVetPerfil(r.data))
+      .catch(() => {});
+  }, []);
+
+  const handleFotoChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setSubiendoFoto(true);
+    const fd = new FormData();
+    fd.append("foto", file);
+    try {
+      const { data } = await api.patch("/veterinario/foto-perfil", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setVetPerfil(p => ({ ...p, foto_url: data.foto_url }));
+    } catch {
+      // el resto del panel no se ve afectado
+    } finally {
+      setSubiendoFoto(false);
+      e.target.value = "";
+    }
+  };
+
+  const fotoSrc = vetPerfil?.foto_url
+    ? (vetPerfil.foto_url.startsWith("http") ? vetPerfil.foto_url : `${STATIC}${vetPerfil.foto_url}`)
+    : null;
+
+  const saludoHora = () => {
+    const h = new Date().getHours();
+    if (h < 12) return "Buenos días";
+    if (h < 18) return "Buenas tardes";
+    return "Buenas noches";
+  };
+
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&display=swap');
         @keyframes spin    { to { transform:rotate(360deg); } }
-        @keyframes shimmer { to { background-position:-200% 0; } }
         * { box-sizing:border-box; }
+        ::-webkit-scrollbar { width:4px; }
+        ::-webkit-scrollbar-track { background:transparent; }
+        ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:4px; }
       `}</style>
 
+      {/* Input de archivo oculto */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        style={{ display:"none" }}
+        onChange={handleFotoChange}
+      />
+
       <div style={{ minHeight:"100vh", display:"flex", background:C.canvas }}>
-        {/* Sidebar */}
+
+        {/* ── Sidebar ─────────────────────────────────────────── */}
         <aside style={{
-          width: collapsed ? 56 : 210, flexShrink:0,
+          width: collapsed ? 60 : 220, flexShrink:0,
           background:C.sidebar, display:"flex", flexDirection:"column",
           borderRight:`1px solid ${C.sidebarBorder}`,
-          transition:"width 0.2s",
+          transition:"width 0.22s cubic-bezier(.4,0,.2,1)",
+          overflow:"hidden",
         }}>
-          {/* Logo */}
-          <div style={{ padding:"16px 14px", borderBottom:`1px solid ${C.sidebarBorder}` }}>
-            {!collapsed ? (
-              <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-                <div style={{ width:30,height:30,borderRadius:9,background:C.gold,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:C.brandDark,flexShrink:0 }}>V</div>
-                <div>
-                  <p style={{ margin:0,fontSize:11,fontWeight:700,color:C.sidebarTextHi,fontFamily:"'Playfair Display',serif",fontStyle:"italic" }}>Victoria Pets</p>
-                  <p style={{ margin:0,fontSize:9,color:C.gold,letterSpacing:0.8,textTransform:"uppercase" }}>Panel Veterinario</p>
+
+          {/* Logo de empresa */}
+          <div style={{
+            padding: collapsed ? "14px 0" : "14px 14px",
+            borderBottom:`1px solid ${C.sidebarBorder}`,
+            display:"flex", alignItems:"center",
+            justifyContent: collapsed ? "center" : "flex-start",
+            gap:10, minHeight:64,
+          }}>
+            {collapsed ? (
+              /* Logo miniatura cuando colapsado */
+              <Link to="/" style={{ textDecoration:"none", display:"flex", justifyContent:"center" }}>
+                <div style={{
+                  width:34,height:34,borderRadius:10,
+                  background:"#fff",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  overflow:"hidden", flexShrink:0,
+                }}>
+                  <img src={logo} alt="VP" style={{ width:"100%",height:"100%",objectFit:"cover" }}/>
                 </div>
-              </div>
+              </Link>
             ) : (
-              <div style={{ display:"flex",justifyContent:"center" }}>
-                <div style={{ width:30,height:30,borderRadius:9,background:C.gold,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,color:C.brandDark }}>V</div>
+              /* Logo + texto cuando expandido */
+              <Link to="/" style={{ textDecoration:"none", display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{
+                  width:38,height:38,borderRadius:10,
+                  background:"#fff",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  overflow:"hidden", flexShrink:0,
+                  boxShadow:"0 2px 8px rgba(0,0,0,0.25)",
+                }}>
+                  <img src={logo} alt="Victoria Pets" style={{ width:"100%",height:"100%",objectFit:"cover" }}/>
+                </div>
+                <div style={{ minWidth:0 }}>
+                  <p style={{ margin:0,fontSize:13,fontWeight:800,color:C.sidebarTextHi,letterSpacing:"-0.2px",whiteSpace:"nowrap" }}>
+                    Victoria Pets
+                  </p>
+                  <p style={{ margin:0,fontSize:9,color:"rgba(255,255,255,0.4)",letterSpacing:"0.8px",textTransform:"uppercase",whiteSpace:"nowrap" }}>
+                    Panel Veterinario
+                  </p>
+                </div>
+              </Link>
+            )}
+          </div>
+
+          {/* Perfil del veterinario */}
+          <div style={{
+            padding: collapsed ? "14px 0" : "14px",
+            borderBottom:`1px solid ${C.sidebarBorder}`,
+            display:"flex", flexDirection:"column",
+            alignItems: collapsed ? "center" : "flex-start",
+            gap:10,
+          }}>
+            {/* Foto de perfil clickeable */}
+            <div
+              onClick={() => !subiendoFoto && fileInputRef.current?.click()}
+              onMouseEnter={() => setHoverFoto(true)}
+              onMouseLeave={() => setHoverFoto(false)}
+              title="Haz clic para cambiar tu foto de perfil"
+              style={{
+                position:"relative",
+                width: collapsed ? 36 : 52,
+                height: collapsed ? 36 : 52,
+                borderRadius:"50%",
+                cursor:"pointer",
+                flexShrink:0,
+                border:`2px solid rgba(255,255,255,0.18)`,
+                overflow:"hidden",
+                transition:"all 0.2s",
+                boxShadow: hoverFoto ? "0 0 0 3px rgba(255,255,255,0.15)" : "none",
+              }}
+            >
+              {fotoSrc ? (
+                <img
+                  src={fotoSrc}
+                  alt="Foto de perfil"
+                  style={{ width:"100%",height:"100%",objectFit:"cover" }}
+                />
+              ) : (
+                <div style={{
+                  width:"100%",height:"100%",
+                  background:"linear-gradient(135deg,#138553,#0A6B40)",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  fontSize: collapsed ? 14 : 20,
+                  fontWeight:800,color:"#fff",
+                }}>
+                  {usuario?.nombre?.charAt(0)?.toUpperCase()}
+                </div>
+              )}
+              {/* Overlay cámara */}
+              {(hoverFoto || subiendoFoto) && (
+                <div style={{
+                  position:"absolute",inset:0,
+                  background:"rgba(0,0,0,0.52)",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                }}>
+                  {subiendoFoto ? (
+                    <div style={{ width:14,height:14,borderRadius:"50%",border:"2px solid #fff",borderTopColor:"transparent",animation:"spin 0.8s linear infinite" }}/>
+                  ) : (
+                    <FontAwesomeIcon icon={faCamera} style={{ color:"#fff",fontSize: collapsed ? 12 : 16 }}/>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Nombre y especialidad (solo expandido) */}
+            {!collapsed && usuario && (
+              <div style={{ minWidth:0, width:"100%" }}>
+                <p style={{ margin:0,fontSize:12,fontWeight:700,color:C.sidebarTextHi,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                  Dr(a). {usuario.nombre} {usuario.apellido}
+                </p>
+                {vetPerfil?.especialidad && (
+                  <p style={{ margin:"2px 0 0",fontSize:10,color:"rgba(255,255,255,0.45)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                    {vetPerfil.especialidad}
+                  </p>
+                )}
+                <div style={{ display:"flex",alignItems:"center",gap:5,marginTop:5 }}>
+                  <div style={{ width:6,height:6,borderRadius:"50%",background:"#4ade80",flexShrink:0 }}/>
+                  <span style={{ fontSize:10,color:"rgba(255,255,255,0.4)" }}>En línea</span>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Usuario */}
-          {!collapsed && usuario && (
-            <div style={{ padding:"12px 14px",borderBottom:`1px solid ${C.sidebarBorder}` }}>
-              <div style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:10,background:C.sidebarActive }}>
-                <div style={{ width:26,height:26,borderRadius:"50%",background:C.gold,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:C.brandDark,flexShrink:0 }}>
-                  {usuario.nombre?.charAt(0)}
-                </div>
-                <div style={{ minWidth:0 }}>
-                  <p style={{ margin:0,fontSize:11,fontWeight:700,color:C.sidebarTextHi,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{usuario.nombre}</p>
-                  <p style={{ margin:0,fontSize:9,color:C.gold }}>Veterinario</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Nav */}
+          {/* Navegación */}
           <nav style={{ flex:1,padding:"8px",display:"flex",flexDirection:"column",gap:2 }}>
             {NAV.map(n => (
-              <button key={n.id} onClick={() => setSeccion(n.id)} title={collapsed?n.label:undefined}
-                style={{
-                  width:"100%",display:"flex",alignItems:"center",gap:10,
-                  padding:"10px 10px",borderRadius:10,border:"none",cursor:"pointer",
-                  background:seccion===n.id?C.sidebarActive:"transparent",
-                  color:seccion===n.id?C.sidebarTextHi:C.sidebarText,
-                  borderLeft:seccion===n.id?`2px solid ${C.gold}`:"2px solid transparent",
-                  fontSize:12,fontWeight:seccion===n.id?700:500,
-                  transition:"all 0.15s",justifyContent:collapsed?"center":"flex-start",
-                }}
-                onMouseEnter={e => { if (seccion!==n.id) e.currentTarget.style.background=C.sidebarActive; }}
-                onMouseLeave={e => { if (seccion!==n.id) e.currentTarget.style.background="transparent"; }}
-              >
-                <FontAwesomeIcon icon={n.icon} style={{ fontSize:14,flexShrink:0 }}/>
-                {!collapsed && <span>{n.label}</span>}
-              </button>
+              <NavBtn
+                key={n.id}
+                item={n}
+                activo={seccion===n.id}
+                collapsed={collapsed}
+                onClick={() => setSeccion(n.id)}
+              />
             ))}
           </nav>
 
           {/* Footer sidebar */}
-          <div style={{ padding:"8px",borderTop:`1px solid ${C.sidebarBorder}` }}>
+          <div style={{ padding:"8px",borderTop:`1px solid ${C.sidebarBorder}`,display:"flex",flexDirection:"column",gap:2 }}>
             {!collapsed && (
-              <button onClick={() => { logout(); navigate("/"); }}
+              <button
+                onClick={() => { logout(); navigate("/"); }}
                 style={{ width:"100%",display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:10,border:"none",cursor:"pointer",background:"transparent",color:C.sidebarText,fontSize:12,transition:"all 0.15s" }}
-                onMouseEnter={e=>{e.currentTarget.style.background=C.sidebarActive;}}
-                onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
+                onMouseEnter={e=>{e.currentTarget.style.background=C.sidebarActive; e.currentTarget.style.color=C.sidebarTextHi;}}
+                onMouseLeave={e=>{e.currentTarget.style.background="transparent"; e.currentTarget.style.color=C.sidebarText;}}
+              >
                 <FontAwesomeIcon icon={faRightFromBracket} style={{ fontSize:13 }}/>
                 <span>Cerrar sesión</span>
               </button>
             )}
-            <button onClick={() => setCollapsed(v => !v)}
+            <button
+              onClick={() => setCollapsed(v => !v)}
+              title={collapsed ? "Expandir" : "Colapsar"}
               style={{ width:"100%",display:"flex",alignItems:"center",justifyContent:"center",padding:"9px",borderRadius:10,border:"none",cursor:"pointer",background:"transparent",color:C.sidebarText,fontSize:13,transition:"all 0.15s" }}
               onMouseEnter={e=>{e.currentTarget.style.background=C.sidebarActive;}}
               onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
@@ -879,24 +1003,37 @@ export default function PanelVeterinario() {
           </div>
         </aside>
 
-        {/* Contenido */}
+        {/* ── Contenido principal ─────────────────────────────── */}
         <main style={{ flex:1,minWidth:0,display:"flex",flexDirection:"column" }}>
+
           {/* Header */}
-          <header style={{ padding:"16px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",background:C.surface,borderBottom:`1px solid ${C.border}` }}>
+          <header style={{
+            padding:"0 28px",height:60,
+            display:"flex",alignItems:"center",justifyContent:"space-between",
+            background:C.surface,borderBottom:`1px solid ${C.border}`,
+            flexShrink:0,
+          }}>
             <div>
-              <h1 style={{ margin:"0 0 2px",fontSize:16,fontWeight:800,color:C.text,fontFamily:"'Playfair Display',serif",fontStyle:"italic" }}>
+              <p style={{ margin:0,fontSize:11,color:C.textMuted }}>
+                {saludoHora()}, <strong style={{ color:C.textSec }}>{usuario?.nombre}</strong>
+              </p>
+              <h1 style={{ margin:0,fontSize:15,fontWeight:800,color:C.text }}>
                 {TITULOS[seccion]}
               </h1>
-              <p style={{ margin:0,fontSize:11,color:C.textMuted }}>
-                {new Date().toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
-              </p>
             </div>
-            <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-              <div style={{ width:6,height:6,borderRadius:"50%",background:C.success }}/>
-              <span style={{ fontSize:11,color:C.textMuted }}>En línea</span>
+            <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+              <span style={{ fontSize:11,color:C.textMuted }}>
+                {new Date().toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long"})}
+              </span>
+              <div style={{ width:1,height:18,background:C.border }}/>
+              <div style={{ display:"flex",alignItems:"center",gap:5 }}>
+                <div style={{ width:6,height:6,borderRadius:"50%",background:C.success }}/>
+                <span style={{ fontSize:11,color:C.textMuted }}>En línea</span>
+              </div>
             </div>
           </header>
 
+          {/* Cuerpo de secciones */}
           <div style={{ flex:1,padding:"24px 28px",overflowY:"auto" }}>
             {seccion === "solicitudes"    && <Solicitudes onActualizar={() => {}}/>}
             {seccion === "agenda"         && <Agenda/>}

@@ -112,12 +112,17 @@ router.get("/disponibilidad", async (req, res) => {
       });
     }
 
-    // Citas ya ocupadas ese día
+    // Citas ya ocupadas ese día + slots bloqueados por reagendamientos propuestos
     const [ocupadas] = await pool.query(`
       SELECT hora FROM citas
       WHERE veterinario_id = ? AND fecha = ?
         AND estado NOT IN ('rechazada','cancelada_cliente','cancelada_vet')
-    `, [veterinario_id, fecha]);
+      UNION ALL
+      SELECT reagendamiento_nueva_hora AS hora FROM citas
+      WHERE veterinario_id = ? AND DATE(reagendamiento_nueva_fecha) = ?
+        AND reagendamiento_estado = 'propuesta'
+        AND reagendamiento_nueva_hora IS NOT NULL
+    `, [veterinario_id, fecha, veterinario_id, fecha]);
 
     const horasOcupadas = new Set(ocupadas.map(c => c.hora.slice(0, 5)));
     const duracion = bloques[0].duracion_cita;
@@ -191,6 +196,7 @@ router.get("/mis-citas", async (req, res) => {
              c.reagendamiento_motivo, c.reagendamiento_estado,
              DATE_FORMAT(c.reagendamiento_nueva_fecha,'%Y-%m-%d') AS reagendamiento_nueva_fecha,
              c.reagendamiento_nueva_hora,
+             c.reagendamiento_expira_en,
              u.nombre AS vet_nombre, u.apellido AS vet_apellido,
              v.especialidad, v.foto_url AS vet_foto
       FROM citas c
@@ -215,6 +221,7 @@ router.patch("/:id/aceptar-reagendamiento", async (req, res) => {
     const [[cita]] = await pool.query(
       `SELECT c.id, c.codigo, c.cliente_id, c.nombre_mascota,
               c.reagendamiento_estado, c.reagendamiento_nueva_fecha, c.reagendamiento_nueva_hora,
+              c.reagendamiento_expira_en,
               u.nombre AS cliente_nombre, u.apellido AS cliente_apellido,
               uv.email AS vet_email, uv.nombre AS vet_nombre
        FROM citas c
@@ -230,6 +237,8 @@ router.patch("/:id/aceptar-reagendamiento", async (req, res) => {
       return res.status(403).json({ error: "Sin acceso." });
     if (cita.reagendamiento_estado !== "propuesta")
       return res.status(400).json({ error: "No hay propuesta pendiente." });
+    if (cita.reagendamiento_expira_en && new Date() > new Date(cita.reagendamiento_expira_en))
+      return res.status(400).json({ error: "La propuesta de reagendamiento ha expirado." });
     if (!cita.reagendamiento_nueva_fecha || !cita.reagendamiento_nueva_hora)
       return res.status(400).json({ error: "La propuesta no incluye nueva fecha." });
 
@@ -266,6 +275,7 @@ router.patch("/:id/aceptar-reagendamiento", async (req, res) => {
 // Cliente rechaza la propuesta — la cita queda cancelada
 router.patch("/:id/rechazar-reagendamiento", async (req, res) => {
   const cliente_id = req.usuario.id;
+  const { motivo } = req.body;
   try {
     const [[cita]] = await pool.query(
       "SELECT id, cliente_id, reagendamiento_estado FROM citas WHERE id = ?",
@@ -278,13 +288,17 @@ router.patch("/:id/rechazar-reagendamiento", async (req, res) => {
     if (cita.reagendamiento_estado !== "propuesta")
       return res.status(400).json({ error: "No hay propuesta pendiente." });
 
+    const motivoFinal = motivo?.trim()
+      ? motivo.trim()
+      : "El cliente rechazó la propuesta de reagendamiento";
+
     await pool.query(
       `UPDATE citas SET
          reagendamiento_estado = 'rechazada',
          estado = 'cancelada_cliente',
-         motivo_cancelacion = 'El cliente rechazó la propuesta de reagendamiento'
+         motivo_cancelacion = ?
        WHERE id = ?`,
-      [req.params.id]
+      [motivoFinal, req.params.id]
     );
 
     res.json({ mensaje: "Propuesta rechazada. La cita ha sido cancelada." });

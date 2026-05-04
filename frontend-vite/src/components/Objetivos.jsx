@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer
+  Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import api from "../services/api";
+import { T, font, fmtMil } from "../styles/admin.tokens";
 
-const fmt     = (n) => `$${Number(n||0).toLocaleString("es-CO")}`;
-const pct     = (real, meta) => meta > 0 ? Math.min(Math.round((real / meta) * 100), 100) : 0;
+const fmtCOP = (n) => "$" + new Intl.NumberFormat("es-CO").format(Number(n) || 0);
+const pct    = (real, meta) => meta > 0 ? Math.min(Math.round((real / meta) * 100), 100) : 0;
 const mesHoy  = () => new Date().toISOString().slice(0, 7);
 const mesLabel = (m) => {
   const [y, mo] = m.split("-");
@@ -14,19 +15,84 @@ const mesLabel = (m) => {
   return `${meses[Number(mo)]} ${y}`;
 };
 
-function TradingTooltip({ active, payload, label }) {
+// ─── Anillo SVG de progreso ─────────────────────────────────
+function Anillo({ porcentaje, color, size = 88, grosor = 9 }) {
+  const r   = (size - grosor) / 2;
+  const circ = 2 * Math.PI * r;
+  const dash = (Math.min(porcentaje, 100) / 100) * circ;
+  return (
+    <svg width={size} height={size} style={{ transform: "rotate(-90deg)", flexShrink: 0 }}>
+      <circle cx={size / 2} cy={size / 2} r={r}
+        fill="none" stroke={`${color}22`} strokeWidth={grosor} />
+      <circle cx={size / 2} cy={size / 2} r={r}
+        fill="none" stroke={color} strokeWidth={grosor}
+        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+        style={{ transition: "stroke-dasharray 0.7s cubic-bezier(0.4,0,0.2,1)" }} />
+    </svg>
+  );
+}
+
+// ─── KPI con anillo ─────────────────────────────────────────
+function KPIRing({ label, real, meta, formato = "numero", color = T.brand }) {
+  const porcentaje = pct(real, meta);
+  const realFmt    = formato === "dinero" ? fmtCOP(real) : real.toLocaleString("es-CO");
+  const metaFmt    = formato === "dinero" ? fmtCOP(meta) : meta.toLocaleString("es-CO");
+  const estado     = porcentaje >= 100 ? "Completado" : porcentaje >= 70 ? "En progreso" : "Por mejorar";
+  const estadoColor= porcentaje >= 100 ? T.success : porcentaje >= 70 ? T.warning : T.danger;
+  const estadoBg   = porcentaje >= 100 ? T.successBg : porcentaje >= 70 ? T.warningBg : T.dangerBg;
+
+  return (
+    <div className="rounded-2xl p-4 flex flex-col gap-3"
+      style={{ background: T.surface, border: `1px solid ${T.border}` }}>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textTer }}>{label}</p>
+        <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+          style={{ background: estadoBg, color: estadoColor }}>{estado}</span>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="relative shrink-0">
+          <Anillo porcentaje={porcentaje} color={color} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-sm font-bold tabular-nums" style={{ color, fontFamily: font.mono }}>
+              {porcentaje}%
+            </span>
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-lg font-bold tabular-nums leading-tight" style={{ color: T.text, fontFamily: font.mono }}>
+            {realFmt}
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: T.textMuted }}>Meta: {metaFmt}</p>
+          {meta > 0 && real < meta && (
+            <p className="text-xs mt-1 font-medium" style={{ color: T.textTer }}>
+              Falta: {formato === "dinero" ? fmtCOP(meta - real) : (meta - real).toLocaleString("es-CO")}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tooltip de gráfica ─────────────────────────────────────
+function VPTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background:"#0a1628", border:"1px solid rgba(255,255,255,0.12)", borderRadius:10, padding:"10px 14px", fontSize:12, boxShadow:"0 8px 24px rgba(0,0,0,0.4)" }}>
-      <p style={{ color:"rgba(255,255,255,0.5)", marginBottom:6, fontSize:10, textTransform:"uppercase", letterSpacing:0.8 }}>
+    <div style={{
+      background: T.surface, border: `1px solid ${T.border}`,
+      borderRadius: 12, padding: "10px 14px", fontSize: 12,
+      boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+    }}>
+      <p style={{ color: T.textMuted, marginBottom: 6, fontSize: 10, textTransform: "uppercase", letterSpacing: 0.8 }}>
         {label}
       </p>
       {payload.map((p, i) => (
-        <div key={i} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:i < payload.length-1 ? 4 : 0 }}>
-          <span style={{ width:8, height:8, borderRadius:"50%", background:p.color, display:"block", flexShrink:0 }}/>
-          <span style={{ color:"rgba(255,255,255,0.7)", fontSize:11 }}>{p.name}:</span>
-          <span style={{ color:"#fff", fontWeight:700, fontFamily:"monospace" }}>
-            {typeof p.value === "number" && p.value > 10000 ? `$${Number(p.value).toLocaleString("es-CO")}` : p.value?.toLocaleString?.("es-CO") ?? p.value}
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: i < payload.length - 1 ? 4 : 0 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, display: "block", flexShrink: 0 }} />
+          <span style={{ color: T.textSec, fontSize: 11 }}>{p.name}:</span>
+          <span style={{ color: T.text, fontWeight: 700, fontFamily: "monospace" }}>
+            {typeof p.value === "number" ? fmtCOP(p.value) : p.value}
           </span>
         </div>
       ))}
@@ -34,34 +100,21 @@ function TradingTooltip({ active, payload, label }) {
   );
 }
 
-function BarraProgreso({ label, real, meta, formato = "numero", color = "#0A6B40" }) {
-  const porcentaje = pct(real, meta);
-  const realFmt = formato === "dinero" ? fmt(real) : real.toLocaleString("es-CO");
-  const metaFmt = formato === "dinero" ? fmt(meta) : meta.toLocaleString("es-CO");
-  const estado  = porcentaje >= 100 ? "✅" : porcentaje >= 70 ? "🔶" : "🔴";
-
+// ─── Tarjeta comparación mes ─────────────────────────────────
+function CompCard({ label, real, ant, variacion, formato = "numero" }) {
+  const realFmt = formato === "dinero" ? fmtCOP(real) : Number(real).toLocaleString("es-CO");
+  const antFmt  = formato === "dinero" ? fmtCOP(ant)  : Number(ant).toLocaleString("es-CO");
+  const up = variacion !== null && Number(variacion) >= 0;
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-gray-700">{estado} {label}</span>
-        <span className="text-xs text-gray-500">
-          <span className="font-bold text-gray-800">{realFmt}</span> / {metaFmt}
-        </span>
-      </div>
-      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{
-            width: `${porcentaje}%`,
-            backgroundColor: porcentaje >= 100 ? "#0A6B40" : porcentaje >= 70 ? "#f59e0b" : "#ef4444"
-          }}
-        />
-      </div>
-      <div className="flex justify-between">
-        <span className="text-xs text-gray-400">{porcentaje}% completado</span>
-        {meta > 0 && real < meta && (
-          <span className="text-xs text-gray-400">
-            Falta: {formato === "dinero" ? fmt(meta - real) : (meta - real).toLocaleString("es-CO")}
+    <div className="rounded-2xl p-4" style={{ background: T.surface, border: `1px solid ${T.border}` }}>
+      <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: T.textTer }}>{label}</p>
+      <p className="text-xl font-bold tabular-nums" style={{ color: T.text, fontFamily: font.mono }}>{realFmt}</p>
+      <div className="flex items-center gap-2 mt-1.5">
+        <span className="text-xs" style={{ color: T.textMuted }}>Anterior: {antFmt}</span>
+        {variacion !== null && (
+          <span className="text-xs font-bold px-1.5 py-0.5 rounded-full"
+            style={{ background: up ? T.successBg : T.dangerBg, color: up ? T.success : T.danger }}>
+            {up ? "▲" : "▼"} {Math.abs(Number(variacion))}%
           </span>
         )}
       </div>
@@ -69,15 +122,16 @@ function BarraProgreso({ label, real, meta, formato = "numero", color = "#0A6B40
   );
 }
 
+// ─── Componente principal ────────────────────────────────────
 export default function Objetivos() {
-  const [mes, setMes]           = useState(mesHoy());
-  const [datos, setDatos]       = useState(null);
-  const [historial, setHistorial] = useState([]);
-  const [modalAbierto, setModal] = useState(false);
-  const [form, setForm]         = useState({ meta_ventas:"", meta_ordenes:"", meta_clientes:"", meta_productos:"" });
-  const [guardando, setGuardando] = useState(false);
-  const [msg, setMsg]           = useState("");
-  const [cargando, setCargando] = useState(true);
+  const [mes, setMes]               = useState(mesHoy());
+  const [datos, setDatos]           = useState(null);
+  const [historial, setHistorial]   = useState([]);
+  const [modalAbierto, setModal]    = useState(false);
+  const [form, setForm]             = useState({ meta_ventas: "", meta_ordenes: "", meta_clientes: "", meta_productos: "" });
+  const [guardando, setGuardando]   = useState(false);
+  const [msg, setMsg]               = useState("");
+  const [cargando, setCargando]     = useState(true);
 
   const cargar = async () => {
     setCargando(true);
@@ -89,10 +143,10 @@ export default function Objetivos() {
       setDatos(d);
       setHistorial(h);
       setForm({
-        meta_ventas:    d.meta.meta_ventas   || "",
-        meta_ordenes:   d.meta.meta_ordenes  || "",
-        meta_clientes:  d.meta.meta_clientes || "",
-        meta_productos: d.meta.meta_productos|| "",
+        meta_ventas:    d.meta.meta_ventas    || "",
+        meta_ordenes:   d.meta.meta_ordenes   || "",
+        meta_clientes:  d.meta.meta_clientes  || "",
+        meta_productos: d.meta.meta_productos || "",
       });
     } catch (err) {
       console.error(err);
@@ -117,7 +171,7 @@ export default function Objetivos() {
       setModal(false);
       cargar();
       setTimeout(() => setMsg(""), 3000);
-    } catch (err) {
+    } catch {
       setMsg("Error al guardar.");
     } finally {
       setGuardando(false);
@@ -127,69 +181,59 @@ export default function Objetivos() {
   const descargarPDF = () => {
     if (!datos) return;
     const { meta, real, anterior } = datos;
-
     const varVentas  = anterior.ventas  > 0 ? (((real.ventas  - anterior.ventas)  / anterior.ventas)  * 100).toFixed(1) : "N/A";
     const varOrdenes = anterior.ordenes > 0 ? (((real.ordenes - anterior.ordenes) / anterior.ordenes) * 100).toFixed(1) : "N/A";
 
-    const html = `
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
 <title>Reporte ${mesLabel(mes)}</title>
 <style>
-  body { font-family: Arial, sans-serif; margin: 40px; color: #1f2937; }
-  h1 { color: #0A6B40; font-size: 22px; margin-bottom: 4px; }
-  .sub { color: #6b7280; font-size: 13px; margin-bottom: 32px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
-  .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
-  .card-title { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-  .card-val { font-size: 22px; font-weight: bold; color: #0A6B40; }
-  .card-meta { font-size: 12px; color: #6b7280; margin-top: 4px; }
-  .card-pct { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: bold; }
-  .ok { background: #dcfce7; color: #0A6B40; }
-  .warn { background: #fef9c3; color: #854d0e; }
-  .bad { background: #fee2e2; color: #991b1b; }
-  .barra-wrap { height: 8px; background: #f3f4f6; border-radius: 999px; overflow: hidden; margin: 8px 0; }
-  .barra { height: 100%; border-radius: 999px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 8px 12px; background: #f9fafb; font-size: 11px; color: #6b7280; text-transform: uppercase; }
-  td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; }
-  .footer { margin-top: 40px; font-size: 11px; color: #9ca3af; text-align: center; }
+  body{font-family:Arial,sans-serif;margin:40px;color:#1f2937}
+  h1{color:#0A6B40;font-size:22px;margin-bottom:4px}
+  .sub{color:#6b7280;font-size:13px;margin-bottom:32px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px}
+  .card{border:1px solid #e5e7eb;border-radius:12px;padding:16px}
+  .card-title{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+  .card-val{font-size:22px;font-weight:bold;color:#0A6B40}
+  .card-meta{font-size:12px;color:#6b7280;margin-top:4px}
+  .barra-wrap{height:8px;background:#f3f4f6;border-radius:999px;overflow:hidden;margin:8px 0}
+  .barra{height:100%;border-radius:999px}
+  .pct{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:bold}
+  .ok{background:#dcfce7;color:#0A6B40}.warn{background:#fef9c3;color:#854d0e}.bad{background:#fee2e2;color:#991b1b}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:8px 12px;background:#f9fafb;font-size:11px;color:#6b7280;text-transform:uppercase}
+  td{padding:10px 12px;border-bottom:1px solid #f3f4f6}
+  .footer{margin-top:40px;font-size:11px;color:#9ca3af;text-align:center}
 </style></head><body>
-  <h1>📊 Reporte de objetivos — ${mesLabel(mes)}</h1>
-  <div class="sub">Generado el ${new Date().toLocaleDateString("es-CO", { day:"2-digit", month:"long", year:"numeric", hour:"2-digit", minute:"2-digit" })} · Victoria Pets</div>
-
+  <h1>Reporte de objetivos — ${mesLabel(mes)}</h1>
+  <div class="sub">Generado el ${new Date().toLocaleDateString("es-CO",{day:"2-digit",month:"long",year:"numeric"})} · Victoria Pets</div>
   <div class="grid">
     ${[
-      { titulo:"Ventas del mes", real: fmt(real.ventas), meta: fmt(meta.meta_ventas), p: pct(real.ventas, meta.meta_ventas) },
-      { titulo:"Órdenes",        real: real.ordenes,      meta: meta.meta_ordenes,   p: pct(real.ordenes, meta.meta_ordenes) },
-      { titulo:"Nuevos clientes",real: real.clientes,     meta: meta.meta_clientes,  p: pct(real.clientes, meta.meta_clientes) },
-      { titulo:"Productos vendidos", real: real.productos, meta: meta.meta_productos, p: pct(real.productos, meta.meta_productos) },
-    ].map(({ titulo, real, meta, p }) => `
+      {titulo:"Ventas del mes",real:fmtCOP(real.ventas),meta:fmtCOP(meta.meta_ventas),p:pct(real.ventas,meta.meta_ventas)},
+      {titulo:"Órdenes",real:real.ordenes,meta:meta.meta_ordenes,p:pct(real.ordenes,meta.meta_ordenes)},
+      {titulo:"Nuevos clientes",real:real.clientes,meta:meta.meta_clientes,p:pct(real.clientes,meta.meta_clientes)},
+      {titulo:"Productos vendidos",real:real.productos,meta:meta.meta_productos,p:pct(real.productos,meta.meta_productos)},
+    ].map(({titulo,real,meta,p})=>`
       <div class="card">
         <div class="card-title">${titulo}</div>
         <div class="card-val">${real}</div>
         <div class="card-meta">Meta: ${meta}</div>
-        <div class="barra-wrap">
-          <div class="barra" style="width:${p}%;background:${p>=100?"#0A6B40":p>=70?"#f59e0b":"#ef4444"}"></div>
-        </div>
-        <span class="card-pct ${p>=100?"ok":p>=70?"warn":"bad"}">${p}%</span>
+        <div class="barra-wrap"><div class="barra" style="width:${p}%;background:${p>=100?"#0A6B40":p>=70?"#f59e0b":"#ef4444"}"></div></div>
+        <span class="pct ${p>=100?"ok":p>=70?"warn":"bad"}">${p}%</span>
       </div>`).join("")}
   </div>
-
-  <h2 style="font-size:15px;margin-bottom:12px;">Comparación con mes anterior</h2>
+  <h2 style="font-size:15px;margin-bottom:12px">Comparación con mes anterior</h2>
   <table>
     <thead><tr><th>Métrica</th><th>Mes anterior</th><th>Este mes</th><th>Variación</th></tr></thead>
     <tbody>
-      <tr><td>Ventas</td><td>${fmt(anterior.ventas)}</td><td>${fmt(real.ventas)}</td>
-        <td style="color:${varVentas!=="N/A"&&Number(varVentas)>=0?"#0A6B40":"#dc2626"}">${varVentas !== "N/A" ? `${varVentas}%` : "Sin datos"}</td></tr>
+      <tr><td>Ventas</td><td>${fmtCOP(anterior.ventas)}</td><td>${fmtCOP(real.ventas)}</td>
+        <td style="color:${varVentas!=="N/A"&&Number(varVentas)>=0?"#0A6B40":"#dc2626"}">${varVentas!=="N/A"?`${varVentas}%`:"Sin datos"}</td></tr>
       <tr><td>Órdenes</td><td>${anterior.ordenes}</td><td>${real.ordenes}</td>
-        <td style="color:${varOrdenes!=="N/A"&&Number(varOrdenes)>=0?"#0A6B40":"#dc2626"}">${varOrdenes !== "N/A" ? `${varOrdenes}%` : "Sin datos"}</td></tr>
+        <td style="color:${varOrdenes!=="N/A"&&Number(varOrdenes)>=0?"#0A6B40":"#dc2626"}">${varOrdenes!=="N/A"?`${varOrdenes}%`:"Sin datos"}</td></tr>
       <tr><td>Nuevos clientes</td><td>${anterior.clientes}</td><td>${real.clientes}</td><td>—</td></tr>
     </tbody>
   </table>
-
   <div class="footer">Victoria Pets · Panel Administrativo · ${new Date().getFullYear()}</div>
 </body></html>`;
-
     const ventana = window.open("", "_blank");
     ventana.document.write(html);
     ventana.document.close();
@@ -198,38 +242,62 @@ export default function Objetivos() {
 
   if (cargando) return (
     <div className="flex items-center justify-center py-16">
-      <div className="w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 rounded-full animate-spin"
+        style={{ border: `2px solid ${T.brandLight}`, borderTopColor: T.brand }} />
     </div>
   );
 
-  const { meta, real, anterior } = datos || { meta:{}, real:{}, anterior:{} };
+  const { meta, real, anterior } = datos || { meta: {}, real: {}, anterior: {} };
 
   const varVentas  = anterior.ventas  > 0 ? (((real.ventas  - anterior.ventas)  / anterior.ventas)  * 100).toFixed(1) : null;
   const varOrdenes = anterior.ordenes > 0 ? (((real.ordenes - anterior.ordenes) / anterior.ordenes) * 100).toFixed(1) : null;
 
+  const totalHistReal = historial.reduce((a, h) => a + (h.ventas_real || 0), 0);
+  const totalHistMeta = historial.reduce((a, h) => a + (h.meta_ventas || 0), 0);
+  const cumplimiento  = totalHistMeta > 0 ? Math.round((totalHistReal / totalHistMeta) * 100) : 0;
+  const mejorMes      = historial.length ? [...historial].sort((a, b) => (b.ventas_real || 0) - (a.ventas_real || 0))[0] : null;
+  const avgReal       = historial.length ? Math.round(totalHistReal / historial.length) : 0;
+
+  const chartData = historial.map(h => ({
+    mes:      mesLabel(h.mes),
+    real:     h.ventas_real  || 0,
+    meta:     h.meta_ventas  || 0,
+    ordenes:  h.ordenes_real || 0,
+  }));
+
   return (
     <div className="space-y-5">
       {msg && (
-        <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">{msg}</div>
+        <div className="px-4 py-3 rounded-xl text-sm font-medium"
+          style={{ background: T.successBg, color: T.success, border: `1px solid ${T.successBorder}` }}>
+          {msg}
+        </div>
       )}
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <input type="month" value={mes} onChange={e => setMes(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white" />
-          <span className="text-sm font-semibold text-gray-700">{mesLabel(mes)}</span>
+            className="px-3 py-2 text-sm rounded-xl outline-none"
+            style={{ border: `1.5px solid ${T.border}`, background: T.surfaceAlt, color: T.text }} />
+          <span className="text-sm font-semibold" style={{ color: T.textSec }}>{mesLabel(mes)}</span>
         </div>
         <div className="flex gap-2">
           <button onClick={descargarPDF}
-            className="flex items-center gap-1.5 px-3.5 py-2 border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 hover:border-green-400 hover:text-green-700 transition-colors">
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl transition-colors"
+            style={{ background: T.surfaceAlt, color: T.textSec, border: `1px solid ${T.border}` }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = T.brandBorder; e.currentTarget.style.color = T.brand; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; }}>
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             Descargar PDF
           </button>
           <button onClick={() => setModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-green-600 hover:bg-green-700 rounded-xl text-xs font-semibold text-white transition-colors">
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl transition-colors"
+            style={{ background: T.brand, color: "#fff" }}
+            onMouseEnter={e => e.currentTarget.style.background = T.brandMid}
+            onMouseLeave={e => e.currentTarget.style.background = T.brand}>
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
@@ -238,162 +306,154 @@ export default function Objetivos() {
         </div>
       </div>
 
-      {/* Barras de progreso */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5">
-        <h3 className="text-sm font-bold text-gray-800 mb-5">Progreso del mes</h3>
-        <div className="space-y-5">
-          <BarraProgreso label="Ventas"             real={real.ventas}    meta={Number(meta.meta_ventas||0)}    formato="dinero" />
-          <BarraProgreso label="Órdenes"            real={real.ordenes}   meta={Number(meta.meta_ordenes||0)} />
-          <BarraProgreso label="Nuevos clientes"    real={real.clientes}  meta={Number(meta.meta_clientes||0)} />
-          <BarraProgreso label="Productos vendidos" real={real.productos} meta={Number(meta.meta_productos||0)} />
-        </div>
+      {/* KPI con anillos — 2×2 grid */}
+      <div className="grid grid-cols-2 gap-3">
+        <KPIRing label="Ventas del mes"      real={real.ventas    || 0} meta={Number(meta.meta_ventas    || 0)} formato="dinero"  color={T.brand}    />
+        <KPIRing label="Órdenes"             real={real.ordenes   || 0} meta={Number(meta.meta_ordenes   || 0)} formato="numero"  color={T.gold}     />
+        <KPIRing label="Nuevos clientes"     real={real.clientes  || 0} meta={Number(meta.meta_clientes  || 0)} formato="numero"  color="#7c3aed"    />
+        <KPIRing label="Productos vendidos"  real={real.productos || 0} meta={Number(meta.meta_productos || 0)} formato="numero"  color="#0891b2"    />
       </div>
 
       {/* Comparación mes anterior */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {[
-          { label:"Ventas", real: fmt(real.ventas), ant: fmt(anterior.ventas), var: varVentas },
-          { label:"Órdenes", real: real.ordenes, ant: anterior.ordenes, var: varOrdenes },
-          { label:"Clientes nuevos", real: real.clientes, ant: anterior.clientes, var: null },
-        ].map(({ label, real, ant, var: v }) => (
-          <div key={label} className="bg-white rounded-2xl border border-gray-100 p-4">
-            <p className="text-xs text-gray-400 mb-1">{label}</p>
-            <p className="text-xl font-bold text-gray-800">{real}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-gray-400">Anterior: {ant}</span>
-              {v !== null && (
-                <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${Number(v) >= 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                  {Number(v) >= 0 ? "▲" : "▼"} {Math.abs(v)}%
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
+        <CompCard label="Ventas"          real={real.ventas   || 0} ant={anterior.ventas   || 0} variacion={varVentas}  formato="dinero" />
+        <CompCard label="Órdenes"         real={real.ordenes  || 0} ant={anterior.ordenes  || 0} variacion={varOrdenes} />
+        <CompCard label="Clientes nuevos" real={real.clientes || 0} ant={anterior.clientes || 0} variacion={null} />
       </div>
 
-      {/* Gráfica histórica — estilo trading */}
-      <div style={{
-        background:"#0a1628",
-        border:"1px solid rgba(255,255,255,0.07)",
-        borderRadius:16,
-        overflow:"hidden",
-      }}>
-        {/* Header */}
-        <div style={{padding:"16px 20px", borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-          <div style={{display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:16, flexWrap:"wrap"}}>
+      {/* Gráfica histórica — VP brand, fondo claro */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: T.surface, border: `1px solid ${T.border}` }}>
+
+        {/* Header gráfica */}
+        <div className="px-5 py-4" style={{ borderBottom: `1px solid ${T.border}` }}>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <div style={{display:"flex", alignItems:"center", gap:8, marginBottom:4}}>
-                <div style={{width:8, height:8, borderRadius:"50%", background:"#10b981"}}/>
-                <span style={{fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:1, color:"rgba(255,255,255,0.4)"}}>
-                  Análisis histórico · Ventas vs Meta
-                </span>
-              </div>
-              <p style={{fontSize:20, fontWeight:700, color:"#fff", fontFamily:"monospace", margin:0}}>
-                {fmt(historial.reduce((a,h)=>a+(h.ventas_real||0),0))}
+              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: T.textMuted }}>
+                Análisis histórico · Ventas reales vs Meta
               </p>
-              <p style={{fontSize:11, color:"rgba(255,255,255,0.3)", marginTop:2}}>Total acumulado en historial</p>
+              <p className="text-2xl font-bold tabular-nums" style={{ color: T.text, fontFamily: font.mono }}>
+                {fmtCOP(totalHistReal)}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: T.textMuted }}>
+                Total acumulado en historial ({historial.length} meses)
+              </p>
             </div>
-            <div style={{display:"flex", alignItems:"center", gap:16}}>
-              <div style={{display:"flex", alignItems:"center", gap:6}}>
-                <span style={{width:12, height:3, borderRadius:2, display:"block", background:"#10b981"}}/>
-                <span style={{fontSize:10, color:"rgba(255,255,255,0.45)", fontWeight:600}}>Real</span>
-              </div>
-              <div style={{display:"flex", alignItems:"center", gap:6}}>
-                <span style={{width:14, display:"block", borderTop:"2px dashed rgba(255,255,255,0.35)"}}/>
-                <span style={{fontSize:10, color:"rgba(255,255,255,0.45)", fontWeight:600}}>Meta</span>
-              </div>
+            <div className="flex items-center gap-4">
+              {[
+                { color: T.brand, label: "Ventas reales", dash: false },
+                { color: T.gold,  label: "Meta",          dash: true  },
+              ].map(l => (
+                <div key={l.label} className="flex items-center gap-1.5">
+                  {l.dash
+                    ? <span style={{ width: 16, display: "block", borderTop: `2px dashed ${l.color}` }} />
+                    : <span style={{ width: 12, height: 3, borderRadius: 2, background: l.color, display: "block" }} />}
+                  <span style={{ fontSize: 10, color: T.textTer, fontWeight: 600 }}>{l.label}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
         {/* Chart */}
-        <div style={{padding:"24px 16px 16px"}}>
-          {historial.length === 0 ? (
-            <p style={{color:"rgba(255,255,255,0.3)", textAlign:"center", padding:"48px 0", fontSize:13, margin:0}}>
-              Sin datos históricos aún
-            </p>
+        <div style={{ padding: "20px 16px 8px" }}>
+          {chartData.length === 0 ? (
+            <div className="flex flex-col items-center py-12 gap-2">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: T.surfaceAlt, fontSize: 20 }}>📊</div>
+              <p className="text-sm" style={{ color: T.textMuted }}>Sin datos históricos aún</p>
+            </div>
           ) : (
-            <ResponsiveContainer width="100%" height={240}>
-              <ComposedChart data={historial.map(h => ({ ...h, mes: mesLabel(h.mes) }))} margin={{top:10,right:10,bottom:0,left:0}}>
+            <ResponsiveContainer width="100%" height={220}>
+              <ComposedChart data={chartData} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
                 <defs>
-                  <linearGradient id="gVentasObj" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.35}/>
-                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.02}/>
+                  <linearGradient id="gVentasReal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"   stopColor={T.brand} stopOpacity={0.18} />
+                    <stop offset="100%" stopColor={T.brand} stopOpacity={0.01} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="1 4" stroke="rgba(255,255,255,0.05)" vertical={false}/>
-                <XAxis dataKey="mes" tick={{fontSize:11,fill:"rgba(255,255,255,0.35)",fontWeight:600}} axisLine={false} tickLine={false}/>
-                <YAxis tick={{fontSize:10,fill:"rgba(255,255,255,0.25)"}} axisLine={false} tickLine={false}
-                  tickFormatter={v => `$${(v/1000).toFixed(0)}k`} width={52}/>
-                <Tooltip content={<TradingTooltip/>}/>
-                <Line type="monotone" dataKey="meta_ventas" stroke="rgba(255,255,255,0.35)" strokeWidth={1.5}
-                  strokeDasharray="6 4" dot={false} name="Meta"/>
-                <Area type="monotone" dataKey="ventas_real" stroke="#10b981" strokeWidth={2.5}
-                  fill="url(#gVentasObj)" dot={false}
-                  activeDot={{r:4,fill:"#10b981",stroke:"#fff",strokeWidth:2}} name="Real"/>
+                <CartesianGrid strokeDasharray="3 3" stroke={`${T.border}`} vertical={false} />
+                <XAxis dataKey="mes" tick={{ fontSize: 11, fill: T.textMuted }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: T.textMuted }} axisLine={false} tickLine={false}
+                  tickFormatter={v => fmtMil(v)} width={62} />
+                <Tooltip content={<VPTooltip />} />
+                {totalHistMeta > 0 && (
+                  <ReferenceLine y={avgReal} stroke={T.border} strokeDasharray="4 4"
+                    label={{ value: "Prom.", fill: T.textMuted, fontSize: 9, position: "insideTopLeft" }} />
+                )}
+                <Line type="monotone" dataKey="meta" stroke={T.gold} strokeWidth={1.5}
+                  strokeDasharray="6 4" dot={false} name="Meta" />
+                <Area type="monotone" dataKey="real" stroke={T.brand} strokeWidth={2.5}
+                  fill="url(#gVentasReal)" dot={false}
+                  activeDot={{ r: 4, fill: T.brand, stroke: "#fff", strokeWidth: 2 }} name="Ventas reales" />
               </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
 
-        {/* Footer métricas */}
-        {historial.length > 0 && (() => {
-          const totalReal = historial.reduce((a,h)=>a+(h.ventas_real||0),0);
-          const totalMeta = historial.reduce((a,h)=>a+(h.meta_ventas||0),0);
-          const cumpl = totalMeta > 0 ? Math.round((totalReal/totalMeta)*100) : 0;
-          const mejor = [...historial].sort((a,b)=>(b.ventas_real||0)-(a.ventas_real||0))[0];
-          const stats = [
-            { label:"Total real",   value:fmt(totalReal),               color:"#10b981" },
-            { label:"Total meta",   value:fmt(totalMeta),               color:"rgba(255,255,255,0.4)" },
-            { label:"Cumplimiento", value:`${cumpl}%`,                  color: cumpl>=100?"#10b981":cumpl>=70?"#f59e0b":"#ef4444" },
-            { label:"Mejor mes",    value:mejor?mesLabel(mejor.mes):"—", color:"#6366f1" },
-          ];
-          return (
-            <div style={{display:"flex", borderTop:"1px solid rgba(255,255,255,0.05)"}}>
-              {stats.map((s,i) => (
-                <div key={s.label} style={{flex:1, textAlign:"center", borderRight: i<3?"1px solid rgba(255,255,255,0.05)":"none", padding:"10px 8px"}}>
-                  <p style={{fontSize:12, fontWeight:700, fontFamily:"monospace", color:s.color, margin:0}}>{s.value}</p>
-                  <p style={{fontSize:9, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:0.5, marginTop:3, marginBottom:0}}>{s.label}</p>
-                </div>
-              ))}
-            </div>
-          );
-        })()}
+        {/* Métricas resumen bajo la gráfica */}
+        {historial.length > 0 && (
+          <div className="grid grid-cols-4 divide-x" style={{ borderTop: `1px solid ${T.border}`, '--tw-divide-opacity': 1 }}>
+            {[
+              { label: "Total real",   value: fmtCOP(totalHistReal),                             color: T.brand   },
+              { label: "Prom./mes",    value: fmtCOP(avgReal),                                    color: T.brandMid},
+              { label: "Cumplimiento", value: `${cumplimiento}%`,                                 color: cumplimiento>=100?T.success:cumplimiento>=70?T.warning:T.danger },
+              { label: "Mejor mes",    value: mejorMes ? mesLabel(mejorMes.mes) : "—",            color: T.gold    },
+            ].map((s, i) => (
+              <div key={s.label} className="text-center py-3 px-2"
+                style={{ borderRight: i < 3 ? `1px solid ${T.border}` : "none" }}>
+                <p className="text-xs font-bold tabular-nums" style={{ color: s.color, fontFamily: font.mono }}>{s.value}</p>
+                <p style={{ fontSize: 9, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 3 }}>{s.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Modal configurar metas */}
       {modalAbierto && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
           onClick={() => setModal(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl"
+          <div className="w-full max-w-md rounded-2xl overflow-hidden"
+            style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: "0 24px 64px rgba(0,0,0,0.15)" }}
             onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h3 className="font-bold text-gray-800">Configurar metas — {mesLabel(mes)}</h3>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${T.border}` }}>
+              <div>
+                <p className="text-sm font-bold" style={{ color: T.text }}>Configurar metas</p>
+                <p className="text-xs mt-0.5" style={{ color: T.textMuted }}>{mesLabel(mes)}</p>
+              </div>
               <button onClick={() => setModal(false)}
-                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 text-lg">×</button>
+                className="w-7 h-7 flex items-center justify-center rounded-full text-lg transition-colors"
+                style={{ color: T.textTer }}
+                onMouseEnter={e => e.currentTarget.style.background = T.surfaceAlt}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}>×</button>
             </div>
             <div className="p-5 space-y-4">
               {[
-                { key:"meta_ventas",    label:"Meta de ventas ($)",          placeholder:"ej: 5000000" },
-                { key:"meta_ordenes",   label:"Meta de órdenes",             placeholder:"ej: 50" },
-                { key:"meta_clientes",  label:"Meta de nuevos clientes",     placeholder:"ej: 20" },
-                { key:"meta_productos", label:"Meta de productos vendidos",  placeholder:"ej: 100" },
+                { key: "meta_ventas",    label: "Meta de ventas ($)",         placeholder: "ej: 5000000" },
+                { key: "meta_ordenes",   label: "Meta de órdenes",            placeholder: "ej: 50" },
+                { key: "meta_clientes",  label: "Meta de nuevos clientes",    placeholder: "ej: 20" },
+                { key: "meta_productos", label: "Meta de productos vendidos", placeholder: "ej: 100" },
               ].map(({ key, label, placeholder }) => (
                 <div key={key}>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{label}</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: T.textTer }}>{label}</label>
                   <input type="number" min={0} value={form[key]}
                     onChange={e => setForm({ ...form, [key]: e.target.value })}
                     placeholder={placeholder}
-                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-gray-50 focus:bg-white" />
+                    className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none transition-all"
+                    style={{ border: `1.5px solid ${T.border}`, background: T.surfaceAlt, color: T.text }}
+                    onFocus={e => { e.target.style.borderColor = T.brand; e.target.style.background = T.surface; }}
+                    onBlur={e  => { e.target.style.borderColor = T.border; e.target.style.background = T.surfaceAlt; }} />
                 </div>
               ))}
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={() => setModal(false)}
-                  className="px-4 py-2 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors">
+                  className="px-4 py-2 text-xs font-semibold rounded-xl transition-colors"
+                  style={{ background: T.surfaceAlt, color: T.textSec }}>
                   Cancelar
                 </button>
                 <button onClick={guardar} disabled={guardando}
-                  className="px-4 py-2 text-xs font-semibold bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white rounded-xl transition-colors active:scale-95">
+                  className="px-4 py-2 text-xs font-semibold rounded-xl transition-colors disabled:opacity-40"
+                  style={{ background: T.brand, color: "#fff" }}>
                   {guardando ? "Guardando..." : "Guardar metas"}
                 </button>
               </div>

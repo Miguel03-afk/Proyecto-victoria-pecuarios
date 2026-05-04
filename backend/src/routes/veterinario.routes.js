@@ -2,7 +2,35 @@
 // Rutas para el ROL VETERINARIO — agenda, gestión de citas, anomalías
 import { Router } from "express";
 import pool from "../db.js";
+import path from "path";
+import fs from "fs";
+import multer from "multer";
+import { fileURLToPath } from "url";
 import { verificarToken, soloRol } from "../middlewares/auth.middleware.js";
+import { enviarConfirmacionCita } from "../services/email.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+const UPLOADS_DIR = path.join(__dirname, "../../uploads/vets");
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    cb(null, UPLOADS_DIR);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    cb(null, `vet_${req.usuario.id}_${Date.now()}${ext}`);
+  },
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 3 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (/^image\/(jpeg|jpg|png|webp)$/.test(file.mimetype)) cb(null, true);
+    else cb(new Error("Solo se permiten imágenes (jpg, png, webp)."));
+  },
+});
 
 const router = Router();
 
@@ -42,6 +70,7 @@ router.get("/agenda", async (req, res) => {
       SELECT c.id, c.codigo, DATE_FORMAT(c.fecha,'%Y-%m-%d') AS fecha, c.hora, c.motivo,
              c.nombre_mascota, c.especie_mascota, c.estado,
              c.motivo_cancelacion, c.notas_vet, c.created_at,
+             c.reagendamiento_estado, c.reagendamiento_motivo,
              u.nombre AS cliente_nombre, u.apellido AS cliente_apellido,
              u.email AS cliente_email, u.telefono AS cliente_tel,
              (SELECT COUNT(*) FROM citas_anomalias a WHERE a.cita_id = c.id) AS anomalias
@@ -89,10 +118,19 @@ router.patch("/citas/:id/confirmar", async (req, res) => {
   if (!vetId) return res.status(404).json({ error: "Perfil no encontrado." });
 
   try {
-    const [[cita]] = await pool.query(
-      "SELECT id, estado, veterinario_id FROM citas WHERE id = ?",
-      [req.params.id]
-    );
+    const [[cita]] = await pool.query(`
+      SELECT c.id, c.codigo, c.estado, c.veterinario_id,
+             DATE_FORMAT(c.fecha,'%Y-%m-%d') AS fecha, c.hora,
+             c.motivo, c.nombre_mascota, c.especie_mascota,
+             uc.email AS cliente_email, uc.nombre AS cliente_nombre, uc.apellido AS cliente_apellido,
+             uv.nombre AS vet_nombre, uv.apellido AS vet_apellido
+      FROM citas c
+      JOIN usuarios uc ON uc.id = c.cliente_id
+      JOIN veterinarios v ON v.id = c.veterinario_id
+      JOIN usuarios uv ON uv.id = v.usuario_id
+      WHERE c.id = ?
+    `, [req.params.id]);
+
     if (!cita) return res.status(404).json({ error: "Cita no encontrada." });
     if (cita.veterinario_id !== vetId)
       return res.status(403).json({ error: "No tienes permiso." });
@@ -102,6 +140,22 @@ router.patch("/citas/:id/confirmar", async (req, res) => {
     await pool.query(
       "UPDATE citas SET estado='confirmada' WHERE id=?", [req.params.id]
     );
+
+    try {
+      await enviarConfirmacionCita(cita.cliente_email, cita.cliente_nombre, {
+        codigo:         cita.codigo,
+        vet_nombre:     cita.vet_nombre,
+        vet_apellido:   cita.vet_apellido,
+        fecha:          cita.fecha,
+        hora:           cita.hora,
+        motivo:         cita.motivo,
+        nombre_mascota: cita.nombre_mascota,
+        especie_mascota: cita.especie_mascota,
+      });
+    } catch (emailErr) {
+      console.error("[email] Confirmación cita:", emailErr.message);
+    }
+
     res.json({ mensaje: "Cita confirmada." });
   } catch (err) {
     console.error(err);
@@ -253,6 +307,40 @@ router.get("/disponibilidad", async (req, res) => {
     res.json(disp);
   } catch (err) {
     res.status(500).json({ error: "Error." });
+  }
+});
+
+/* ─── GET /api/veterinario/perfil ────────────────────────── */
+router.get("/perfil", async (req, res) => {
+  const vetId = await getVetId(req.usuario.id);
+  if (!vetId) return res.status(404).json({ error: "Perfil no encontrado." });
+
+  try {
+    const [[perfil]] = await pool.query(`
+      SELECT v.id, v.especialidad, v.descripcion, v.foto_url, v.duracion_cita,
+             u.nombre, u.apellido, u.email
+      FROM veterinarios v
+      JOIN usuarios u ON u.id = v.usuario_id
+      WHERE v.id = ?
+    `, [vetId]);
+    res.json(perfil);
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener perfil." });
+  }
+});
+
+/* ─── PATCH /api/veterinario/foto-perfil ─────────────────── */
+router.patch("/foto-perfil", upload.single("foto"), async (req, res) => {
+  const vetId = await getVetId(req.usuario.id);
+  if (!vetId) return res.status(404).json({ error: "Perfil no encontrado." });
+  if (!req.file) return res.status(400).json({ error: "No se recibió ninguna imagen." });
+
+  const foto_url = `/uploads/vets/${req.file.filename}`;
+  try {
+    await pool.query("UPDATE veterinarios SET foto_url = ? WHERE id = ?", [foto_url, vetId]);
+    res.json({ foto_url });
+  } catch (err) {
+    res.status(500).json({ error: "Error al actualizar la foto." });
   }
 });
 

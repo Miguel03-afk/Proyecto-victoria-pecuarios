@@ -74,7 +74,7 @@ export default function App() {
               element={<LayoutConNav><Carrito /></LayoutConNav>} />
 
             <Route path="/perfil"
-              element={<RutaProtegida><LayoutConNav><Perfil /></LayoutConNav></RutaProtegida>} />
+              element={<RutaProtegida><Perfil /></RutaProtegida>} />
 
             <Route path="/mis-ordenes"
               element={<RutaProtegida><LayoutConNav><MisOrdenes /></LayoutConNav></RutaProtegida>} />

@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import authRoutes       from "./routes/auth.routes.js";
 import productosRoutes  from "./routes/productos.routes.js";
 import categoriasRoutes from "./routes/categorias.routes.js";
@@ -13,6 +15,8 @@ import adminVetsRouter      from "./routes/admin.veterinarios.routes.js";
 import cajeroRouter         from "./routes/cajero.routes.js";
 import pagosRoutes          from "./routes/pagos.routes.js";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
 
 dotenv.config();
 
@@ -22,6 +26,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({ origin: ["http://localhost:5173","http://localhost:5174","http://localhost:5175"], credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.use("/api/citas",                  citasRouter);
 app.use("/api/veterinario",            veterinarioRouter);

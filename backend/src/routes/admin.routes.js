@@ -7,6 +7,35 @@ import { enviarPropuestaReagendamiento } from "../services/email.js";
 const router = Router();
 router.use(verificarToken, soloAdmin);
 
+// ── NOTIFICACIONES ───────────────────────────────────────────
+router.get("/notificaciones", async (req, res) => {
+  try {
+    const [[{ citas_pend }]]  = await db.query("SELECT COUNT(*) AS citas_pend  FROM citas WHERE estado = 'pendiente'");
+    const [[{ reagenda }]]    = await db.query("SELECT COUNT(*) AS reagenda    FROM citas WHERE reagendamiento_estado = 'propuesta'");
+    const [[{ ordenes_new }]] = await db.query("SELECT COUNT(*) AS ordenes_new FROM ordenes WHERE estado IN ('pendiente','pendiente_pago')");
+    const [[{ stock_bajo }]]  = await db.query("SELECT COUNT(*) AS stock_bajo  FROM productos WHERE stock <= stock_minimo AND activo = 1");
+
+    const items = [];
+    if (citas_pend  > 0) items.push({ tipo:"cita",          texto:`${citas_pend}  cita${citas_pend  > 1 ? "s" : ""} esperando confirmación`, nivel:"warning" });
+    if (reagenda    > 0) items.push({ tipo:"reagendamiento", texto:`${reagenda}    propuesta${reagenda > 1 ? "s" : ""} de reagendamiento pendiente${reagenda > 1 ? "s" : ""}`, nivel:"info" });
+    if (ordenes_new > 0) items.push({ tipo:"orden",          texto:`${ordenes_new} orden${ordenes_new > 1 ? "es" : ""} nueva${ordenes_new > 1 ? "s" : ""} sin procesar`, nivel:"warning" });
+    if (stock_bajo  > 0) items.push({ tipo:"stock",          texto:`${stock_bajo}  producto${stock_bajo > 1 ? "s" : ""} con stock bajo`, nivel:"danger" });
+
+    res.json({
+      total: Number(citas_pend) + Number(reagenda) + Number(ordenes_new) + Number(stock_bajo),
+      items,
+      conteos: {
+        citas:          Number(citas_pend),
+        reagendamiento: Number(reagenda),
+        ordenes:        Number(ordenes_new),
+        stock:          Number(stock_bajo),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── STATS DASHBOARD ──────────────────────────────────────────
 router.get("/stats", async (req, res) => {
   try {
@@ -298,6 +327,31 @@ router.patch("/ordenes/:id/envio", async (req, res) => {
   }
 });
 
+// ── ESTADÍSTICAS GLOBALES DE CITAS (dashboard) ───────────────
+router.get("/citas/stats", async (req, res) => {
+  try {
+    const hoy = new Date().toISOString().split("T")[0];
+    const [[s]] = await db.query(`
+      SELECT
+        COUNT(*)                              AS total,
+        SUM(estado = 'pendiente')             AS pendientes,
+        SUM(estado = 'confirmada')            AS confirmadas,
+        SUM(estado = 'completada')            AS completadas,
+        SUM(DATE_FORMAT(fecha,'%Y-%m-%d') = ?) AS hoy
+      FROM citas
+    `, [hoy]);
+    res.json({
+      total:       Number(s.total       || 0),
+      pendientes:  Number(s.pendientes  || 0),
+      confirmadas: Number(s.confirmadas || 0),
+      completadas: Number(s.completadas || 0),
+      hoy:         Number(s.hoy         || 0),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── CITAS (vista admin) ───────────────────────────────────────
 router.get("/citas", async (req, res) => {
   try {
@@ -313,6 +367,7 @@ router.get("/citas", async (req, res) => {
              c.reagendamiento_motivo, c.reagendamiento_estado,
              DATE_FORMAT(c.reagendamiento_nueva_fecha,'%Y-%m-%d') AS reagendamiento_nueva_fecha,
              c.reagendamiento_nueva_hora,
+             c.reagendamiento_expira_en,
              u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.email AS cliente_email,
              uv.nombre AS vet_nombre, uv.apellido AS vet_apellido,
              v.especialidad
@@ -353,7 +408,8 @@ router.post("/citas/:id/reagendar", async (req, res) => {
          reagendamiento_motivo     = ?,
          reagendamiento_nueva_fecha= ?,
          reagendamiento_nueva_hora = ?,
-         reagendamiento_estado     = 'propuesta'
+         reagendamiento_estado     = 'propuesta',
+         reagendamiento_expira_en  = DATE_ADD(NOW(), INTERVAL 1 HOUR)
        WHERE id = ?`,
       [motivo.trim(), nueva_fecha || null, nueva_hora || null, req.params.id]
     );
@@ -446,6 +502,86 @@ router.put("/veterinarios/:id", async (req, res) => {
     vals.push(req.params.id);
     await db.query(`UPDATE veterinarios SET ${sets.join(",")} WHERE id=?`, vals);
     res.json({ mensaje: "Perfil actualizado." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Citas confirmadas HOY de un veterinario (para previsualizar antes de desactivar)
+router.get("/veterinarios/:id/citas-hoy", async (req, res) => {
+  try {
+    const hoy = new Date().toISOString().split("T")[0];
+    const [citas] = await db.query(
+      `SELECT c.id, c.codigo, DATE_FORMAT(c.fecha,'%Y-%m-%d') AS fecha, c.hora,
+              c.estado, c.nombre_mascota, c.especie_mascota,
+              u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.email AS cliente_email
+       FROM citas c
+       JOIN usuarios u ON u.id = c.cliente_id
+       WHERE c.veterinario_id = ? AND DATE_FORMAT(c.fecha,'%Y-%m-%d') = ? AND c.estado = 'confirmada'
+       ORDER BY c.hora ASC`,
+      [req.params.id, hoy]
+    );
+    res.json(citas);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Desactivar vet + notificar a clientes con citas confirmadas hoy
+// Body: { motivo: string, citas: [{ id, nueva_fecha, nueva_hora }] }
+router.post("/veterinarios/:id/desactivar", async (req, res) => {
+  const { motivo, citas: citasPayload = [] } = req.body;
+  if (!motivo?.trim())
+    return res.status(400).json({ error: "Debes indicar el motivo para notificar a los clientes." });
+
+  // Mapa id → nueva_fecha/hora para acceso rápido
+  const fechasMap = {};
+  for (const c of citasPayload) {
+    if (c.id) fechasMap[c.id] = { nueva_fecha: c.nueva_fecha || null, nueva_hora: c.nueva_hora || null };
+  }
+
+  try {
+    const hoy = new Date().toISOString().split("T")[0];
+    const [citasHoy] = await db.query(
+      `SELECT c.id, c.codigo, c.nombre_mascota,
+              u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.email AS cliente_email
+       FROM citas c JOIN usuarios u ON u.id = c.cliente_id
+       WHERE c.veterinario_id = ? AND DATE_FORMAT(c.fecha,'%Y-%m-%d') = ? AND c.estado = 'confirmada'`,
+      [req.params.id, hoy]
+    );
+
+    let enviados = 0;
+    for (const cita of citasHoy) {
+      const extra = fechasMap[cita.id] || {};
+      const nueva_fecha = extra.nueva_fecha || null;
+      const nueva_hora  = extra.nueva_hora  || null;
+      try {
+        await db.query(
+          `UPDATE citas SET
+             reagendamiento_motivo     = ?,
+             reagendamiento_nueva_fecha= ?,
+             reagendamiento_nueva_hora = ?,
+             reagendamiento_estado     = 'propuesta',
+             reagendamiento_expira_en  = DATE_ADD(NOW(), INTERVAL 1 HOUR)
+           WHERE id = ?`,
+          [motivo.trim(), nueva_fecha, nueva_hora, cita.id]
+        );
+        await enviarPropuestaReagendamiento(
+          cita.cliente_email, cita.cliente_nombre, cita,
+          motivo.trim(), nueva_fecha, nueva_hora
+        );
+        enviados++;
+      } catch (e) {
+        console.error(`Error notificando cita ${cita.id}:`, e.message);
+      }
+    }
+
+    await db.query("UPDATE veterinarios SET activo=0 WHERE id=?", [req.params.id]);
+
+    res.json({
+      mensaje: `Veterinario desactivado. ${enviados} cliente${enviados !== 1 ? "s" : ""} notificado${enviados !== 1 ? "s" : ""}.`,
+      afectados: enviados,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

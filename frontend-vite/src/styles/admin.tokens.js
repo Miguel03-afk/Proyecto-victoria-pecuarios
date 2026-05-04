@@ -74,10 +74,14 @@ export const font = {
 export const fmt = (n) =>
   new Intl.NumberFormat("es-CO", { style:"currency", currency:"COP", minimumFractionDigits:0 }).format(Number(n) || 0);
 
-export const fmtShort = (n) => {
+export const fmtShort = (n) =>
+  "$" + new Intl.NumberFormat("es-CO").format(Number(n) || 0);
+
+// Para ejes de gráficas donde el espacio es limitado
+export const fmtMil = (n) => {
   const v = Number(n) || 0;
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000)     return `$${(v / 1_000).toFixed(0)}k`;
+  if (v >= 1_000)     return `$${Math.round(v / 1_000)}k`;
   return `$${v}`;
 };
 

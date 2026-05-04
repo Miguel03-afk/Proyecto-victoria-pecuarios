@@ -12,7 +12,7 @@ import Objetivos from "../components/Objetivos.jsx";
 import ReporteVentas from "./admin/ReporteVentas.jsx";
 import GaleriaAdmin from "./admin/GaleriaAdmin";
 import ReporteSalidas from "./admin/ReporteSalidas.jsx";
-import { T, shadow, font, fmt, fmtShort, fdoc, estadoStyle } from "../styles/admin.tokens";
+import { T, shadow, font, fmt, fmtShort, fmtMil, fdoc, estadoStyle } from "../styles/admin.tokens";
 import logoVP from "../assets/WhatsApp Image 2026-04-22 at 1.19.17 PM.jpeg";
 
 // ─── Constantes ───────────────────────────────────────────────
@@ -233,17 +233,17 @@ function Dashboard() {
     setCargando(true); setError(null);
     Promise.all([
       api.get("/admin/stats"),
-      api.get("/veterinario/agenda", { params:{ estado:"todas" } }).catch(() => ({ data: [] })),
+      api.get("/admin/citas/stats").catch(() => ({ data: {} })),
     ])
     .then(([s, c]) => {
       setStats(s.data);
-      const arr = Array.isArray(c.data) ? c.data : [];
+      const d = c.data || {};
       setCitas({
-        total:      arr.length,
-        pendientes: arr.filter(x => x.estado === "pendiente").length,
-        confirmadas:arr.filter(x => x.estado === "confirmada").length,
-        completadas:arr.filter(x => x.estado === "completada").length,
-        hoy:        arr.filter(x => x.fecha === new Date().toISOString().split("T")[0]).length,
+        total:       Number(d.total       ?? 0),
+        pendientes:  Number(d.pendientes  ?? 0),
+        confirmadas: Number(d.confirmadas ?? 0),
+        completadas: Number(d.completadas ?? 0),
+        hoy:         Number(d.hoy         ?? 0),
       });
     })
     .catch(err => setError(err.response?.data?.error || "Error al cargar el dashboard"))
@@ -298,7 +298,11 @@ function Dashboard() {
     { label:"Hoy",        value: citas.hoy,         accent:T.brand,   bg:`${T.brand}12` },
   ] : [];
 
-  const RANGOS = ["3m","6m","12m"];
+  const RANGOS = [
+    { id:"3m",  label:"3 meses"  },
+    { id:"6m",  label:"6 meses"  },
+    { id:"12m", label:"12 meses" },
+  ];
 
   return (
     <div className="space-y-5">
@@ -332,7 +336,7 @@ function Dashboard() {
       <Card className="p-5">
         <div className="flex items-start justify-between gap-4 flex-wrap mb-5">
           <div>
-            <SecTitle sub={`Últimos ${mesesRango} meses`}>Rendimiento del negocio</SecTitle>
+            <SecTitle sub={`Período: últimos ${mesesRango} meses · Ingresos reales (órdenes no canceladas)`}>Rendimiento del negocio</SecTitle>
             <div className="flex items-center gap-3">
               <p className="text-2xl font-bold tabular-nums" style={{color:T.text,fontFamily:font.mono}}>
                 {fmtShort(chartData.reduce((a,b)=>a+b.ventas,0))}
@@ -356,12 +360,12 @@ function Dashboard() {
             </div>
             <div className="flex rounded-xl overflow-hidden" style={{border:`1.5px solid ${T.border}`}}>
               {RANGOS.map(r => (
-                <button key={r} onClick={() => setRango(r)}
-                  className="px-3 py-1.5 text-xs font-bold uppercase transition-all"
+                <button key={r.id} onClick={() => setRango(r.id)}
+                  className="px-3 py-1.5 text-xs font-semibold transition-all"
                   style={{
-                    background: rango===r ? T.brand : "transparent",
-                    color:      rango===r ? "#fff" : T.textTer,
-                  }}>{r}</button>
+                    background: rango===r.id ? T.brand : "transparent",
+                    color:      rango===r.id ? "#fff" : T.textTer,
+                  }}>{r.label}</button>
               ))}
             </div>
           </div>
@@ -381,7 +385,7 @@ function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke={T.borderSub} vertical={false}/>
               <XAxis dataKey="mes" tick={{fontSize:11,fill:T.textMuted}} axisLine={false} tickLine={false}/>
               <YAxis yAxisId="ventas" tick={{fontSize:10,fill:T.textMuted}} axisLine={false} tickLine={false}
-                tickFormatter={v => fmtShort(v)} width={52}/>
+                tickFormatter={v => fmtMil(v)} width={56}/>
               <YAxis yAxisId="ordenes" orientation="right" tick={{fontSize:10,fill:T.textMuted}} axisLine={false} tickLine={false} width={28}/>
               <Tooltip content={<ChartTooltip/>}/>
               <ReferenceLine yAxisId="ventas" y={avgVentas} stroke={T.border} strokeDasharray="4 4"
@@ -1585,6 +1589,9 @@ function Veterinarios() {
   const [modalReagendar, setModalReagendar] = useState(null);
   const [formReagendar, setFormReagendar]   = useState({ motivo:"", nueva_fecha:"", nueva_hora:"", proponer_fecha:false });
   const [enviandoReagendamiento, setEnviandoReagendamiento] = useState(false);
+  const [modalDesactivarVet, setModalDesactivarVet] = useState(null); // { vet, citas }
+  const [desactivarForm, setDesactivarForm]         = useState({ motivo:"", citasData:{} });
+  const [desactivando, setDesactivando]             = useState(false);
 
   const cargarVets = async () => {
     const { data } = await api.get("/admin/veterinarios");
@@ -1650,6 +1657,55 @@ function Veterinarios() {
       setMsg({ texto: err.response?.data?.error || "Error al enviar notificación.", tipo:"err" });
     } finally {
       setEnviandoReagendamiento(false);
+    }
+  };
+
+  const iniciarDesactivacion = async (v) => {
+    try {
+      const { data: citasHoy } = await api.get(`/admin/veterinarios/${v.vet_id}/citas-hoy`);
+      // Inicializar fechas vacías para cada cita
+      const citasData = {};
+      citasHoy.forEach(c => { citasData[c.id] = { nueva_fecha:"", nueva_hora:"" }; });
+      setDesactivarForm({ motivo:"", citasData });
+      setModalDesactivarVet({ vet: v, citas: citasHoy });
+    } catch {
+      setMsg({ texto:"Error al verificar citas del día.", tipo:"err" });
+    }
+  };
+
+  const setCitaFecha = (id, campo, valor) => {
+    setDesactivarForm(prev => ({
+      ...prev,
+      citasData: { ...prev.citasData, [id]: { ...prev.citasData[id], [campo]: valor } },
+    }));
+  };
+
+  const confirmarDesactivacion = async () => {
+    if (!modalDesactivarVet) return;
+    const { vet, citas } = modalDesactivarVet;
+    setDesactivando(true);
+    try {
+      if (citas.length > 0) {
+        const citasPayload = citas.map(c => ({
+          id: c.id,
+          nueva_fecha: desactivarForm.citasData[c.id]?.nueva_fecha || null,
+          nueva_hora:  desactivarForm.citasData[c.id]?.nueva_hora  || null,
+        }));
+        const { data } = await api.post(`/admin/veterinarios/${vet.vet_id}/desactivar`, {
+          motivo: desactivarForm.motivo,
+          citas:  citasPayload,
+        });
+        setMsg({ texto: data.mensaje, tipo:"ok" });
+      } else {
+        await api.patch(`/admin/veterinarios/${vet.vet_id}/activo`);
+        setMsg({ texto:"Veterinario desactivado.", tipo:"ok" });
+      }
+      setModalDesactivarVet(null);
+      cargarVets();
+    } catch (err) {
+      setMsg({ texto: err.response?.data?.error || "Error al desactivar.", tipo:"err" });
+    } finally {
+      setDesactivando(false);
     }
   };
 
@@ -1793,6 +1849,130 @@ function Veterinarios() {
         </div>
       )}
 
+      {/* Modal desactivar vet */}
+      {modalDesactivarVet && (
+        <div style={{ position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}
+          onClick={() => setModalDesactivarVet(null)}>
+          <div style={{ background:T.surface,borderRadius:20,width:"100%",maxWidth:700,boxShadow:"0 24px 64px rgba(0,0,0,0.22)",maxHeight:"90vh",display:"flex",flexDirection:"column" }}
+            onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div style={{ padding:"22px 28px 18px",borderBottom:`1px solid ${T.border}` }}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base" style={{ background:T.dangerBg }}>⚠️</div>
+                <div>
+                  <h3 className="text-base font-bold" style={{ color:T.text }}>Desactivar veterinario</h3>
+                  <p className="text-xs" style={{ color:T.textMuted }}>
+                    {modalDesactivarVet.vet.nombre} {modalDesactivarVet.vet.apellido} · {modalDesactivarVet.vet.especialidad || "Sin especialidad"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Cuerpo scrolleable */}
+            <div style={{ flex:1,overflowY:"auto",padding:"20px 28px" }}>
+              {modalDesactivarVet.citas.length === 0 ? (
+                <div className="p-4 rounded-xl" style={{ background:T.successBg, border:`1px solid ${T.successBorder}` }}>
+                  <p className="text-sm font-semibold" style={{ color:T.success }}>✓ Sin citas confirmadas para hoy</p>
+                  <p className="text-xs mt-1" style={{ color:"#166534" }}>El veterinario puede desactivarse sin necesidad de notificar clientes.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Alerta */}
+                  <div className="p-4 rounded-xl mb-5" style={{ background:T.warningBg, border:`1px solid ${T.warningBorder}` }}>
+                    <p className="text-sm font-bold" style={{ color:T.warning }}>
+                      ⚠ {modalDesactivarVet.citas.length} cita{modalDesactivarVet.citas.length > 1 ? "s" : ""} confirmada{modalDesactivarVet.citas.length > 1 ? "s" : ""} para hoy
+                    </p>
+                    <p className="text-xs mt-1" style={{ color:"#78350f" }}>
+                      Asigna una nueva fecha y hora para cada cita. El cliente recibirá el correo con la propuesta y tendrá <strong>1 hora</strong> para confirmar o rechazar.
+                    </p>
+                  </div>
+
+                  {/* Motivo global */}
+                  <div className="mb-5">
+                    <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>
+                      Mensaje / motivo para todos los clientes *
+                    </label>
+                    <textarea rows={3} value={desactivarForm.motivo}
+                      onChange={e => setDesactivarForm(p=>({...p,motivo:e.target.value}))}
+                      placeholder="Ej: El Dr. García no podrá atender hoy por un percance de salud. Lamentamos los inconvenientes."
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none resize-none"
+                      style={{ border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text,lineHeight:1.6 }}
+                      onFocus={e=>{e.target.style.borderColor=T.warning;}} onBlur={e=>{e.target.style.borderColor=T.border;}}/>
+                  </div>
+
+                  {/* Tabla de citas con pickers */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color:T.textTer }}>
+                      Proponer nueva fecha y hora por cita
+                    </label>
+                    <div style={{ border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden" }}>
+                      <table style={{ width:"100%",borderCollapse:"collapse" }}>
+                        <thead>
+                          <tr style={{ background:T.surfaceAlt }}>
+                            {["Cliente","Mascota","Hora orig.","Nueva fecha","Nueva hora"].map((h,i) => (
+                              <th key={h} style={{ textAlign:"left",padding:"10px 14px",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,color:T.textTer,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {modalDesactivarVet.citas.map((c,i) => {
+                            const fd = desactivarForm.citasData[c.id] || {};
+                            return (
+                              <tr key={c.id} style={{ borderBottom: i < modalDesactivarVet.citas.length-1?`1px solid ${T.borderSub}`:"none", background:i%2===0?T.surface:T.surfaceAlt }}>
+                                <td style={{ padding:"10px 14px" }}>
+                                  <p style={{ margin:0,fontSize:12,fontWeight:700,color:T.text }}>{c.cliente_nombre} {c.cliente_apellido}</p>
+                                  <p style={{ margin:0,fontSize:10,color:T.textMuted }}>{c.cliente_email}</p>
+                                </td>
+                                <td style={{ padding:"10px 14px",fontSize:12,color:T.textSec }}>{c.nombre_mascota}</td>
+                                <td style={{ padding:"10px 14px",fontSize:13,fontWeight:700,color:T.brand,fontFamily:"monospace" }}>
+                                  {c.hora?.slice(0,5)}
+                                </td>
+                                <td style={{ padding:"8px 10px" }}>
+                                  <input type="date" value={fd.nueva_fecha||""}
+                                    onChange={e => setCitaFecha(c.id,"nueva_fecha",e.target.value)}
+                                    style={{ width:"100%",padding:"7px 10px",borderRadius:8,border:`1.5px solid ${T.border}`,background:T.surface,color:T.text,fontSize:12,outline:"none" }}
+                                    onFocus={e=>{e.target.style.borderColor=T.brand;}} onBlur={e=>{e.target.style.borderColor=T.border;}}/>
+                                </td>
+                                <td style={{ padding:"8px 10px" }}>
+                                  <input type="time" value={fd.nueva_hora||""}
+                                    onChange={e => setCitaFecha(c.id,"nueva_hora",e.target.value)}
+                                    style={{ width:"100%",padding:"7px 10px",borderRadius:8,border:`1.5px solid ${T.border}`,background:T.surface,color:T.text,fontSize:12,outline:"none" }}
+                                    onFocus={e=>{e.target.style.borderColor=T.brand;}} onBlur={e=>{e.target.style.borderColor=T.border;}}/>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-xs mt-2" style={{ color:T.textMuted }}>
+                      Las fechas propuestas bloquean ese horario para nuevas citas. El cliente tiene 1 hora para responder.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding:"16px 28px 22px",borderTop:`1px solid ${T.border}`,display:"flex",gap:12 }}>
+              <Btn variant="outline" onClick={() => setModalDesactivarVet(null)}>Cancelar</Btn>
+              <button
+                onClick={confirmarDesactivacion}
+                disabled={desactivando || (modalDesactivarVet.citas.length > 0 && !desactivarForm.motivo.trim())}
+                className="flex-1 px-4 py-2 text-xs font-bold rounded-xl transition-all disabled:opacity-40"
+                style={{ background:T.danger, color:"#fff" }}>
+                {desactivando
+                  ? "Desactivando..."
+                  : modalDesactivarVet.citas.length > 0
+                    ? `Desactivar y notificar ${modalDesactivarVet.citas.length} cliente${modalDesactivarVet.citas.length > 1 ? "s" : ""}`
+                    : "Confirmar desactivación"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Msg texto={msg.texto} tipo={msg.tipo}/>
 
       {/* Tabs */}
@@ -1837,7 +2017,7 @@ function Veterinarios() {
                 <THead cols={["Código","Cliente","Mascota","Veterinario","Fecha","Hora","Estado","Acción"]}/>
                 <tbody>
                   {citas.map((c,i) => (
-                    <tr key={c.id} style={{ borderBottom:`1px solid ${T.borderSub}`,background:c.reagendamiento_estado==="propuesta"?"#fffbeb":i%2===0?T.surface:T.surfaceAlt }}>
+                    <tr key={c.id} style={{ borderBottom:`1px solid ${T.borderSub}`,background:c.reagendamiento_estado==="aceptada"?"#eff6ff":c.reagendamiento_estado==="propuesta"?"#fffbeb":i%2===0?T.surface:T.surfaceAlt }}>
                       <td className="py-3 px-4 font-mono text-xs font-bold" style={{ color:T.brand }}>{c.codigo}</td>
                       <td className="py-3 px-4">
                         <p className="text-xs font-semibold" style={{ color:T.text }}>{c.cliente_nombre} {c.cliente_apellido}</p>
@@ -1944,11 +2124,17 @@ function Veterinarios() {
                   </Btn>
                   <button
                     onClick={async () => {
-                      try {
-                        await api.put(`/admin/veterinarios/${v.vet_id}`, { activo: v.vet_activo ? 0 : 1 });
-                        cargarVets();
-                      } catch (err) {
-                        setMsg({ texto: err.response?.data?.error || "Error al cambiar estado.", tipo:"err" });
+                      if (v.vet_activo) {
+                        // Desactivar: verificar citas del día primero
+                        await iniciarDesactivacion(v);
+                      } else {
+                        // Activar: toggle directo
+                        try {
+                          await api.patch(`/admin/veterinarios/${v.vet_id}/activo`);
+                          cargarVets();
+                        } catch (err) {
+                          setMsg({ texto: err.response?.data?.error || "Error.", tipo:"err" });
+                        }
                       }
                     }}
                     className="px-3 py-1 text-xs font-semibold rounded-lg transition-all"
@@ -1979,8 +2165,26 @@ export default function Admin() {
   const navigate=useNavigate();
   const [seccion,setSeccion]=useState("dashboard");
   const [collapsed,setCollapsed]=useState(false);
+  const [notifs,setNotifs]=useState({total:0,items:[],conteos:{}});
+  const [bellAbierto,setBellAbierto]=useState(false);
+  const bellRef=useRef(null);
 
   useEffect(()=>{if(!esAdmin) navigate("/");},[esAdmin,navigate]);
+
+  const cargarNotifs=()=>{
+    api.get("/admin/notificaciones").then(r=>setNotifs(r.data)).catch(()=>{});
+  };
+  useEffect(()=>{
+    cargarNotifs();
+    const iv=setInterval(cargarNotifs,60_000);
+    return()=>clearInterval(iv);
+  },[]);
+  useEffect(()=>{
+    if(!bellAbierto)return;
+    const handler=e=>{if(bellRef.current&&!bellRef.current.contains(e.target))setBellAbierto(false);};
+    document.addEventListener("mousedown",handler);
+    return()=>document.removeEventListener("mousedown",handler);
+  },[bellAbierto]);
 
   const renderSeccion=()=>{
     if(seccion==="dashboard")       return <Dashboard/>;
@@ -2113,9 +2317,105 @@ export default function Admin() {
               {new Date().toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{background:T.success}}/>
-            <span className="text-xs font-medium" style={{color:T.textMuted}}>Sistema activo</span>
+          <div className="flex items-center gap-3">
+            {/* Sistema activo */}
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{background:T.success}}/>
+              <span className="text-xs font-medium" style={{color:T.textMuted}}>Sistema activo</span>
+            </div>
+
+            {/* Campanita */}
+            <div className="relative" ref={bellRef}>
+              <button onClick={()=>setBellAbierto(p=>!p)}
+                className="relative w-9 h-9 flex items-center justify-center rounded-xl transition-all"
+                style={{background:bellAbierto?T.surfaceAlt:T.surfaceAlt, border:`1px solid ${T.border}`}}
+                onMouseEnter={e=>{e.currentTarget.style.background=T.surfaceHover;e.currentTarget.style.borderColor=T.brandBorder;}}
+                onMouseLeave={e=>{e.currentTarget.style.background=T.surfaceAlt;e.currentTarget.style.borderColor=T.border;}}>
+                <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24"
+                  style={{color:notifs.total>0?T.warning:T.textTer}}>
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                {notifs.total > 0 && (
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center rounded-full text-white font-bold"
+                    style={{width:17,height:17,fontSize:9,background:"#dc2626",border:`2px solid ${T.surface}`,lineHeight:1}}>
+                    {notifs.total > 9 ? "9+" : notifs.total}
+                  </span>
+                )}
+              </button>
+
+              {/* Dropdown notificaciones */}
+              {bellAbierto && (
+                <div className="absolute right-0 top-11 z-50 rounded-2xl overflow-hidden"
+                  style={{width:320,background:T.surface,border:`1px solid ${T.border}`,boxShadow:"0 8px 32px rgba(0,0,0,0.12)"}}>
+                  <div className="px-4 py-3 flex items-center justify-between" style={{borderBottom:`1px solid ${T.border}`}}>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider" style={{color:T.text}}>Notificaciones</p>
+                      {notifs.total > 0
+                        ? <p className="text-xs" style={{color:T.textMuted}}>{notifs.total} asunto{notifs.total>1?"s":""} requieren atención</p>
+                        : <p className="text-xs" style={{color:T.textMuted}}>Todo al día</p>}
+                    </div>
+                    <button onClick={()=>{cargarNotifs();}} title="Actualizar"
+                      className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors"
+                      style={{background:T.surfaceAlt}}
+                      onMouseEnter={e=>e.currentTarget.style.background=T.surfaceHover}
+                      onMouseLeave={e=>e.currentTarget.style.background=T.surfaceAlt}>
+                      <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{color:T.textTer}}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="py-1 max-h-72 overflow-y-auto">
+                    {notifs.items.length === 0 ? (
+                      <div className="flex flex-col items-center py-8 gap-2">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{background:T.successBg}}>✓</div>
+                        <p className="text-xs font-medium" style={{color:T.success}}>Sin alertas pendientes</p>
+                      </div>
+                    ) : notifs.items.map((it,i) => {
+                      const colors = {
+                        warning: {bg:T.warningBg, text:T.warning, border:T.warningBorder},
+                        danger:  {bg:T.dangerBg,  text:T.danger,  border:T.dangerBorder},
+                        info:    {bg:T.infoBg,    text:T.info,    border:T.infoBorder},
+                      }[it.nivel] || {bg:T.surfaceAlt, text:T.textSec, border:T.border};
+                      const iconos = { cita:"🐾", reagendamiento:"📅", orden:"🛒", stock:"⚠️" };
+                      return (
+                        <div key={i} className="mx-2 my-1 flex items-start gap-2.5 px-3 py-2.5 rounded-xl"
+                          style={{background:colors.bg, border:`1px solid ${colors.border}`}}>
+                          <span style={{fontSize:14,flexShrink:0,marginTop:1}}>{iconos[it.tipo]||"•"}</span>
+                          <p className="text-xs leading-relaxed font-medium" style={{color:colors.text}}>{it.texto}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Accesos rápidos */}
+                  <div className="px-3 py-2.5 flex gap-1.5" style={{borderTop:`1px solid ${T.border}`}}>
+                    {notifs.conteos?.citas > 0 && (
+                      <button onClick={()=>{setSeccion("veterinarios");setBellAbierto(false);}}
+                        className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                        style={{background:T.warningBg,color:T.warning}}>
+                        Ver citas
+                      </button>
+                    )}
+                    {notifs.conteos?.ordenes > 0 && (
+                      <button onClick={()=>{setSeccion("ordenes");setBellAbierto(false);}}
+                        className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                        style={{background:T.infoBg,color:T.info}}>
+                        Ver órdenes
+                      </button>
+                    )}
+                    {notifs.conteos?.stock > 0 && (
+                      <button onClick={()=>{setSeccion("productos");setBellAbierto(false);}}
+                        className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                        style={{background:T.dangerBg,color:T.danger}}>
+                        Ver stock
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 

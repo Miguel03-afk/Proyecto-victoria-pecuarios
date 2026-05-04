@@ -437,14 +437,6 @@ export default function Perfil() {
 
       <div style={{ minHeight:"100vh", background:T.canvas }}>
 
-        {/* Banner */}
-        <div style={{ background:T.brandDark, padding:"8px 16px", textAlign:"center", borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
-          <span style={{ fontSize:12, color:"rgba(255,255,255,0.55)" }}>
-            🚚 Envío gratis a partir de <span style={{ color:T.lime, fontWeight:600 }}>$80.000</span>
-            {" "}<span style={{ color:"rgba(255,255,255,0.35)" }}>— Solo dentro de Ibagué</span>
-          </span>
-        </div>
-
         <div style={{ maxWidth:840, margin:"0 auto", padding:"24px 16px 64px" }}>
 
           {/* ── Hero de perfil ───────────────────────────────────────────── */}
@@ -482,15 +474,15 @@ export default function Perfil() {
 
               {/* Acciones */}
               <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignSelf:"flex-start" }}>
+                <Link to="/tienda" style={{ padding:"8px 16px", borderRadius:8, textDecoration:"none", background:T.lime, color:T.brandDark, border:`1px solid ${T.limeDark}`, fontSize:12, fontWeight:700, transition:"all 0.15s", display:"flex", alignItems:"center", gap:5 }}
+                  onMouseEnter={e => { e.currentTarget.style.background=T.limeDark; e.currentTarget.style.color="#fff"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background=T.lime; e.currentTarget.style.color=T.brandDark; }}>
+                  🛍️ Ir a la tienda
+                </Link>
                 <Link to="/mis-ordenes" style={{ padding:"7px 14px", borderRadius:8, textDecoration:"none", background:"rgba(255,255,255,0.10)", color:"rgba(255,255,255,0.75)", border:"1px solid rgba(255,255,255,0.15)", fontSize:11, fontWeight:500, transition:"all 0.15s" }}
                   onMouseEnter={e => { e.currentTarget.style.background="rgba(255,255,255,0.17)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background="rgba(255,255,255,0.10)"; }}>
                   Mis órdenes
-                </Link>
-                <Link to="/tienda" style={{ padding:"7px 14px", borderRadius:8, textDecoration:"none", background:"rgba(255,255,255,0.10)", color:"rgba(255,255,255,0.75)", border:"1px solid rgba(255,255,255,0.15)", fontSize:11, fontWeight:500, transition:"all 0.15s" }}
-                  onMouseEnter={e => { e.currentTarget.style.background="rgba(255,255,255,0.17)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background="rgba(255,255,255,0.10)"; }}>
-                  Tienda
                 </Link>
                 <button onClick={() => { logout(); navigate("/"); }}
                   style={{ padding:"7px 14px", borderRadius:8, border:"1px solid rgba(239,68,68,0.25)", background:"rgba(239,68,68,0.12)", color:"#fca5a5", fontSize:11, fontWeight:500, cursor:"pointer", transition:"all 0.15s" }}
