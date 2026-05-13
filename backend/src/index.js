@@ -14,6 +14,7 @@ import veterinarioRouter    from "./routes/veterinario.routes.js";
 import adminVetsRouter      from "./routes/admin.veterinarios.routes.js";
 import cajeroRouter         from "./routes/cajero.routes.js";
 import pagosRoutes          from "./routes/pagos.routes.js";
+import ordenesServicioRouter from "./routes/ordenes-servicio.routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -39,6 +40,7 @@ app.use("/api/admin",      adminRoutes);
 app.use("/api/metas",      metasRoutes);
 app.use('/api/reportes', reportesRoutes);
 app.use("/api/pagos",   pagosRoutes);
+app.use("/api/ordenes-servicio", ordenesServicioRouter);
 
 app.get("/", (req, res) => {
   res.json({ mensaje: "API Victoria Pecuarios activa", version: "2.0" });

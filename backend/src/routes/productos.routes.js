@@ -127,7 +127,7 @@ router.post("/", verificarToken, soloAdmin, async (req, res) => {
     nombre, slug, descripcion, descripcion_corta, categoria_id, proveedor_id,
     precio, precio_antes, precio_costo, stock, stock_minimo,
     imagen_url, imagenes_extra, marca, unidad, especie,
-    requiere_formula, activo, destacado, variantes, codigo_barra,
+    requiere_formula, uso_clinico, activo, destacado, variantes, codigo_barra,
   } = req.body;
 
   if (!nombre || !categoria_id || precio == null)
@@ -146,8 +146,8 @@ router.post("/", verificarToken, soloAdmin, async (req, res) => {
         (nombre, slug, descripcion, descripcion_corta, categoria_id, proveedor_id,
          precio, precio_antes, precio_costo, stock, stock_minimo,
          imagen_url, imagenes_extra, marca, unidad, especie,
-         requiere_formula, activo, destacado, codigo_barra)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         requiere_formula, uso_clinico, activo, destacado, codigo_barra)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [nombre, slugFinal, descripcion||null, descripcion_corta||null,
        categoria_id, proveedor_id||null,
        Number(precio), precio_antes||null, precio_costo||0,
@@ -155,7 +155,7 @@ router.post("/", verificarToken, soloAdmin, async (req, res) => {
        imagen_url||null,
        imagenes_extra ? JSON.stringify(imagenes_extra) : null,
        marca||null, unidad||null, especie||null,
-       requiere_formula?1:0, activo!==false?1:0, destacado?1:0,
+       requiere_formula?1:0, uso_clinico?1:0, activo!==false?1:0, destacado?1:0,
        codigo_barra||null]
     );
     const producto_id = result.insertId;
@@ -191,7 +191,7 @@ router.put("/:id", verificarToken, soloAdmin, async (req, res) => {
     nombre, slug, descripcion, descripcion_corta, categoria_id, proveedor_id,
     precio, precio_antes, precio_costo, stock, stock_minimo,
     imagen_url, imagenes_extra, marca, unidad, especie,
-    requiere_formula, activo, destacado, variantes, codigo_barra,
+    requiere_formula, uso_clinico, activo, destacado, variantes, codigo_barra,
   } = req.body;
 
   const conn = await db.getConnection();
@@ -202,7 +202,7 @@ router.put("/:id", verificarToken, soloAdmin, async (req, res) => {
     const campos = {
       nombre, slug, descripcion, descripcion_corta, categoria_id, proveedor_id,
       precio, precio_antes, precio_costo, stock, stock_minimo,
-      imagen_url, marca, unidad, especie, requiere_formula, activo, destacado,
+      imagen_url, marca, unidad, especie, requiere_formula, uso_clinico, activo, destacado,
       codigo_barra,
     };
     for (const [k, v] of Object.entries(campos)) {

@@ -55,6 +55,57 @@ router.get("/stats", async (req, res) => {
         AND estado NOT IN ('cancelada')`
     );
 
+    // ── Ventas por canal (datos REALES) ──────────────────────────
+    // POS = órdenes creadas por un cajero (cajero_id no nulo)
+    // Online = órdenes sin cajero (compradas por el cliente directo)
+    // Servicios médicos = órdenes con tipo 'servicio' (cuando esté implementado)
+    const [[ventas_pos]] = await db.query(`
+      SELECT COALESCE(SUM(total),0) AS valor, COUNT(*) AS conteo
+      FROM ordenes
+      WHERE cajero_id IS NOT NULL AND estado NOT IN ('cancelada','rechazada')`
+    );
+    const [[ventas_online]] = await db.query(`
+      SELECT COALESCE(SUM(total),0) AS valor, COUNT(*) AS conteo
+      FROM ordenes
+      WHERE cajero_id IS NULL AND estado NOT IN ('cancelada','rechazada','pendiente_pago')`
+    );
+
+    // Servicios médicos: por ahora 0 (próximamente con orden_servicio)
+    const ventas_servicios = { valor: 0, conteo: 0 };
+
+    const ticket_promedio = Number(total_ordenes) > 0
+      ? Math.round(Number(ingresos) / Number(total_ordenes))
+      : 0;
+
+    // Ventas online hoy
+    const [[ventas_hoy_online]] = await db.query(`
+      SELECT COALESCE(SUM(total),0) AS valor, COUNT(*) AS conteo
+      FROM ordenes
+      WHERE DATE(created_at) = CURDATE()
+        AND cajero_id IS NULL
+        AND estado NOT IN ('cancelada','rechazada','pendiente_pago')`
+    );
+
+    // Ventas totales hoy (todos los canales)
+    const [[ventas_hoy]] = await db.query(`
+      SELECT COALESCE(SUM(total),0) AS valor, COUNT(*) AS conteo
+      FROM ordenes
+      WHERE DATE(created_at) = CURDATE()
+        AND estado NOT IN ('cancelada','rechazada')`
+    );
+
+    // Tendencia vs ayer
+    const [[ventas_ayer]] = await db.query(`
+      SELECT COALESCE(SUM(total),0) AS valor
+      FROM ordenes
+      WHERE DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+        AND estado NOT IN ('cancelada','rechazada')`
+    );
+
+    const tendencia_hoy = Number(ventas_ayer.valor) > 0
+      ? ((Number(ventas_hoy.valor) - Number(ventas_ayer.valor)) / Number(ventas_ayer.valor) * 100).toFixed(1)
+      : null;
+
     const [ventas_mes] = await db.query(`
       SELECT DATE_FORMAT(created_at,'%Y-%m') AS mes,
              COALESCE(SUM(total),0)          AS total,
@@ -67,21 +118,48 @@ router.get("/stats", async (req, res) => {
 
     const [ordenes_recientes] = await db.query(`
       SELECT o.id, o.codigo, o.total, o.estado, o.created_at,
+             u.nombre AS cliente_nombre, u.apellido AS cliente_apellido,
+             u.email,
+             (SELECT COUNT(*) FROM detalle_orden d WHERE d.orden_id = o.id) AS cantidad_items,
              CONCAT(u.nombre,' ',u.apellido) AS cliente
       FROM ordenes o JOIN usuarios u ON o.usuario_id=u.id
       ORDER BY o.created_at DESC LIMIT 5`
     );
 
     const [productos_stock_bajo] = await db.query(`
-      SELECT id, nombre, stock, stock_minimo
+      SELECT id, nombre, marca, stock, stock_minimo
       FROM productos WHERE stock <= stock_minimo AND activo=1
       ORDER BY stock ASC LIMIT 8`
+    );
+
+    // Citas pendientes/agendadas
+    const [[{ citas_total, citas_hoy, citas_pendientes }]] = await db.query(`
+      SELECT
+        COUNT(*) AS citas_total,
+        SUM(DATE(fecha) = CURDATE()) AS citas_hoy,
+        SUM(estado = 'pendiente') AS citas_pendientes
+      FROM citas`
     );
 
     res.json({
       total_usuarios, total_productos, total_ordenes, ingresos,
       stock_bajo, ganancia_mes, iva_mes,
-      ventas_mes, ordenes_recientes, productos_stock_bajo
+      ventas_mes, ordenes_recientes, productos_stock_bajo,
+      // Nuevos para el dashboard PDF
+      ventas_hoy:       Number(ventas_hoy.valor) || 0,
+      ventas_hoy_count: Number(ventas_hoy.conteo) || 0,
+      ventas_online_hoy:Number(ventas_hoy_online.valor) || 0,
+      pedidos_online_pendientes: Number(ventas_hoy_online.conteo) || 0,
+      tendencia_hoy,
+      ventas_canal: {
+        pos:       Number(ventas_pos.valor) || 0,
+        online:    Number(ventas_online.valor) || 0,
+        servicios: Number(ventas_servicios.valor) || 0,
+      },
+      ticket_promedio,
+      citas_total:      Number(citas_total) || 0,
+      citas_hoy:        Number(citas_hoy) || 0,
+      citas_pendientes: Number(citas_pendientes) || 0,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -295,6 +295,28 @@ router.get("/anomalias", async (req, res) => {
 });
 
 /* ─── GET /api/veterinario/disponibilidad ────────────────── */
+// ── Buscador de insumos clínicos (solo productos uso_clinico=1) ──
+router.get("/insumos", async (req, res) => {
+  const { buscar = "" } = req.query;
+  try {
+    let q = `
+      SELECT id, nombre, marca, precio, stock, stock_minimo, codigo_barra, imagen_url
+      FROM productos
+      WHERE uso_clinico = 1 AND activo = 1`;
+    const p = [];
+    if (buscar) {
+      q += " AND (nombre LIKE ? OR marca LIKE ? OR codigo_barra = ?)";
+      const like = `%${buscar}%`;
+      p.push(like, like, buscar.trim());
+    }
+    q += " ORDER BY (stock = 0), nombre ASC LIMIT 40";
+    const [rows] = await pool.query(q, p);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get("/disponibilidad", async (req, res) => {
   const vetId = await getVetId(req.usuario.id);
   if (!vetId) return res.status(404).json({ error: "Perfil no encontrado." });
