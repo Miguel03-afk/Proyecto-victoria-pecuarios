@@ -9,25 +9,7 @@ import {
   faTag, faCalendarDays, faMobileScreen, faHashtag,
 } from "@fortawesome/free-solid-svg-icons";
 import api from "../services/api";
-
-/* ─── Tokens ────────────────────────────────────────────────────── */
-const C = {
-  brand:        "#0A6B40",
-  brandMid:     "#138553",
-  brandDark:    "#064E30",
-  brandLight:   "#E4F5EC",
-  brandBorder:  "#95CCAD",
-  lime:         "#7AC143",
-  canvas:       "#F5FAF7",
-  surface:      "#ffffff",
-  surfaceAlt:   "#EDF6F1",
-  text:         "#101F16",
-  textSec:      "#2D4A38",
-  textTer:      "#5A7A65",
-  textMuted:    "#8FAA98",
-  border:       "rgba(0,0,0,0.07)",
-  borderMid:    "#95CCAD",
-};
+import { useTheme } from "../styles/ThemeProvider.jsx";
 
 const fmt = (n) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(Number(n) || 0);
@@ -57,6 +39,7 @@ const PASOS = ["pendiente", "pagada", "procesando", "enviada", "entregada"];
 
 /* ─── Badge de estado ───────────────────────────────────────────── */
 function Badge({ estado }) {
+  const { C } = useTheme();
   const s = ESTADOS[estado] || ESTADOS.pendiente;
   return (
     <span style={{
@@ -73,6 +56,7 @@ function Badge({ estado }) {
 
 /* ─── Skeleton ──────────────────────────────────────────────────── */
 function Skeleton() {
+  const { C } = useTheme();
   return (
     <div style={{ background: C.surface, borderRadius: 16, padding: 20, border: `1px solid ${C.brandLight}` }}>
       {[60, 40, 80].map(w => (
@@ -84,6 +68,7 @@ function Skeleton() {
 
 /* ─── Verificar pago ePayco ─────────────────────────────────────── */
 function VerificarPago({ orden, onConfirmada }) {
+  const { C } = useTheme();
   const [ref,          setRef]          = useState("");
   const [cargando,     setCargando]     = useState(false);
   const [resultado,    setResultado]    = useState(null);
@@ -149,7 +134,7 @@ function VerificarPago({ orden, onConfirmada }) {
                 width: "100%", padding: "9px 12px 9px 30px",
                 borderRadius: 10, border: `1.5px solid ${ref ? "#fdba74" : "#fde8c8"}`,
                 fontSize: 13, outline: "none", fontFamily: "monospace",
-                background: "#fff", color: C.text, boxSizing: "border-box",
+                background: C.surface, color: C.text, boxSizing: "border-box",
               }}
             />
           </div>
@@ -214,6 +199,7 @@ function VerificarPago({ orden, onConfirmada }) {
 
 /* ─── Página principal ──────────────────────────────────────────── */
 export default function MisOrdenes() {
+  const { C } = useTheme();
   const [ordenes,   setOrdenes]   = useState([]);
   const [cargando,  setCargando]  = useState(true);
   const [abierta,   setAbierta]   = useState(null);
@@ -402,6 +388,96 @@ export default function MisOrdenes() {
                       {["pendiente", "pendiente_pago"].includes(estado) && (
                         <div style={{ marginBottom: 20 }}>
                           <VerificarPago orden={o} onConfirmada={confirmarOrden} />
+                        </div>
+                      )}
+
+                      {/* ── Banner ENVIADA: código de entrega ── */}
+                      {estado === "enviada" && (
+                        <div style={{
+                          marginBottom: 20,
+                          padding: "20px 22px",
+                          borderRadius: 16,
+                          background: "linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%)",
+                          color: "#fff",
+                          position: "relative", overflow: "hidden",
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative", zIndex: 2 }}>
+                            <FontAwesomeIcon icon={faTruck} style={{ fontSize: 18, color: "#bfdbfe" }}/>
+                            <div>
+                              <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: 1 }}>
+                                En camino
+                              </p>
+                              <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
+                                Pedido enviado · A la espera de confirmación
+                              </p>
+                            </div>
+                          </div>
+
+                          <div style={{
+                            padding: "16px 18px",
+                            borderRadius: 12,
+                            background: "rgba(255,255,255,0.12)",
+                            border: "1px dashed rgba(255,255,255,0.3)",
+                            position: "relative", zIndex: 2,
+                            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap",
+                          }}>
+                            <div>
+                              <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: 1.5 }}>
+                                Código de entrega
+                              </p>
+                              <p style={{
+                                margin: "4px 0 0",
+                                fontFamily: "'JetBrains Mono', monospace",
+                                fontSize: 26, fontWeight: 800, color: "#fff",
+                                letterSpacing: 2,
+                              }}>
+                                {o.codigo}
+                              </p>
+                            </div>
+                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.85)", lineHeight: 1.55, maxWidth: 220 }}>
+                              Cuando llegue el repartidor, dale este código para confirmar tu compra.
+                            </div>
+                          </div>
+
+                          {/* Decoración */}
+                          <div style={{
+                            position: "absolute", top: -40, right: -40,
+                            width: 160, height: 160, borderRadius: "50%",
+                            background: "rgba(255,255,255,0.05)",
+                          }}/>
+                        </div>
+                      )}
+
+                      {/* ── Banner ENTREGADA: gracias ── */}
+                      {estado === "entregada" && (
+                        <div style={{
+                          marginBottom: 20,
+                          padding: "22px 24px",
+                          borderRadius: 16,
+                          background: `linear-gradient(135deg, ${C.brand} 0%, ${C.brandMid} 100%)`,
+                          color: "#fff",
+                          textAlign: "center",
+                          position: "relative", overflow: "hidden",
+                        }}>
+                          <div style={{
+                            width: 56, height: 56, borderRadius: "50%",
+                            background: "rgba(255,255,255,0.2)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: 26, margin: "0 auto 12px",
+                          }}>
+                            ✓
+                          </div>
+                          <h3 style={{
+                            margin: "0 0 4px",
+                            fontFamily: "'Playfair Display', Georgia, serif", fontStyle: "italic",
+                            fontWeight: 600, fontSize: 22,
+                          }}>
+                            ¡Gracias por preferirnos!
+                          </h3>
+                          <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.6 }}>
+                            Tu pedido <strong style={{ fontFamily: "monospace" }}>{o.codigo}</strong> fue entregado.
+                            Esperamos verte pronto.
+                          </p>
                         </div>
                       )}
 

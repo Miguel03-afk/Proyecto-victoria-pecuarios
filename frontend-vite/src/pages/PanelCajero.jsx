@@ -1,89 +1,153 @@
+// src/pages/PanelCajero.jsx — Victoria Pets · POS diseño PDF
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../styles/ThemeProvider.jsx";
+import { FONT, RADIUS, fmt, fdoc } from "../styles/admin.tokens";
 import api from "../services/api";
-import { T, shadow, font, fmt, fdoc, estadoStyle } from "../styles/admin.tokens";
-
-// ─── Iconos ───────────────────────────────────────────────────
-const Icon = ({ d, size = 15, color = "currentColor" }) => (
-  <svg width={size} height={size} fill="none" stroke={color}
-    strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <path d={d} />
-  </svg>
-);
-
-const ICONS = {
-  venta:    "M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z",
-  historial:"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
-  search:   "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
-  user:     "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
-  trash:    "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
-  check:    "M5 13l4 4L19 7",
-  home:     "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6",
-  barcode:  "M4 6h1v12H4zm3 0h1v12H7zm3 0h2v12h-2zm4 0h1v12h-1zm3 0h1v12h-1zm3 0h1v12h-1z",
-};
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faCartShopping, faClipboardList, faPills, faMagnifyingGlass,
+  faBoxOpen, faSun, faMoon, faCreditCard, faMoneyBill, faMobileScreen,
+  faShuffle, faPlus, faXmark, faCheck, faTrash, faRightFromBracket,
+} from "@fortawesome/free-solid-svg-icons";
 
 const METODOS = [
-  { id: "efectivo",      label: "Efectivo",      icon: "💵" },
-  { id: "tarjeta",       label: "Tarjeta",        icon: "💳" },
-  { id: "transferencia", label: "Transferencia",  icon: "🏦" },
-  { id: "pse",           label: "PSE",            icon: "🔐" },
+  { id: "efectivo",      label: "Efectivo" },
+  { id: "tarjeta",       label: "Tarjeta"  },
+  { id: "transferencia", label: "Nequi"    },
+  { id: "mixto",         label: "Mixto"    },
 ];
 
-const NAV = [
-  { id: "venta",     label: "Nueva venta",    icon: ICONS.venta },
-  { id: "historial", label: "Mis ventas hoy", icon: ICONS.historial },
-];
+const CATEGORIAS = ["Todos", "Alimento", "Medicamento", "Servicios"];
 
-// ─── Componentes base ─────────────────────────────────────────
-const Badge = ({ estado }) => {
-  const s = estadoStyle(estado);
+/* ─── Tile producto ──────────────────────────────────────────────────────── */
+function ProductoTile({ p, onAdd, C }) {
+  const stockBadge = p.stock !== undefined ? p.stock : "—";
+  const stockColor =
+    p.stock === 0 ? C.danger :
+    p.stock <= (p.stock_minimo || 5) ? C.coral :
+    C.brand;
+
   return (
-    <span className="px-2 py-0.5 rounded-full text-xs font-semibold capitalize"
-      style={{ background: s.bg, color: s.text, border: `1px solid ${s.border}` }}>
-      {estado}
-    </span>
+    <button
+      onClick={() => onAdd(p)}
+      disabled={p.stock === 0}
+      style={{
+        position: "relative",
+        background: C.surface,
+        border: `1px solid ${C.line}`,
+        borderRadius: RADIUS.lg,
+        padding: 0,
+        overflow: "hidden",
+        textAlign: "left",
+        cursor: p.stock === 0 ? "not-allowed" : "pointer",
+        opacity: p.stock === 0 ? 0.55 : 1,
+        transition: "all 0.15s",
+        display: "flex", flexDirection: "column",
+      }}
+      onMouseEnter={e => { if (p.stock > 0) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.borderColor = C.brandBorder; e.currentTarget.style.boxShadow = C.shadowSm; } }}
+      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = C.line; e.currentTarget.style.boxShadow = "none"; }}
+    >
+      {/* Imagen */}
+      <div style={{
+        position: "relative",
+        aspectRatio: "16 / 11",
+        background: `repeating-linear-gradient(135deg, ${C.brandSoft} 0 14px, ${C.surfaceAlt} 14px 28px)`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        {p.imagen_url && (
+          <img src={p.imagen_url} alt={p.nombre}
+            style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }}
+            onError={e => { e.target.style.display = "none"; }}/>
+        )}
+        <span style={{
+          position: "absolute", top: 8, right: 8,
+          padding: "2px 8px", borderRadius: RADIUS.sm,
+          background: stockColor === C.brand ? C.brandSoft : stockColor === C.coral ? C.coralSoft : C.dangerBg,
+          color: stockColor,
+          fontSize: 11, fontWeight: 700,
+          fontFamily: FONT.mono,
+        }}>
+          {stockBadge}
+        </span>
+      </div>
+
+      {/* Info */}
+      <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 4 }}>
+        {p.marca && (
+          <span style={{
+            fontFamily: FONT.mono,
+            fontSize: 9, fontWeight: 700,
+            textTransform: "uppercase", letterSpacing: 1.2,
+            color: C.muted,
+          }}>{p.marca}</span>
+        )}
+        <p style={{
+          margin: 0, fontSize: 12, fontWeight: 600,
+          color: C.ink, lineHeight: 1.4,
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+          minHeight: 32,
+        }}>
+          {p.nombre}
+        </p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
+          <span style={{
+            fontFamily: FONT.display,
+            fontSize: 16, fontWeight: 700,
+            color: C.ink,
+          }}>
+            {fmt(p.precio)}
+          </span>
+          <span style={{
+            width: 24, height: 24, borderRadius: "50%",
+            background: C.brand, color: "#fff",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 14, fontWeight: 700,
+          }}>+</span>
+        </div>
+      </div>
+    </button>
   );
-};
+}
 
-// ─── Sección: Nueva Venta ─────────────────────────────────────
-function NuevaVenta() {
-  const [buscarProd,   setBuscarProd]   = useState("");
-  const [productos,    setProductos]    = useState([]);
-  const [buscandoProd, setBuscandoProd] = useState(false);
-  const [cart,         setCart]         = useState([]);
-  const [clienteBus,   setClienteBus]   = useState("");
-  const [clientes,     setClientes]     = useState([]);
-  const [clienteSel,   setClienteSel]   = useState(null);
-  const [metodo,       setMetodo]       = useState("efectivo");
-  const [notas,        setNotas]        = useState("");
-  const [enviando,     setEnviando]     = useState(false);
-  const [exito,        setExito]        = useState(null);
-  const [error,        setError]        = useState("");
+/* ─── Sección Nueva Venta ────────────────────────────────────────────────── */
+function NuevaVenta({ usuario }) {
+  const { C } = useTheme();
+  const [busqueda, setBusqueda] = useState("");
+  const [productos, setProductos] = useState([]);
+  const [cargandoProds, setCargandoProds] = useState(false);
+  const [catActiva, setCatActiva] = useState("Todos");
 
-  // ── Escáner ──────────────────────────────────────────────────
-  const [codigoBarra, setCodigoBarra] = useState("");
-  const [errorBarra,  setErrorBarra]  = useState("");
-  const [scanOk,      setScanOk]      = useState(false); // feedback visual éxito
+  const [cart, setCart] = useState([]);
+  const [clienteBus, setClienteBus] = useState("");
+  const [clientes, setClientes] = useState([]);
+  const [clienteSel, setClienteSel] = useState(null);
 
-  const barraRef  = useRef(null); // ref del input escáner
-  const buscarRef = useRef(null); // ref del buscador de texto
+  const [metodo, setMetodo] = useState("tarjeta");
+  const [enviando, setEnviando] = useState(false);
+  const [exito, setExito] = useState(null);
+  const [error, setError] = useState("");
 
-  // Búsqueda de productos con debounce (buscador manual)
+  const buscarRef = useRef(null);
+
+  // Búsqueda productos
   useEffect(() => {
-    if (!buscarProd.trim()) { setProductos([]); return; }
-    setBuscandoProd(true);
+    setCargandoProds(true);
     const t = setTimeout(async () => {
       try {
-        const { data } = await api.get("/cajero/productos", { params: { buscar: buscarProd } });
+        const { data } = await api.get("/cajero/productos", { params: { buscar: busqueda || "" } });
         setProductos(data);
       } catch { setProductos([]); }
-      finally { setBuscandoProd(false); }
-    }, 280);
+      finally { setCargandoProds(false); }
+    }, 250);
     return () => clearTimeout(t);
-  }, [buscarProd]);
+  }, [busqueda]);
 
-  // Búsqueda de clientes con debounce
+  // Búsqueda clientes
   useEffect(() => {
     if (!clienteBus.trim()) { setClientes([]); return; }
     const t = setTimeout(async () => {
@@ -91,71 +155,50 @@ function NuevaVenta() {
         const { data } = await api.get("/cajero/clientes", { params: { buscar: clienteBus } });
         setClientes(data);
       } catch { setClientes([]); }
-    }, 280);
+    }, 250);
     return () => clearTimeout(t);
   }, [clienteBus]);
 
-  // Agregar producto al carrito
-  const agregar = (prod) => {
+  // Atajo F2 → focus buscador
+  useEffect(() => {
+    const fn = (e) => {
+      if (e.key === "F2") { e.preventDefault(); buscarRef.current?.focus(); }
+      if (e.key === "Escape") setError("");
+    };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, []);
+
+  const agregar = (p) => {
     setCart(prev => {
-      const idx = prev.findIndex(i => i.producto.id === prod.id);
+      const idx = prev.findIndex(i => i.producto.id === p.id);
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = { ...next[idx], cantidad: next[idx].cantidad + 1 };
         return next;
       }
-      return [...prev, { producto: prod, cantidad: 1 }];
+      return [...prev, { producto: p, cantidad: 1 }];
     });
-    setBuscarProd("");
-    setProductos([]);
   };
 
-  // ── Escáner: buscar producto por código de barras ─────────────
-  const escanear = async (codigo) => {
-    if (!codigo.trim()) return;
-    setErrorBarra("");
-    setScanOk(false);
-    try {
-      const { data } = await api.get("/cajero/productos", {
-        params: { buscar: codigo.trim() }
-      });
-      const prod = data?.[0];
-      if (!prod) {
-        setErrorBarra(`No se encontró: "${codigo}"`);
-      } else {
-        agregar(prod);
-        setScanOk(true);
-        setTimeout(() => setScanOk(false), 1200); // feedback verde 1.2s
-      }
-    } catch {
-      setErrorBarra("Error al buscar el producto.");
-    } finally {
-      setCodigoBarra("");
-      setTimeout(() => barraRef.current?.focus(), 50);
-    }
-  };
-
-  const cambiarCantidad = (id, delta) => {
-    setCart(prev =>
-      prev.map(i => i.producto.id === id ? { ...i, cantidad: Math.max(1, i.cantidad + delta) } : i)
-    );
+  const cambiarCant = (id, delta) => {
+    setCart(prev => prev.map(i => i.producto.id === id ? { ...i, cantidad: Math.max(1, i.cantidad + delta) } : i));
   };
 
   const quitar = (id) => setCart(prev => prev.filter(i => i.producto.id !== id));
 
-  const subtotal = cart.reduce((acc, i) => acc + i.producto.precio * i.cantidad, 0);
-  const iva      = subtotal * 0.19;
-  const total    = subtotal + iva;
+  const subtotal = cart.reduce((a, i) => a + i.producto.precio * i.cantidad, 0);
+  const iva = subtotal * 0.19;
+  const total = subtotal + iva;
 
   const registrar = async () => {
     if (!cart.length) return setError("Agrega al menos un producto.");
     setError(""); setEnviando(true);
     try {
       const { data } = await api.post("/cajero/facturas", {
-        usuario_id:  clienteSel?.id || null,
-        items:       cart.map(i => ({ producto_id: i.producto.id, cantidad: i.cantidad })),
+        usuario_id: clienteSel?.id || null,
+        items: cart.map(i => ({ producto_id: i.producto.id, cantidad: i.cantidad })),
         metodo_pago: metodo,
-        notas:       notas || undefined,
       });
       setExito(data);
     } catch (err) {
@@ -165,374 +208,455 @@ function NuevaVenta() {
     }
   };
 
-  const nueva = () => {
-    setExito(null); setCart([]); setClienteSel(null);
-    setClienteBus(""); setNotas(""); setError("");
-    setCodigoBarra(""); setErrorBarra("");
-    setTimeout(() => barraRef.current?.focus(), 100);
+  const nuevaVenta = () => {
+    setCart([]); setClienteSel(null); setClienteBus(""); setExito(null);
+    setError(""); setMetodo("tarjeta"); setBusqueda("");
   };
 
-  // ── Pantalla de éxito ────────────────────────────────────────
+  // Ticket code
+  const ticketCode = exito?.codigo || `VP-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`;
+
   if (exito) return (
-    <div className="flex flex-col items-center justify-center py-20 gap-5">
-      <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
-        style={{ background: T.successBg, border: `1px solid ${T.successBorder}` }}>✓</div>
-      <div className="text-center">
-        <p className="text-base font-bold" style={{ color: T.text }}>Venta registrada</p>
-        <p className="text-2xl font-bold mt-1 tabular-nums"
-          style={{ color: T.brand, fontFamily: font.mono }}>{exito.codigo}</p>
-        <p className="text-xs mt-2" style={{ color: T.textMuted }}>
-          Total cobrado: <strong style={{ fontFamily: font.mono }}>{fmt(total)}</strong>
-        </p>
-      </div>
-      <button onClick={nueva}
-        className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all active:scale-95"
-        style={{ background: T.brand, boxShadow: shadow.sm }}>
-        + Nueva venta
+    <div style={{
+      maxWidth: 520, margin: "60px auto", padding: 40,
+      background: C.surface, border: `1px solid ${C.successBorder}`,
+      borderRadius: RADIUS.lg, textAlign: "center",
+    }}>
+      <div style={{
+        width: 72, height: 72, borderRadius: 20,
+        background: C.successBg, border: `2px solid ${C.successBorder}`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 36, margin: "0 auto 18px",
+      }}>✓</div>
+      <h2 style={{
+        margin: "0 0 8px",
+        fontFamily: FONT.display, fontStyle: "italic",
+        fontWeight: 600, fontSize: 26, color: C.ink,
+      }}>
+        ¡Venta registrada!
+      </h2>
+      <p style={{ margin: "0 0 18px", fontSize: 14, color: C.ink3 }}>
+        Ticket <strong style={{ fontFamily: FONT.mono, color: C.ink }}>#{exito.codigo}</strong>
+        {" "}por <strong style={{ color: C.brand, fontFamily: FONT.mono }}>{fmt(exito.total)}</strong>
+      </p>
+      <button onClick={nuevaVenta} style={{
+        padding: "12px 28px", borderRadius: RADIUS.sm,
+        background: C.brand, color: "#fff",
+        border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer",
+      }}>
+        Nueva venta
       </button>
     </div>
   );
 
-  // ── Layout principal ─────────────────────────────────────────
   return (
-    <div className="flex gap-5 h-full min-h-0">
+    <div className="vp-pos-layout" style={{
+      display: "grid",
+      gridTemplateColumns: "1fr 380px",
+      gap: 0,
+      height: "calc(100vh - 0px)",
+    }}>
+      {/* Panel productos */}
+      <div style={{ padding: "24px 28px", overflowY: "auto" }}>
 
-      {/* ── IZQUIERDA ── */}
-      <div className="flex-1 flex flex-col gap-4 min-w-0">
-
-        {/* ── ESCÁNER DE CÓDIGO DE BARRAS ─────────────────────── */}
-        <div className="rounded-2xl p-4 space-y-2 transition-all duration-200"
-          style={{
-            background: scanOk ? T.successBg : errorBarra ? T.dangerBg : T.brandLight,
-            border: `1.5px solid ${scanOk ? T.successBorder : errorBarra ? T.dangerBorder : T.brandBorder}`,
-            boxShadow: shadow.sm,
+        {/* Header */}
+        <div style={{ marginBottom: 20 }}>
+          <span style={{
+            fontSize: 11, fontWeight: 600, color: C.ink3,
+            letterSpacing: 0.3,
           }}>
-          <div className="flex items-center gap-2">
-            <svg width={15} height={15} fill="none" stroke={scanOk ? T.success : errorBarra ? T.danger : T.brand}
-              strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <path d={ICONS.barcode}/>
-            </svg>
-            <label className="text-xs font-bold uppercase tracking-wider"
-              style={{ color: scanOk ? T.success : errorBarra ? T.danger : T.brand }}>
-              {scanOk ? "✓ Producto agregado" : errorBarra ? "Producto no encontrado" : "Escáner de código de barras"}
-            </label>
-          </div>
-
-          <input
-            ref={barraRef}
-            value={codigoBarra}
-            autoFocus
-            onChange={e => { setCodigoBarra(e.target.value); setErrorBarra(""); setScanOk(false); }}
-            onKeyDown={e => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                escanear(codigoBarra);
-              }
-            }}
-            placeholder="Apunta el lector aquí — Enter automático al escanear..."
-            className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none transition-all"
-            style={{
-              border: `1.5px solid ${scanOk ? T.successBorder : errorBarra ? T.dangerBorder : T.brandBorder}`,
-              background: T.surface,
-              color: T.text,
-              fontFamily: font.mono,
-              letterSpacing: "0.06em",
-            }}
-            onFocus={e => e.target.style.borderColor = scanOk ? T.success : errorBarra ? T.danger : T.brand}
-            onBlur={e  => e.target.style.borderColor = scanOk ? T.successBorder : errorBarra ? T.dangerBorder : T.brandBorder}
-          />
-
-          {errorBarra && (
-            <p className="text-xs font-medium" style={{ color: T.danger }}>
-              ⚠ {errorBarra}
-            </p>
-          )}
-
-          <p className="text-xs" style={{ color: T.textTer }}>
-            El lector envía Enter automáticamente · También puedes escribir el código manualmente
-          </p>
+            Punto de venta · Caja 1
+          </span>
+          <h1 style={{
+            margin: "4px 0 0",
+            fontFamily: FONT.display, fontStyle: "italic",
+            fontWeight: 600, fontSize: 30,
+            color: C.ink, letterSpacing: -0.3,
+          }}>
+            Nueva venta
+          </h1>
         </div>
-        {/* ── FIN ESCÁNER ─────────────────────────────────────── */}
 
-        {/* Buscador de productos (manual por nombre) */}
-        <div className="rounded-2xl p-4 space-y-3"
-          style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <label className="block text-xs font-bold uppercase tracking-wider" style={{ color: T.textTer }}>
-            Buscar producto por nombre
-          </label>
-          <div className="relative">
-            <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
-              <Icon d={ICONS.search} size={14} color={T.textMuted} />
-            </div>
+        {/* Buscador + Stock */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+          <div style={{ flex: 1, position: "relative" }}>
+            <span style={{
+              position: "absolute", left: 14, top: "50%",
+              transform: "translateY(-50%)",
+              color: C.muted, fontSize: 14,
+            }}>🔍</span>
             <input
               ref={buscarRef}
-              value={buscarProd}
-              onChange={e => setBuscarProd(e.target.value)}
-              placeholder="Nombre o marca del producto..."
-              className="w-full pl-9 pr-4 py-3 text-sm rounded-xl outline-none transition-all"
-              style={{ border: `1.5px solid ${T.border}`, background: T.surfaceAlt, color: T.text }}
-              onFocus={e => { e.target.style.borderColor = T.brand; e.target.style.background = T.surface; }}
-              onBlur={e  => { e.target.style.borderColor = T.border; e.target.style.background = T.surfaceAlt; }}
+              type="text"
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              placeholder="Buscar por nombre, código o escanea"
+              style={{
+                width: "100%", height: 42,
+                padding: "0 60px 0 40px",
+                borderRadius: RADIUS.sm,
+                border: `1px solid ${C.lineStrong}`,
+                background: C.surface, color: C.ink,
+                fontSize: 13, fontFamily: FONT.ui,
+                outline: "none",
+              }}
             />
-            {buscandoProd && (
-              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full animate-spin"
-                style={{ border: `2px solid ${T.brandLight}`, borderTopColor: T.brand }} />
-            )}
+            <span style={{
+              position: "absolute", right: 12, top: "50%",
+              transform: "translateY(-50%)",
+              padding: "2px 8px", borderRadius: RADIUS.sm,
+              border: `1px solid ${C.lineStrong}`,
+              background: C.surfaceAlt,
+              fontSize: 10, fontWeight: 600,
+              color: C.ink3, fontFamily: FONT.mono,
+            }}>F2</span>
           </div>
-
-          {/* Resultados del buscador */}
-          {productos.length > 0 && (
-            <div className="rounded-xl overflow-hidden max-h-64 overflow-y-auto"
-              style={{ border: `1px solid ${T.border}` }}>
-              {productos.map(p => (
-                <button key={p.id} onClick={() => agregar(p)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                  style={{ borderBottom: `1px solid ${T.borderSub}` }}
-                  onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
-                  onMouseLeave={e => e.currentTarget.style.background = T.surface}>
-                  <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0"
-                    style={{ background: T.surfaceAlt, border: `1px solid ${T.border}` }}>
-                    {p.imagen_url
-                      ? <img src={p.imagen_url} alt="" className="w-full h-full object-cover" />
-                      : <div className="w-full h-full flex items-center justify-center text-base">📦</div>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold truncate" style={{ color: T.text }}>{p.nombre}</p>
-                    {p.marca && <p className="text-xs" style={{ color: T.textMuted }}>{p.marca}</p>}
-                  </div>
-                  <div className="flex-shrink-0 text-right">
-                    <p className="text-xs font-bold tabular-nums" style={{ color: T.brand, fontFamily: font.mono }}>
-                      {fmt(p.precio)}
-                    </p>
-                    <p className="text-xs" style={{ color: p.stock > 0 ? T.textMuted : T.danger }}>
-                      Stock: {p.stock}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {buscarProd && !buscandoProd && !productos.length && (
-            <p className="text-xs text-center py-3" style={{ color: T.textMuted }}>
-              Sin resultados para "{buscarProd}"
-            </p>
-          )}
+          <button style={{
+            padding: "0 18px", height: 42,
+            borderRadius: RADIUS.sm,
+            border: `1px solid ${C.lineStrong}`,
+            background: C.surface, color: C.ink,
+            fontSize: 13, fontWeight: 600, cursor: "pointer",
+            display: "inline-flex", alignItems: "center", gap: 6,
+            fontFamily: FONT.ui,
+          }}>
+            📦 Stock
+          </button>
         </div>
 
-        {/* Buscador de cliente */}
-        <div className="rounded-2xl p-4 space-y-3"
-          style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <label className="block text-xs font-bold uppercase tracking-wider" style={{ color: T.textTer }}>
-            Cliente <span className="normal-case font-normal">(opcional)</span>
-          </label>
+        {/* Categorías */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 22, flexWrap: "wrap" }}>
+          {CATEGORIAS.map(cat => {
+            const activo = catActiva === cat;
+            return (
+              <button key={cat} onClick={() => setCatActiva(cat)}
+                style={{
+                  padding: "7px 14px",
+                  borderRadius: RADIUS.pill,
+                  background: activo ? C.brand : "transparent",
+                  color: activo ? "#fff" : C.ink2,
+                  border: `1px solid ${activo ? C.brand : C.lineStrong}`,
+                  fontSize: 12, fontWeight: 600, cursor: "pointer",
+                  transition: "all 0.15s",
+                  fontFamily: FONT.ui,
+                }}>
+                {cat}
+              </button>
+            );
+          })}
+        </div>
 
+        {/* Grid productos */}
+        {cargandoProds ? (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+            gap: 14,
+          }}>
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} style={{
+                height: 180,
+                background: C.surfaceAlt,
+                borderRadius: RADIUS.lg,
+              }}/>
+            ))}
+          </div>
+        ) : productos.length === 0 ? (
+          <div style={{
+            textAlign: "center", padding: "60px 24px",
+            background: C.surface, border: `1px solid ${C.line}`,
+            borderRadius: RADIUS.lg,
+            color: C.ink3, fontSize: 14,
+          }}>
+            {busqueda ? `Sin resultados para "${busqueda}"` : "Busca o escanea un producto"}
+          </div>
+        ) : (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+            gap: 14,
+          }}>
+            {productos.map(p => (
+              <ProductoTile key={p.id} p={p} onAdd={agregar} C={C}/>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Panel Ticket */}
+      <aside style={{
+        background: C.surface,
+        borderLeft: `1px solid ${C.line}`,
+        display: "flex", flexDirection: "column",
+        height: "100vh",
+        position: "sticky", top: 0,
+      }}>
+        {/* Header ticket */}
+        <div style={{ padding: "20px 22px 14px", borderBottom: `1px solid ${C.line}` }}>
+          <div style={{
+            fontSize: 11, color: C.ink3, fontWeight: 500,
+            fontFamily: FONT.mono,
+          }}>
+            Ticket #{ticketCode}
+          </div>
+          <h3 style={{
+            margin: "4px 0 0",
+            fontFamily: FONT.display, fontStyle: "italic",
+            fontWeight: 600, fontSize: 22, color: C.ink,
+          }}>
+            Venta actual
+          </h3>
+        </div>
+
+        {/* Cliente */}
+        <div style={{ padding: "14px 22px", borderBottom: `1px solid ${C.line}` }}>
           {clienteSel ? (
-            <div className="flex items-center justify-between rounded-xl px-4 py-3"
-              style={{ background: T.brandLight, border: `1px solid ${T.brandBorder}` }}>
-              <div>
-                <p className="text-xs font-bold" style={{ color: T.brand }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: "50%",
+                background: C.coral, color: "#fff",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 13, fontWeight: 700,
+              }}>
+                {clienteSel.nombre?.charAt(0).toUpperCase()}{clienteSel.apellido?.charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.ink }}>
                   {clienteSel.nombre} {clienteSel.apellido}
                 </p>
-                <p className="text-xs" style={{ color: T.textMuted }}>
-                  {clienteSel.numero_documento} · {clienteSel.email}
+                <p style={{ margin: 0, fontSize: 11, color: C.ink3 }}>
+                  {clienteSel.email}
                 </p>
               </div>
-              <button onClick={() => { setClienteSel(null); setClienteBus(""); }}
-                className="text-xs font-semibold" style={{ color: T.danger }}>Quitar</button>
+              <button onClick={() => setClienteSel(null)} style={{
+                fontSize: 12, color: C.brand,
+                background: "transparent", border: "none",
+                cursor: "pointer", fontWeight: 600,
+              }}>
+                Cambiar
+              </button>
             </div>
           ) : (
-            <>
-              <div className="relative">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
-                  <Icon d={ICONS.user} size={14} color={T.textMuted} />
-                </div>
-                <input value={clienteBus} onChange={e => setClienteBus(e.target.value)}
-                  placeholder="Nombre, documento o email..."
-                  className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none transition-all"
-                  style={{ border: `1.5px solid ${T.border}`, background: T.surfaceAlt, color: T.text }}
-                  onFocus={e => { e.target.style.borderColor = T.brand; e.target.style.background = T.surface; }}
-                  onBlur={e  => { e.target.style.borderColor = T.border; e.target.style.background = T.surfaceAlt; }}
-                />
-              </div>
+            <div>
+              <input
+                type="text"
+                value={clienteBus}
+                onChange={e => setClienteBus(e.target.value)}
+                placeholder="Buscar cliente (opcional)"
+                style={{
+                  width: "100%", height: 36,
+                  padding: "0 12px",
+                  borderRadius: RADIUS.sm,
+                  border: `1px solid ${C.lineStrong}`,
+                  background: C.surfaceAlt, color: C.ink,
+                  fontSize: 12, fontFamily: FONT.ui,
+                  outline: "none",
+                }}
+              />
               {clientes.length > 0 && (
-                <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${T.border}` }}>
+                <div style={{ marginTop: 6, maxHeight: 140, overflowY: "auto" }}>
                   {clientes.map(c => (
                     <button key={c.id} onClick={() => { setClienteSel(c); setClienteBus(""); setClientes([]); }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
-                      style={{ borderBottom: `1px solid ${T.borderSub}` }}
-                      onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
-                      onMouseLeave={e => e.currentTarget.style.background = T.surface}>
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ background: T.brandLight, color: T.brand }}>
-                        {c.nombre?.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold" style={{ color: T.text }}>{c.nombre} {c.apellido}</p>
-                        <p className="text-xs truncate" style={{ color: T.textMuted }}>{c.numero_documento} · {c.email}</p>
-                      </div>
+                      style={{
+                        display: "block", width: "100%", textAlign: "left",
+                        padding: "8px 10px",
+                        borderRadius: RADIUS.sm,
+                        background: "transparent",
+                        border: "none", cursor: "pointer",
+                        fontSize: 12, color: C.ink,
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = C.surfaceAlt}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      {c.nombre} {c.apellido} <span style={{ color: C.muted }}>· {c.email}</span>
                     </button>
                   ))}
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
 
-        {/* Notas */}
-        <div className="rounded-2xl p-4"
-          style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: T.textTer }}>
-            Notas internas <span className="normal-case font-normal">(opcional)</span>
-          </label>
-          <textarea value={notas} onChange={e => setNotas(e.target.value)}
-            placeholder="Observaciones de la venta..."
-            rows={2}
-            className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none resize-none transition-all"
-            style={{ border: `1.5px solid ${T.border}`, background: T.surfaceAlt, color: T.text }}
-            onFocus={e => { e.target.style.borderColor = T.brand; e.target.style.background = T.surface; }}
-            onBlur={e  => { e.target.style.borderColor = T.border; e.target.style.background = T.surfaceAlt; }}
-          />
-        </div>
-      </div>
-
-      {/* ── DERECHA: pedido en curso ── */}
-      <div className="w-80 flex-shrink-0 flex flex-col gap-4">
-
-        {/* Items del carrito */}
-        <div className="rounded-2xl flex flex-col flex-1 overflow-hidden"
-          style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${T.border}` }}>
-            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textTer }}>
-              Pedido · {cart.length} ítem{cart.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-
-          {!cart.length ? (
-            <div className="flex-1 flex flex-col items-center justify-center py-12 gap-2 px-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-                style={{ background: T.surfaceAlt }}>🛒</div>
-              <p className="text-xs text-center" style={{ color: T.textMuted }}>
-                Escanea un código o busca un producto para agregar
-              </p>
+        {/* Items */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "8px 22px" }}>
+          {cart.length === 0 ? (
+            <div style={{
+              padding: "40px 12px",
+              textAlign: "center",
+              color: C.ink3, fontSize: 13,
+            }}>
+              <FontAwesomeIcon icon={faCartShopping} style={{ fontSize: 30, marginBottom: 12, color: C.muted, display: "block" }}/>
+              Sin productos aún
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto divide-y" style={{ borderColor: T.borderSub }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {cart.map(({ producto, cantidad }) => (
-                <div key={producto.id} className="flex items-start gap-3 px-4 py-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold leading-snug" style={{ color: T.text }}>
+                <div key={producto.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: RADIUS.sm,
+                    background: C.brandSoft,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 16, flexShrink: 0,
+                  }}>🛍</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{
+                      margin: 0, fontSize: 12, fontWeight: 600, color: C.ink,
+                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                    }}>
                       {producto.nombre}
                     </p>
-                    <p className="text-xs mt-0.5 tabular-nums" style={{ color: T.brand, fontFamily: font.mono }}>
+                    <p style={{ margin: 0, fontSize: 10, color: C.ink3, fontFamily: FONT.mono }}>
                       {fmt(producto.precio)} c/u
                     </p>
                   </div>
-                  {/* Controles de cantidad */}
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => cambiarCantidad(producto.id, -1)}
-                      className="w-6 h-6 rounded-lg flex items-center justify-center text-sm font-bold transition-colors"
-                      style={{ background: T.surfaceAlt, color: T.textSec, border: `1px solid ${T.border}` }}
-                      onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
-                      onMouseLeave={e => e.currentTarget.style.background = T.surfaceAlt}>
-                      −
-                    </button>
-                    <span className="w-7 text-center text-xs font-bold tabular-nums" style={{ color: T.text }}>
-                      {cantidad}
-                    </span>
-                    <button onClick={() => cambiarCantidad(producto.id, 1)}
-                      className="w-6 h-6 rounded-lg flex items-center justify-center text-sm font-bold transition-colors"
-                      style={{ background: T.surfaceAlt, color: T.textSec, border: `1px solid ${T.border}` }}
-                      onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
-                      onMouseLeave={e => e.currentTarget.style.background = T.surfaceAlt}>
-                      +
-                    </button>
+                  <div style={{
+                    display: "inline-flex", alignItems: "center",
+                    border: `1px solid ${C.lineStrong}`,
+                    borderRadius: RADIUS.sm, overflow: "hidden",
+                  }}>
+                    <button onClick={() => cambiarCant(producto.id, -1)}
+                      style={{
+                        width: 24, height: 24, border: "none",
+                        background: "transparent", color: C.ink,
+                        cursor: "pointer", fontSize: 14,
+                      }}>−</button>
+                    <span style={{
+                      minWidth: 22, fontSize: 11, fontWeight: 700,
+                      color: C.ink, textAlign: "center",
+                      fontFamily: FONT.mono,
+                    }}>{cantidad}</span>
+                    <button onClick={() => cambiarCant(producto.id, 1)}
+                      style={{
+                        width: 24, height: 24, border: "none",
+                        background: "transparent", color: C.ink,
+                        cursor: "pointer", fontSize: 14,
+                      }}>+</button>
                   </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <p className="text-xs font-bold tabular-nums" style={{ color: T.text, fontFamily: font.mono }}>
-                      {fmt(producto.precio * cantidad)}
-                    </p>
-                    <button onClick={() => quitar(producto.id)}
-                      className="transition-colors"
-                      style={{ color: T.textMuted }}
-                      onMouseEnter={e => e.currentTarget.style.color = T.danger}
-                      onMouseLeave={e => e.currentTarget.style.color = T.textMuted}>
-                      <Icon d={ICONS.trash} size={13} color="currentColor" />
-                    </button>
-                  </div>
+                  <span style={{
+                    fontSize: 13, fontWeight: 700,
+                    color: C.ink, fontFamily: FONT.mono,
+                    minWidth: 60, textAlign: "right",
+                  }}>
+                    {fmt(producto.precio * cantidad)}
+                  </span>
+                  <button onClick={() => quitar(producto.id)}
+                    style={{
+                      width: 22, height: 22, border: "none",
+                      background: "transparent", color: C.muted,
+                      cursor: "pointer", fontSize: 14,
+                    }}>×</button>
                 </div>
               ))}
             </div>
           )}
+        </div>
 
-          {/* Totales */}
-          {cart.length > 0 && (
-            <div className="px-4 py-3 space-y-1.5" style={{ borderTop: `1px solid ${T.border}` }}>
-              <div className="flex justify-between text-xs" style={{ color: T.textTer }}>
-                <span>Subtotal</span>
-                <span className="tabular-nums" style={{ fontFamily: font.mono }}>{fmt(subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-xs" style={{ color: T.info }}>
-                <span>IVA 19%</span>
-                <span className="tabular-nums" style={{ fontFamily: font.mono }}>{fmt(iva)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-bold pt-1.5"
-                style={{ borderTop: `1px solid ${T.border}`, color: T.text }}>
-                <span>Total a cobrar</span>
-                <span className="tabular-nums" style={{ color: T.brand, fontFamily: font.mono }}>{fmt(total)}</span>
-              </div>
+        {/* Totales + métodos */}
+        <div style={{ padding: "16px 22px 20px", borderTop: `1px solid ${C.line}` }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.ink2 }}>
+              <span>Subtotal</span>
+              <span style={{ fontFamily: FONT.mono }}>{fmt(subtotal)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.ink2 }}>
+              <span>IVA 19%</span>
+              <span style={{ fontFamily: FONT.mono }}>{fmt(iva)}</span>
+            </div>
+            <button style={{
+              background: "transparent", border: "none",
+              color: C.brand, fontSize: 11, fontWeight: 600,
+              cursor: "pointer", textAlign: "left", padding: 0,
+            }}>
+              + Aplicar descuento
+            </button>
+          </div>
+
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "baseline",
+            marginBottom: 14,
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>Total a pagar</span>
+            <span style={{
+              fontFamily: FONT.display,
+              fontWeight: 700, fontSize: 26,
+              color: C.ink, letterSpacing: -0.5,
+            }}>
+              {fmt(total)}
+            </span>
+          </div>
+
+          {/* Métodos pago */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 6, marginBottom: 12,
+          }}>
+            {METODOS.map(m => {
+              const activo = metodo === m.id;
+              return (
+                <button key={m.id} onClick={() => setMetodo(m.id)}
+                  style={{
+                    padding: "10px 6px",
+                    borderRadius: RADIUS.sm,
+                    border: `1.5px solid ${activo ? C.brand : C.lineStrong}`,
+                    background: activo ? C.brandSoft : C.surface,
+                    color: activo ? C.brand : C.ink2,
+                    fontSize: 11, fontWeight: 600, cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}>
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {error && (
+            <div style={{
+              padding: "8px 12px", marginBottom: 12,
+              borderRadius: RADIUS.sm,
+              background: C.dangerBg, border: `1px solid ${C.dangerBorder}`,
+              color: C.danger, fontSize: 12,
+            }}>
+              ⚠ {error}
             </div>
           )}
-        </div>
 
-        {/* Método de pago */}
-        <div className="rounded-2xl p-4 space-y-3"
-          style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: T.textTer }}>
-            Método de pago
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {METODOS.map(m => (
-              <button key={m.id} onClick={() => setMetodo(m.id)}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all"
-                style={metodo === m.id
-                  ? { background: T.brandLight, color: T.brand, border: `1.5px solid ${T.brandBorder}` }
-                  : { background: T.surfaceAlt, color: T.textSec, border: `1.5px solid ${T.border}` }}>
-                <span>{m.icon}</span> {m.label}
-              </button>
-            ))}
+          {/* CTA */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr", gap: 8 }}>
+            <button style={{
+              height: 42, borderRadius: RADIUS.sm,
+              border: `1px solid ${C.lineStrong}`,
+              background: C.surface, color: C.ink,
+              fontSize: 13, fontWeight: 600, cursor: "pointer",
+              fontFamily: FONT.ui,
+            }}>
+              Guardar
+            </button>
+            <button
+              onClick={registrar}
+              disabled={enviando || cart.length === 0}
+              style={{
+                height: 42, borderRadius: RADIUS.sm,
+                border: "none",
+                background: cart.length === 0 || enviando ? C.surfaceAlt : C.brand,
+                color: cart.length === 0 || enviando ? C.muted : "#fff",
+                fontSize: 13, fontWeight: 700,
+                fontFamily: FONT.ui,
+                cursor: cart.length === 0 || enviando ? "default" : "pointer",
+                transition: "background 0.15s",
+              }}>
+              {enviando ? "Procesando..." : `✓ Cobrar ${fmt(total)}`}
+            </button>
           </div>
         </div>
-
-        {/* Error y botón registrar */}
-        {error && (
-          <div className="px-4 py-3 rounded-xl text-xs font-medium"
-            style={{ background: T.dangerBg, color: T.danger, border: `1px solid ${T.dangerBorder}` }}>
-            {error}
-          </div>
-        )}
-
-        <button onClick={registrar} disabled={enviando || !cart.length}
-          className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ background: T.brand, boxShadow: shadow.sm }}>
-          {enviando ? "Registrando..." : `Registrar venta · ${fmt(total)}`}
-        </button>
-
-        {cart.length > 0 && (
-          <button onClick={() => setCart([])}
-            className="w-full py-2 rounded-xl text-xs font-semibold transition-colors"
-            style={{ color: T.danger, border: `1px solid ${T.dangerBorder}`, background: T.dangerBg }}>
-            Vaciar pedido
-          </button>
-        )}
-      </div>
+      </aside>
     </div>
   );
 }
 
-// ─── Sección: Historial del cajero ────────────────────────────
+/* ─── Sección Historial ──────────────────────────────────────────────────── */
 function Historial() {
-  const [ventas,   setVentas]   = useState([]);
+  const { C } = useTheme();
+  const [ventas, setVentas] = useState([]);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
@@ -541,92 +665,399 @@ function Historial() {
       .finally(() => setCargando(false));
   }, []);
 
-  const totalHoy = ventas
-    .filter(v => v.created_at?.startsWith(new Date().toISOString().split("T")[0]))
-    .reduce((acc, v) => acc + Number(v.total || 0), 0);
+  const hoy = new Date().toISOString().split("T")[0];
+  const ventasHoy = ventas.filter(v => v.created_at?.startsWith(hoy));
 
   if (cargando) return (
-    <div className="flex items-center justify-center py-20">
-      <div className="w-7 h-7 rounded-full animate-spin"
-        style={{ border: `2px solid ${T.brandLight}`, borderTopColor: T.brand }} />
+    <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: "50%",
+        border: `2px solid ${C.brandSoft}`, borderTopColor: C.brand,
+        animation: "vp-spin 0.8s linear infinite",
+      }}/>
     </div>
   );
 
   return (
-    <div className="space-y-5 max-w-3xl">
-      {/* Resumen */}
-      <div className="grid grid-cols-3 gap-3">
+    <div style={{ padding: "24px 28px", maxWidth: 1100 }}>
+      <span style={{ fontSize: 11, fontWeight: 600, color: C.ink3 }}>
+        Operación · Historial
+      </span>
+      <h1 style={{
+        margin: "4px 0 24px",
+        fontFamily: FONT.display, fontStyle: "italic",
+        fontWeight: 600, fontSize: 30, color: C.ink,
+      }}>
+        Mis ventas
+      </h1>
+
+      {/* KPIs */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 1fr)",
+        gap: 14, marginBottom: 24,
+      }}>
         {[
-          { label: "Ventas totales",  value: ventas.length,       mono: false },
-          { label: "Ventas hoy",      value: ventas.filter(v => v.created_at?.startsWith(new Date().toISOString().split("T")[0])).length, mono: false },
-          { label: "Facturado total", value: fmt(ventas.reduce((acc, v) => acc + Number(v.total || 0), 0)), mono: true },
-        ].map(({ label, value, mono }) => (
-          <div key={label} className="rounded-2xl p-4"
-            style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-            <p className="text-xl font-bold" style={{ color: T.brand, fontFamily: mono ? font.mono : undefined }}>
-              {value}
-            </p>
-            <p className="text-xs font-semibold uppercase tracking-wider mt-1" style={{ color: T.textMuted }}>
-              {label}
-            </p>
+          { label: "Ventas hoy", value: ventasHoy.length },
+          { label: "Facturado hoy", value: fmt(ventasHoy.reduce((a, v) => a + Number(v.total || 0), 0)) },
+          { label: "Total ventas", value: ventas.length },
+        ].map(k => (
+          <div key={k.label} style={{
+            padding: 20,
+            background: C.surface,
+            border: `1px solid ${C.line}`,
+            borderRadius: RADIUS.lg,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.ink3, textTransform: "uppercase", letterSpacing: 1 }}>
+              {k.label}
+            </span>
+            <div style={{
+              marginTop: 8,
+              fontFamily: FONT.display,
+              fontWeight: 700, fontSize: 26,
+              color: C.ink, letterSpacing: -0.3,
+            }}>
+              {k.value}
+            </div>
           </div>
         ))}
       </div>
 
-      {!ventas.length ? (
-        <div className="rounded-2xl p-12 flex flex-col items-center gap-3"
-          style={{ background: T.surface, border: `1px solid ${T.border}` }}>
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl"
-            style={{ background: T.surfaceAlt }}>📋</div>
-          <p className="text-sm" style={{ color: T.textMuted }}>Sin ventas registradas aún</p>
+      {/* Tabla */}
+      {ventas.length === 0 ? (
+        <div style={{
+          padding: "60px 24px", textAlign: "center",
+          background: C.surface, border: `1px solid ${C.line}`,
+          borderRadius: RADIUS.lg, color: C.ink3,
+        }}>
+          Sin ventas registradas aún
         </div>
       ) : (
-        <div className="rounded-2xl overflow-hidden"
-          style={{ background: T.surface, border: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${T.border}`, background: T.surfaceAlt }}>
-                {["Código", "Cliente", "Ítems", "Método", "Total", "Estado", "Fecha"].map(col => (
-                  <th key={col} className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wider"
-                    style={{ color: T.textTer }}>
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ventas.map((v, i) => (
-                <tr key={v.id} className="transition-colors"
-                  style={{ borderBottom: `1px solid ${T.borderSub}`, background: i % 2 === 0 ? T.surface : T.surfaceAlt }}
-                  onMouseEnter={e => e.currentTarget.style.background = T.surfaceHover}
-                  onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? T.surface : T.surfaceAlt}>
-                  <td className="py-3 px-4">
-                    <span className="text-xs font-bold" style={{ color: T.brand, fontFamily: font.mono }}>{v.codigo}</span>
-                  </td>
-                  <td className="py-3 px-4 text-xs" style={{ color: T.textSec }}>
-                    {v.cliente || <span style={{ color: T.textMuted }}>—</span>}
-                  </td>
-                  <td className="py-3 px-4 text-xs tabular-nums" style={{ color: T.textTer }}>{v.items}</td>
-                  <td className="py-3 px-4 text-xs capitalize" style={{ color: T.textTer }}>{v.metodo_pago}</td>
-                  <td className="py-3 px-4 text-xs font-bold tabular-nums" style={{ color: T.text, fontFamily: font.mono }}>
-                    {fmt(v.total)}
-                  </td>
-                  <td className="py-3 px-4"><Badge estado={v.estado} /></td>
-                  <td className="py-3 px-4 text-xs" style={{ color: T.textMuted }}>{fdoc(v.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div style={{
+          background: C.surface,
+          border: `1px solid ${C.line}`,
+          borderRadius: RADIUS.lg,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "120px 1fr 80px 120px 120px 140px",
+            gap: 14,
+            padding: "14px 20px",
+            background: C.canvas,
+            borderBottom: `1px solid ${C.line}`,
+            fontSize: 10, fontWeight: 700,
+            textTransform: "uppercase", letterSpacing: 1.5,
+            color: C.ink3,
+          }}>
+            <span>Código</span>
+            <span>Cliente</span>
+            <span>Items</span>
+            <span>Método</span>
+            <span style={{ textAlign: "right" }}>Total</span>
+            <span>Fecha</span>
+          </div>
+          {ventas.map((v, i) => (
+            <div key={v.id} style={{
+              display: "grid",
+              gridTemplateColumns: "120px 1fr 80px 120px 120px 140px",
+              gap: 14,
+              padding: "12px 20px",
+              fontSize: 13,
+              borderBottom: i < ventas.length - 1 ? `1px solid ${C.line}` : "none",
+              alignItems: "center",
+            }}>
+              <span style={{ fontFamily: FONT.mono, color: C.brand, fontWeight: 700, fontSize: 11 }}>
+                {v.codigo}
+              </span>
+              <span style={{ color: C.ink2 }}>{v.cliente || "—"}</span>
+              <span style={{ color: C.ink3, fontFamily: FONT.mono }}>{v.items}</span>
+              <span style={{ color: C.ink3, textTransform: "capitalize" }}>{v.metodo_pago}</span>
+              <span style={{ color: C.ink, fontWeight: 700, fontFamily: FONT.mono, textAlign: "right" }}>
+                {fmt(v.total)}
+              </span>
+              <span style={{ color: C.muted, fontSize: 11 }}>{fdoc(v.created_at)}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-// ─── Layout principal ─────────────────────────────────────────
+/* ─── Sección: Consultas para cobrar ─────────────────────────────────── */
+function ConsultasPago() {
+  const { C } = useTheme();
+  const [ordenes, setOrdenes] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [seleccionada, setSeleccionada] = useState(null);
+  const [items, setItems] = useState([]);
+  const [pagando, setPagando] = useState(false);
+  const [metodo, setMetodo] = useState("efectivo");
+  const [msg, setMsg] = useState({});
+
+  const cargar = () => {
+    setCargando(true);
+    api.get("/ordenes-servicio/cajero/pendientes-pago")
+      .then(r => setOrdenes(r.data || []))
+      .catch(() => {})
+      .finally(() => setCargando(false));
+  };
+
+  useEffect(() => { cargar(); }, []);
+
+  const verDetalle = async (id) => {
+    setSeleccionada(id);
+    try {
+      const r = await api.get(`/ordenes-servicio/${id}`);
+      setItems(r.data.items || []);
+    } catch {}
+  };
+
+  const cobrar = async () => {
+    if (!seleccionada) return;
+    setPagando(true);
+    try {
+      await api.patch(`/ordenes-servicio/${seleccionada}/pagar`, { metodo_pago: metodo });
+      setMsg({ texto: `Consulta cobrada. ¡Gracias por preferirnos!`, tipo: "ok" });
+      setSeleccionada(null);
+      cargar();
+      setTimeout(() => setMsg({}), 3000);
+    } catch (err) {
+      setMsg({ texto: err.response?.data?.error || "Error", tipo: "err" });
+    } finally { setPagando(false); }
+  };
+
+  const orden = ordenes.find(o => o.id === seleccionada);
+
+  return (
+    <div style={{ padding: "24px 28px" }}>
+      <span style={{ fontSize: 11, fontWeight: 600, color: C.ink3 }}>Cajero · Consultas</span>
+      <h1 style={{
+        margin: "4px 0 24px",
+        fontFamily: FONT.display, fontStyle: "italic",
+        fontWeight: 600, fontSize: 30, color: C.ink,
+      }}>
+        Cobrar consultas veterinarias
+      </h1>
+
+      {msg.texto && (
+        <div style={{
+          padding: "12px 16px", marginBottom: 18,
+          borderRadius: RADIUS.sm,
+          background: msg.tipo === "ok" ? C.successBg : C.dangerBg,
+          border: `1px solid ${msg.tipo === "ok" ? C.successBorder : C.dangerBorder}`,
+          color: msg.tipo === "ok" ? C.success : C.danger,
+          fontSize: 13, fontWeight: 600,
+        }}>
+          {msg.texto}
+        </div>
+      )}
+
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: seleccionada ? "1fr 380px" : "1fr",
+        gap: 18, alignItems: "flex-start",
+      }} className="vp-cajero-consultas-grid">
+
+        <div>
+          {cargando ? (
+            <div style={{ padding: 60, textAlign: "center" }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: "50%",
+                border: `2px solid ${C.brandSoft}`, borderTopColor: C.brand,
+                animation: "vp-spin 0.8s linear infinite",
+                margin: "0 auto",
+              }}/>
+            </div>
+          ) : ordenes.length === 0 ? (
+            <div style={{
+              padding: 60, textAlign: "center",
+              background: C.surface, border: `1px solid ${C.line}`,
+              borderRadius: RADIUS.lg, color: C.ink3, fontSize: 14,
+            }}>
+              Sin consultas esperando pago
+            </div>
+          ) : (
+            <div style={{
+              background: C.surface,
+              border: `1px solid ${C.line}`,
+              borderRadius: RADIUS.lg, overflow: "hidden",
+            }}>
+              {ordenes.map((o, i) => {
+                const sel = seleccionada === o.id;
+                return (
+                  <button key={o.id} onClick={() => verDetalle(o.id)} style={{
+                    display: "flex", width: "100%", textAlign: "left",
+                    padding: "14px 20px", gap: 14,
+                    background: sel ? C.purpleSoft : "transparent",
+                    border: "none",
+                    borderLeft: `3px solid ${sel ? C.purple : "transparent"}`,
+                    borderBottom: i < ordenes.length - 1 ? `1px solid ${C.line}` : "none",
+                    cursor: "pointer", alignItems: "center",
+                    fontFamily: FONT.ui,
+                  }}>
+                    <div style={{
+                      width: 38, height: 38, borderRadius: RADIUS.sm,
+                      background: C.purpleBg, color: C.purple,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 14, flexShrink: 0,
+                    }}>
+                      <FontAwesomeIcon icon={faPills}/>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.ink }}>
+                        {o.nombre_mascota || "—"} · {o.cliente_nombre} {o.cliente_apellido}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 11, color: C.ink3, fontFamily: FONT.mono }}>
+                        {o.codigo} · {o.items_count} insumo{o.items_count !== 1 ? "s" : ""}
+                        {o.vet_nombre && <> · Dr(a). {o.vet_nombre}</>}
+                      </p>
+                    </div>
+                    <span style={{
+                      fontFamily: FONT.display, fontWeight: 700,
+                      fontSize: 16, color: C.purpleDeep,
+                    }}>
+                      {fmt(o.total)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Panel detalle */}
+        {orden && (
+          <aside style={{
+            position: "sticky", top: 24,
+            background: C.surface,
+            border: `1px solid ${C.purpleBorder}`,
+            borderRadius: RADIUS.lg,
+            overflow: "hidden",
+            fontFamily: FONT.ui,
+          }}>
+            <div style={{
+              padding: "16px 18px",
+              background: C.purpleSoft,
+              borderBottom: `1px solid ${C.purpleBorder}`,
+            }}>
+              <p style={{ margin: 0, fontFamily: FONT.mono, fontSize: 11, color: C.purple, fontWeight: 700 }}>
+                {orden.codigo}
+              </p>
+              <h3 style={{
+                margin: "4px 0 0",
+                fontFamily: FONT.display, fontStyle: "italic",
+                fontWeight: 600, fontSize: 18, color: C.purpleDeep,
+              }}>
+                Consulta veterinaria
+              </h3>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: C.ink3 }}>
+                {orden.nombre_mascota} · {orden.especie_mascota}
+              </p>
+            </div>
+
+            <div style={{ padding: "16px 18px", maxHeight: 320, overflowY: "auto" }}>
+              {orden.motivo_consulta && (
+                <p style={{ margin: "0 0 12px", fontSize: 12, color: C.ink2, fontStyle: "italic" }}>
+                  "{orden.motivo_consulta}"
+                </p>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                  <span style={{ color: C.ink3 }}>Consulta base</span>
+                  <span style={{ fontFamily: FONT.mono, color: C.ink }}>{fmt(orden.precio_consulta)}</span>
+                </div>
+                {items.map(it => (
+                  <div key={it.id} style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    fontSize: 12, padding: "4px 0",
+                  }}>
+                    <span style={{ color: C.ink2, flex: 1, minWidth: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <FontAwesomeIcon icon={faPills} style={{ color: C.purple, fontSize: 11 }}/>
+                      {it.nombre_snap} <span style={{ color: C.ink3 }}>×{it.cantidad}</span>
+                    </span>
+                    <span style={{ fontFamily: FONT.mono, color: C.ink }}>{fmt(it.subtotal)}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{
+                marginTop: 14, paddingTop: 12,
+                borderTop: `1px solid ${C.line}`,
+                display: "flex", justifyContent: "space-between", alignItems: "baseline",
+              }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Total</span>
+                <span style={{
+                  fontFamily: FONT.display, fontWeight: 700,
+                  fontSize: 24, color: C.purpleDeep, letterSpacing: -0.3,
+                }}>
+                  {fmt(orden.total)}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ padding: "14px 18px", background: C.surfaceAlt, borderTop: `1px solid ${C.line}` }}>
+              <label style={{
+                display: "block", fontSize: 10, fontWeight: 700,
+                textTransform: "uppercase", letterSpacing: 1,
+                color: C.ink3, marginBottom: 8,
+              }}>
+                Método de pago
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 5, marginBottom: 12 }}>
+                {["efectivo", "tarjeta", "transferencia"].map(m => {
+                  const activo = metodo === m;
+                  return (
+                    <button key={m} onClick={() => setMetodo(m)} style={{
+                      padding: "8px 6px", borderRadius: RADIUS.sm,
+                      border: `1.5px solid ${activo ? C.purple : C.lineStrong}`,
+                      background: activo ? C.purpleBg : C.surface,
+                      color: activo ? C.purple : C.ink2,
+                      fontSize: 11, fontWeight: 600, cursor: "pointer",
+                      textTransform: "capitalize",
+                    }}>{m}</button>
+                  );
+                })}
+              </div>
+              <button onClick={cobrar} disabled={pagando} style={{
+                width: "100%", padding: "12px",
+                borderRadius: RADIUS.sm, border: "none",
+                background: pagando ? C.surfaceAlt : C.purple,
+                color: pagando ? C.muted : "#fff",
+                fontSize: 14, fontWeight: 700,
+                cursor: pagando ? "default" : "pointer",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+                fontFamily: FONT.ui,
+              }}>
+                {pagando ? "Procesando..." : `✓ Cobrar ${fmt(orden.total)}`}
+              </button>
+            </div>
+          </aside>
+        )}
+      </div>
+
+      <style>{`
+        @media (max-width: 1100px) {
+          .vp-cajero-consultas-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/* ─── Layout principal ───────────────────────────────────────────────────── */
+const NAV = [
+  { id: "venta",       icon: faCartShopping,   label: "Nueva venta" },
+  { id: "consultas",   icon: faPills,           label: "Consultas"   },
+  { id: "historial",   icon: faClipboardList,   label: "Historial"   },
+];
+
 export default function PanelCajero() {
-  const { usuario } = useAuth();
-  const navigate    = useNavigate();
+  const { C, toggle, mode } = useTheme();
+  const { usuario, logout } = useAuth();
+  const navigate = useNavigate();
   const [seccion, setSeccion] = useState("venta");
 
   useEffect(() => {
@@ -636,99 +1067,96 @@ export default function PanelCajero() {
   }, [usuario, navigate]);
 
   return (
-    <div className="min-h-screen flex" style={{ background: T.canvas }}>
+    <>
+      <style>{`
+        @keyframes vp-spin { to { transform: rotate(360deg); } }
+        * { box-sizing: border-box; }
+        @media (max-width: 1024px) {
+          .vp-pos-layout { grid-template-columns: 1fr !important; height: auto !important; }
+        }
+      `}</style>
 
-      {/* ── Sidebar ── */}
-      <aside className="w-52 flex flex-col flex-shrink-0"
-        style={{ background: T.sidebar, borderRight: `1px solid ${T.sidebarBorder}` }}>
+      <div style={{
+        minHeight: "100vh",
+        display: "flex",
+        background: C.canvas,
+        fontFamily: FONT.ui,
+      }}>
 
-        {/* Logo */}
-        <div className="px-3 py-4" style={{ borderBottom: `1px solid ${T.sidebarBorder}` }}>
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0"
-              style={{ background: T.gold, color: "#064E30" }}>V</div>
-            <div>
-              <p className="text-xs font-bold leading-none" style={{ color: T.sidebarTextHi }}>Victoria</p>
-              <p className="text-xs leading-none mt-0.5" style={{ color: T.sidebarText }}>Pets · Caja</p>
-            </div>
-          </Link>
-        </div>
+        {/* Sidebar 64px */}
+        <aside style={{
+          width: 64,
+          flexShrink: 0,
+          background: C.sidebar,
+          borderRight: `1px solid ${C.sidebarBorder}`,
+          display: "flex", flexDirection: "column",
+          padding: "16px 0",
+        }}>
+          <Link to="/" style={{
+            width: 36, height: 36, margin: "0 auto 18px",
+            borderRadius: RADIUS.sm,
+            background: C.lime, color: C.brandDark,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 14, fontWeight: 900,
+            textDecoration: "none",
+          }}>✦</Link>
 
-        {/* Usuario */}
-        {usuario && (
-          <div className="px-3 py-3" style={{ borderBottom: `1px solid ${T.sidebarBorder}` }}>
-            <div className="flex items-center gap-2 rounded-xl px-2.5 py-2"
-              style={{ background: T.sidebarActive }}>
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                style={{ background: T.gold, color: "#064E30" }}>
-                {usuario.nombre?.charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold truncate" style={{ color: T.sidebarTextHi }}>{usuario.nombre}</p>
-                <p className="text-xs capitalize" style={{ color: T.gold }}>cajero</p>
-              </div>
-            </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "0 8px", flex: 1 }}>
+            {NAV.map(n => {
+              const activo = seccion === n.id;
+              return (
+                <button key={n.id} onClick={() => setSeccion(n.id)}
+                  title={n.label}
+                  style={{
+                    width: 48, height: 44, borderRadius: RADIUS.sm,
+                    border: "none",
+                    background: activo ? C.sidebarActive : "transparent",
+                    color: activo ? C.sidebarTextHi : C.sidebarText,
+                    fontSize: 15, cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "all 0.15s",
+                  }}>
+                  <FontAwesomeIcon icon={n.icon}/>
+                </button>
+              );
+            })}
           </div>
-        )}
 
-        {/* Nav */}
-        <nav className="flex-1 px-2 py-2 space-y-0.5">
-          {NAV.map(s => (
-            <button key={s.id} onClick={() => setSeccion(s.id)}
-              className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-xs transition-all duration-150 ${seccion === s.id ? "font-bold" : "font-medium"}`}
-              style={{
-                background:  seccion === s.id ? T.sidebarActive : "transparent",
-                color:       seccion === s.id ? T.sidebarTextHi : T.sidebarText,
-                borderLeft:  seccion === s.id ? `2px solid ${T.gold}` : "2px solid transparent",
-              }}
-              onMouseEnter={e => { if (seccion !== s.id) e.currentTarget.style.background = T.sidebarActive; }}
-              onMouseLeave={e => { if (seccion !== s.id) e.currentTarget.style.background = "transparent"; }}>
-              <svg width={15} height={15} fill="none" stroke="currentColor"
-                strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                <path d={s.icon} />
-              </svg>
-              <span>{s.label}</span>
-            </button>
-          ))}
-        </nav>
+          {/* Toggle tema */}
+          <button onClick={toggle} title="Tema"
+            style={{
+              width: 48, height: 44, margin: "0 8px 8px",
+              borderRadius: RADIUS.sm,
+              border: "none",
+              background: "transparent",
+              color: C.sidebarText, fontSize: 14, cursor: "pointer",
+            }}>
+            <FontAwesomeIcon icon={mode === "dark" ? faSun : faMoon}/>
+          </button>
 
- MSFL17555
-        {/* Footer sidebar */}
-        <div className="px-2 py-3 space-y-0.5" style={{ borderTop: `1px solid ${T.sidebarBorder}` }}>
-          <Link to="/"
-            className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-colors"
-            style={{ color: T.sidebarText }}
-            onMouseEnter={e => e.currentTarget.style.background = T.sidebarActive}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-            <svg width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.75}
-              strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <path d={ICONS.home} />
-            </svg>
-            Ir a la tienda
-          </Link>
-        </div>
-      </aside>
+          {/* Avatar */}
+          <div title={usuario?.nombre || "Cajero"}
+            style={{
+              width: 36, height: 36, margin: "0 auto",
+              borderRadius: "50%",
+              background: C.coral, color: "#fff",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 12, fontWeight: 700,
+              cursor: "pointer",
+            }}
+            onClick={() => { logout(); navigate("/"); }}>
+            {usuario?.nombre?.charAt(0)?.toUpperCase() || "C"}
+            {usuario?.apellido?.charAt(0)?.toUpperCase() || ""}
+          </div>
+        </aside>
 
-      {/* ── Contenido principal ── */}
-      <div className="flex-1 flex flex-col min-h-screen min-w-0">
-
-        {/* Header */}
-        <div className="px-6 py-4 flex items-center justify-between flex-shrink-0"
-          style={{ background: T.surface, borderBottom: `1px solid ${T.border}`, boxShadow: shadow.sm }}>
-          <h1 className="text-sm font-bold" style={{ color: T.text }}>
-            {seccion === "venta" ? "Nueva venta" : "Mis ventas"}
-          </h1>
-          <p className="text-xs" style={{ color: T.textMuted }}>
-            {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" })}
-          </p>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 p-6 overflow-y-auto">
-          {seccion === "venta"     && <NuevaVenta />}
-          {seccion === "historial" && <Historial />}
-        </div>
+        {/* Contenido */}
+        <main style={{ flex: 1, minWidth: 0 }}>
+          {seccion === "venta" && <NuevaVenta usuario={usuario}/>}
+          {seccion === "consultas" && <ConsultasPago/>}
+          {seccion === "historial" && <Historial/>}
+        </main>
       </div>
-    </div>
+    </>
   );
 }

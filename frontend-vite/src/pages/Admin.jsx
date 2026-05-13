@@ -13,6 +13,12 @@ import ReporteVentas from "./admin/ReporteVentas.jsx";
 import GaleriaAdmin from "./admin/GaleriaAdmin";
 import ReporteSalidas from "./admin/ReporteSalidas.jsx";
 import { T, shadow, font, fmt, fmtShort, fmtMil, fdoc, estadoStyle } from "../styles/admin.tokens";
+import { useTheme } from "../styles/ThemeProvider.jsx";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faTruck, faCheck, faCircleCheck, faPills, faLocationDot, faCreditCard,
+  faBell, faMagnifyingGlass, faSun, faMoon, faPlus,
+} from "@fortawesome/free-solid-svg-icons";
 import logoVP from "../assets/WhatsApp Image 2026-04-22 at 1.19.17 PM.jpeg";
 
 // ─── Constantes ───────────────────────────────────────────────
@@ -192,6 +198,7 @@ const THead = ({cols}) => (
 
 // ─── DASHBOARD ────────────────────────────────────────────────
 function SparkLine({ data, dataKey, color, height=36 }) {
+  const { C: T } = useTheme();
   if (!data?.length) return null;
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -203,6 +210,7 @@ function SparkLine({ data, dataKey, color, height=36 }) {
 }
 
 function ChartTooltip({ active, payload, label }) {
+  const { C: T } = useTheme();
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:10, padding:"10px 14px", fontSize:12, boxShadow:shadow.sm }}>
@@ -223,11 +231,12 @@ function ChartTooltip({ active, payload, label }) {
 }
 
 function Dashboard() {
+  const { C: T } = useTheme();
   const [stats,    setStats]    = useState(null);
   const [citas,    setCitas]    = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error,    setError]    = useState(null);
-  const [rango,    setRango]    = useState("6m");
+  const [rango,    setRango]    = useState("15d");
 
   const cargar = () => {
     setCargando(true); setError(null);
@@ -263,15 +272,22 @@ function Dashboard() {
   );
   if (!stats) return null;
 
-  // Datos de gráfica — aplicar rango
+  // ── PDF style dashboard ─────────────────────────────────────────
+  // Saludo según hora
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
+  const nombre = stats.admin_nombre || "Andrea";
+
+  // Datos de gráfica
   const allData = (stats.ventas_mes||[]).map(m => ({
     mes:     m.mes?.slice(5) || m.mes,
     ventas:  Number(m.total   || 0),
     ordenes: Number(m.ordenes || 0),
     ganancia:Number(m.ganancia|| 0),
   }));
-  const mesesRango = rango === "3m" ? 3 : rango === "12m" ? 12 : 6;
-  const chartData = allData.slice(-mesesRango);
+  // Mapeo de rangos del PDF (7d/15d/30d/90d) a meses disponibles
+  const mesesRango = rango === "7d" ? 1 : rango === "30d" ? 1 : rango === "90d" ? 3 : 1;
+  const chartData = allData.slice(-Math.max(mesesRango, 6));
 
   // Calcular promedios para reference lines
   const avgVentas  = chartData.length ? Math.round(chartData.reduce((a,b) => a + b.ventas,  0) / chartData.length) : 0;
@@ -299,13 +315,476 @@ function Dashboard() {
   ] : [];
 
   const RANGOS = [
-    { id:"3m",  label:"3 meses"  },
-    { id:"6m",  label:"6 meses"  },
-    { id:"12m", label:"12 meses" },
+    { id:"7d",  label:"7d"  },
+    { id:"15d", label:"15d" },
+    { id:"30d", label:"30d" },
+    { id:"90d", label:"90d" },
   ];
 
+  // Datos del PDF — KPIs (todos REALES del backend)
+  const tendenciaHoyRaw = stats.tendencia_hoy;
+  const KPIs_PDF = [
+    {
+      label: "Ventas hoy",
+      value: fmtShort(stats.ventas_hoy || 0),
+      tendencia: tendenciaHoyRaw,
+      sub: `${stats.ventas_hoy_count || 0} transacciones`,
+      color: T.brand,
+      spark: chartData.length > 1 ? chartData.map(d => ({ v: d.ventas })) : null,
+      sparkColor: T.brand,
+    },
+    {
+      label: "Tienda online",
+      value: fmtShort(stats.ventas_online_hoy || 0),
+      tendencia: null,
+      sub: `${stats.pedidos_online_pendientes || 0} pedidos pendientes`,
+      color: T.success,
+      spark: chartData.length > 1 ? chartData.map(d => ({ v: d.ventas })) : null,
+      sparkColor: T.success,
+    },
+    {
+      label: "Citas agendadas",
+      value: stats.citas_total ?? citas?.total ?? 0,
+      tendencia: null,
+      sub: `${stats.citas_hoy ?? 0} hoy · ${stats.citas_pendientes ?? 0} sin confirmar`,
+      color: T.info,
+      spark: chartData.length > 1 ? chartData.map(d => ({ v: d.ordenes })) : null,
+      sparkColor: T.info,
+    },
+    {
+      label: "Stock crítico",
+      value: stats.stock_bajo || 0,
+      tendencia: null,
+      sub: "Reorden requerido",
+      color: T.danger,
+      spark: null,
+      tag: "productos",
+    },
+  ];
+
+  // Ventas por canal — DATOS REALES del backend
+  const canalData = stats.ventas_canal || { pos: 0, online: 0, servicios: 0 };
+  const totalCanales = canalData.pos + canalData.online + canalData.servicios;
+  const canales = [
+    {
+      label: "Tienda física (POS)",
+      valor: canalData.pos,
+      porc:  totalCanales > 0 ? Math.round((canalData.pos / totalCanales) * 100) : 0,
+      color: T.brand,
+    },
+    {
+      label: "Tienda online",
+      valor: canalData.online,
+      porc:  totalCanales > 0 ? Math.round((canalData.online / totalCanales) * 100) : 0,
+      color: T.success,
+    },
+    {
+      label: "Servicios médicos",
+      valor: canalData.servicios,
+      porc:  totalCanales > 0 ? Math.round((canalData.servicios / totalCanales) * 100) : 0,
+      color: T.coral,
+    },
+  ];
+  const ticketPromedio = stats.ticket_promedio || 0;
+
+  const ordenesRecientes = (stats.ordenes_recientes || []).slice(0, 5);
+  const stockBajo = (stats.productos_stock_bajo || []).slice(0, 5);
+
   return (
-    <div className="space-y-5">
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, padding: 4 }}>
+
+      {/* ── KPIs PDF (4 grandes con sparklines) ── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        gap: 14,
+      }}>
+        {KPIs_PDF.map(kpi => (
+          <div key={kpi.label} style={{
+            background: T.surface,
+            border: `1px solid ${T.border}`,
+            borderRadius: 14,
+            padding: 18,
+            position: "relative",
+            overflow: "hidden",
+          }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 500, color: T.textTer }}>
+                {kpi.label}
+              </p>
+              {kpi.spark && kpi.spark.length > 1 && (
+                <div style={{ width: 70, height: 28, marginLeft: 8 }}>
+                  <SparkLine data={kpi.spark} dataKey="v" color={kpi.sparkColor} height={28}/>
+                </div>
+              )}
+            </div>
+            <div style={{
+              fontFamily: font.display,
+              fontWeight: 700, fontSize: 28,
+              color: T.text, letterSpacing: -0.5,
+              marginBottom: 6, lineHeight: 1.1,
+            }}>
+              {kpi.value}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: T.textTer, flexWrap: "wrap" }}>
+              {kpi.tendencia && (
+                <span style={{
+                  padding: "2px 7px", borderRadius: 999,
+                  background: kpi.tendencia.startsWith("+") || kpi.tendencia.startsWith("▲") ? T.successBg : T.dangerBg,
+                  color: kpi.tendencia.startsWith("+") || kpi.tendencia.startsWith("▲") ? T.success : T.danger,
+                  fontSize: 10, fontWeight: 700,
+                }}>
+                  {kpi.tendencia.startsWith("-") ? "▼" : "▲"} {kpi.tendencia.replace(/[+%▲▼]/g, "")}%
+                </span>
+              )}
+              {kpi.tag && (
+                <span style={{
+                  padding: "2px 8px", borderRadius: 6,
+                  background: T.coralSoft, color: T.coral,
+                  fontSize: 10, fontWeight: 700,
+                }}>
+                  {kpi.tag}
+                </span>
+              )}
+              <span>{kpi.sub}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Fila chart + canales ── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1.6fr 1fr",
+        gap: 16,
+      }} className="vp-admin-row">
+
+        {/* Chart ingresos */}
+        <div style={{
+          background: T.surface,
+          border: `1px solid ${T.border}`,
+          borderRadius: 14,
+          padding: 22,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 11, color: T.textTer, fontWeight: 500 }}>
+                Ingresos · últimos {rango === "7d" ? 7 : rango === "15d" ? 15 : rango === "30d" ? 30 : 90} días
+              </p>
+              <div style={{
+                marginTop: 6,
+                fontFamily: font.display,
+                fontWeight: 700, fontSize: 30,
+                color: T.text, letterSpacing: -0.5,
+              }}>
+                {fmtShort(chartData.reduce((a, b) => a + b.ventas, 0))}
+              </div>
+            </div>
+            <div style={{
+              display: "inline-flex",
+              borderRadius: 8, overflow: "hidden",
+              border: `1px solid ${T.border}`,
+            }}>
+              {RANGOS.map(r => {
+                const activo = rango === r.id;
+                return (
+                  <button key={r.id} onClick={() => setRango(r.id)} style={{
+                    padding: "6px 12px",
+                    fontSize: 11, fontWeight: 600,
+                    background: activo ? T.text : "transparent",
+                    color: activo ? T.canvas : T.textTer,
+                    border: "none", cursor: "pointer",
+                    fontFamily: font.mono,
+                  }}>{r.label}</button>
+                );
+              })}
+            </div>
+          </div>
+
+          {chartData.length === 0 ? (
+            <p style={{ textAlign: "center", padding: 40, color: T.textMuted, fontSize: 13 }}>
+              Sin datos registrados aún
+            </p>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <ComposedChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>
+                <defs>
+                  <linearGradient id="gIngresosPDF" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={T.success} stopOpacity={0.18}/>
+                    <stop offset="100%" stopColor={T.success} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={T.borderSub} vertical={false}/>
+                <XAxis dataKey="mes" tick={{ fontSize: 10, fill: T.textMuted }} axisLine={false} tickLine={false}/>
+                <YAxis tick={{ fontSize: 9, fill: T.textMuted }} axisLine={false} tickLine={false}
+                  tickFormatter={v => fmtMil(v)} width={45}/>
+                <Tooltip content={<ChartTooltip/>}/>
+                <Area type="monotone" dataKey="ventas"
+                  stroke={T.success} strokeWidth={2} fill="url(#gIngresosPDF)"
+                  dot={false} activeDot={{ r: 4, fill: T.success, stroke: "#fff", strokeWidth: 2 }}/>
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Ventas por canal */}
+        <div style={{
+          background: T.surface,
+          border: `1px solid ${T.border}`,
+          borderRadius: 14,
+          padding: 22,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>
+            <p style={{ margin: 0, fontSize: 11, color: T.textTer, fontWeight: 500 }}>
+              Ventas por canal
+            </p>
+            <p style={{ margin: 0, fontSize: 11, color: T.textMuted, fontFamily: font.mono }}>
+              hoy
+            </p>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 18 }}>
+            {canales.map(c => (
+              <div key={c.label}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                  <span style={{ fontSize: 12, color: T.text, fontWeight: 500 }}>{c.label}</span>
+                  <span style={{ fontSize: 12, color: T.text, fontWeight: 700, fontFamily: font.mono }}>
+                    {fmtShort(c.valor)}
+                  </span>
+                </div>
+                <div style={{
+                  width: "100%", height: 4, borderRadius: 2,
+                  background: T.surfaceAlt, overflow: "hidden",
+                }}>
+                  <div style={{
+                    width: `${c.porc}%`, height: "100%",
+                    background: c.color,
+                    transition: "width 0.6s",
+                  }}/>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{
+            paddingTop: 14, borderTop: `1px solid ${T.border}`,
+            display: "flex", justifyContent: "space-between", alignItems: "baseline",
+          }}>
+            <span style={{ fontSize: 12, color: T.textTer }}>Ticket promedio</span>
+            <span style={{
+              fontFamily: font.mono,
+              fontSize: 14, fontWeight: 700,
+              color: T.text,
+            }}>
+              {fmtShort(ticketPromedio)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Pedidos recientes + Stock bajo ── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1.4fr 1fr",
+        gap: 16,
+      }} className="vp-admin-row">
+
+        {/* Pedidos recientes */}
+        <div style={{
+          background: T.surface,
+          border: `1px solid ${T.border}`,
+          borderRadius: 14,
+          padding: 22,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+            <h3 style={{
+              margin: 0,
+              fontFamily: font.display, fontStyle: "italic",
+              fontWeight: 600, fontSize: 18, color: T.text,
+            }}>
+              Pedidos recientes
+            </h3>
+            <a href="#" onClick={e => e.preventDefault()} style={{
+              fontSize: 11, color: T.brand,
+              textDecoration: "none", fontWeight: 600,
+            }}>
+              Ver todos →
+            </a>
+          </div>
+
+          {ordenesRecientes.length === 0 ? (
+            <p style={{ textAlign: "center", padding: 30, color: T.textMuted, fontSize: 13 }}>
+              Sin órdenes recientes
+            </p>
+          ) : (
+            <div>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "100px 1fr 50px 100px 110px",
+                gap: 10,
+                padding: "10px 4px",
+                borderBottom: `1px solid ${T.border}`,
+                fontSize: 10, fontWeight: 700,
+                textTransform: "uppercase", letterSpacing: 1.2,
+                color: T.textTer,
+              }}>
+                <span>Pedido</span>
+                <span>Cliente</span>
+                <span>Items</span>
+                <span style={{ textAlign: "right" }}>Total</span>
+                <span>Estado</span>
+              </div>
+              {ordenesRecientes.map(o => (
+                <div key={o.id} style={{
+                  display: "grid",
+                  gridTemplateColumns: "100px 1fr 50px 100px 110px",
+                  gap: 10,
+                  padding: "12px 4px",
+                  borderBottom: `1px solid ${T.borderSub}`,
+                  alignItems: "center",
+                  fontSize: 12,
+                }}>
+                  <span style={{ fontFamily: font.mono, color: T.text, fontWeight: 600 }}>
+                    #{o.codigo}
+                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <span style={{
+                      width: 24, height: 24, borderRadius: "50%",
+                      background: T.coral, color: "#fff",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 9, fontWeight: 700, flexShrink: 0,
+                    }}>
+                      {(o.cliente_nombre?.[0] || "U").toUpperCase()}{(o.cliente_apellido?.[0] || "").toUpperCase()}
+                    </span>
+                    <span style={{
+                      color: T.text,
+                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                    }}>
+                      {o.cliente_nombre} {o.cliente_apellido}
+                    </span>
+                  </div>
+                  <span style={{ color: T.textTer, fontFamily: font.mono }}>
+                    {o.cantidad_items || 1}
+                  </span>
+                  <span style={{ color: T.text, fontWeight: 700, fontFamily: font.mono, textAlign: "right" }}>
+                    {fmtShort(o.total)}
+                  </span>
+                  <Badge estado={o.estado}/>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Stock bajo */}
+        <div style={{
+          background: T.surface,
+          border: `1px solid ${T.border}`,
+          borderRadius: 14,
+          padding: 22,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+            <h3 style={{
+              margin: 0,
+              fontFamily: font.display, fontStyle: "italic",
+              fontWeight: 600, fontSize: 18, color: T.text,
+            }}>
+              Stock bajo
+            </h3>
+            <span style={{
+              padding: "2px 8px", borderRadius: 6,
+              background: T.coralSoft, color: T.coral,
+              fontSize: 10, fontWeight: 700,
+            }}>
+              {stockBajo.length} productos
+            </span>
+          </div>
+
+          {stockBajo.length === 0 ? (
+            <p style={{ textAlign: "center", padding: 30, color: T.textMuted, fontSize: 13 }}>
+              Sin productos con stock crítico
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {stockBajo.map(p => {
+                const min = p.stock_minimo || 5;
+                const max = min * 10;
+                const porc = Math.min(100, Math.round((p.stock / max) * 100));
+                const danger = p.stock <= min;
+                return (
+                  <div key={p.id}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        {p.marca && (
+                          <p style={{
+                            margin: 0, fontSize: 9, fontWeight: 700,
+                            color: T.textMuted, textTransform: "uppercase", letterSpacing: 1.2,
+                            fontFamily: font.mono,
+                          }}>
+                            {p.marca}
+                          </p>
+                        )}
+                        <p style={{
+                          margin: 0, fontSize: 12, fontWeight: 600, color: T.text,
+                          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                        }}>
+                          {p.nombre}
+                        </p>
+                      </div>
+                      <span style={{
+                        marginLeft: 10,
+                        fontSize: 12, fontWeight: 700,
+                        color: danger ? T.danger : T.warning,
+                        fontFamily: font.mono,
+                        whiteSpace: "nowrap",
+                      }}>
+                        {p.stock}/{max}
+                      </span>
+                    </div>
+                    <div style={{
+                      width: "100%", height: 4, borderRadius: 2,
+                      background: T.surfaceAlt, overflow: "hidden",
+                    }}>
+                      <div style={{
+                        width: `${porc}%`, height: "100%",
+                        background: danger ? T.danger : T.warning,
+                        transition: "width 0.6s",
+                      }}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        @media (max-width: 1100px) {
+          .vp-admin-row { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ─── Dashboard antiguo (deshabilitado) ─────────────────────────
+function DashboardLegacy() {
+  const { C: T } = useTheme();
+  const stats = {};
+  const citas = {};
+  const chartData = [];
+  const avgVentas = 0;
+  const avgOrdenes = 0;
+  const tendVentas = null;
+  const metrics = [];
+  const metricsCitas = [];
+  const RANGOS = [];
+  const rango = "6m";
+  const setRango = () => {};
+  const mesesRango = 6;
+  return (
+    <div style={{display:"none"}}>
 
       {/* ── FILA 1: Métricas KPI con sparklines ── */}
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">
@@ -575,6 +1054,7 @@ function Dashboard() {
 
 // ─── USUARIOS ─────────────────────────────────────────────────
 function Usuarios() {
+  const { C: T } = useTheme();
   const [lista,setLista]=useState([]); const [total,setTotal]=useState(0);
   const [pagina,setPagina]=useState(1); const [buscar,setBuscar]=useState("");
   const [cargando,setCargando]=useState(true);
@@ -778,6 +1258,7 @@ function Usuarios() {
 
 // ─── PRODUCTOS ────────────────────────────────────────────────
 function Productos() {
+  const { C: T } = useTheme();
   const [lista,setLista]=useState([]); const [total,setTotal]=useState(0);
   const [pagina,setPagina]=useState(1); const [buscar,setBuscar]=useState("");
   const [catFiltro,setCatFiltro]=useState(""); const [cargando,setCargando]=useState(true);
@@ -787,7 +1268,8 @@ function Productos() {
 
   const VACIO={nombre:"",slug:"",descripcion:"",descripcion_corta:"",categoria_id:"",proveedor_id:"",
     precio:"",precio_antes:"",precio_costo:"",stock:"",stock_minimo:"5",imagen_url:"",
-    marca:"",unidad:"",especie:"",destacado:false,activo:true,requiere_formula:false,codigo_barra:""};
+    imagen_v2:"",imagen_v3:"",imagen_v4:"",imagen_v5:"",
+    marca:"",unidad:"",especie:"",destacado:false,activo:true,requiere_formula:false,uso_clinico:false,codigo_barra:""};
   const [form,setForm]=useState(VACIO);
   const barraRef=useRef(null);
   const [scanEstado,setScanEstado]=useState(null); // null | "ok"
@@ -812,12 +1294,23 @@ function Productos() {
     setTimeout(()=>barraRef.current?.focus(),80);
   };
   const abrirEditar=(p)=>{
+    // imagenes_extra puede llegar como JSON string, array, o null
+    let extras = [];
+    try {
+      const raw = p.imagenes_extra;
+      if (Array.isArray(raw))      extras = raw;
+      else if (typeof raw === "string" && raw.trim()) extras = JSON.parse(raw);
+    } catch { extras = []; }
+    const [v2="", v3="", v4="", v5=""] = extras;
+
     setForm({nombre:p.nombre,slug:p.slug||"",descripcion:p.descripcion||"",
       descripcion_corta:p.descripcion_corta||"",categoria_id:p.categoria_id||"",proveedor_id:p.proveedor_id||"",
       precio:p.precio,precio_antes:p.precio_antes||"",precio_costo:p.precio_costo||"",
       stock:p.stock,stock_minimo:p.stock_minimo||5,imagen_url:p.imagen_url||"",
+      imagen_v2:v2,imagen_v3:v3,imagen_v4:v4,imagen_v5:v5,
       marca:p.marca||"",unidad:p.unidad||"",especie:p.especie||"",
       destacado:!!p.destacado,activo:p.activo!==0,requiere_formula:!!p.requiere_formula,
+      uso_clinico:!!p.uso_clinico,
       codigo_barra:p.codigo_barra||""});
     setEditando(p); setFieldErrors({}); setScanEstado(p.codigo_barra?"ok":null); setModal(true);
     setTimeout(()=>barraRef.current?.focus(),80);
@@ -854,12 +1347,17 @@ function Productos() {
       if(form.stock!=="")        p.stock=Number(form.stock);
       if(form.stock_minimo!=="") p.stock_minimo=Number(form.stock_minimo);
       if(form.imagen_url)        p.imagen_url=form.imagen_url;
+      // Imágenes extra: enviar siempre como array (vacío para borrar)
+      p.imagenes_extra = [form.imagen_v2, form.imagen_v3, form.imagen_v4, form.imagen_v5]
+        .map(u => (u || "").trim())
+        .filter(u => u.length > 0);
       if(form.marca)             p.marca=form.marca;
       if(form.unidad)            p.unidad=form.unidad;
       if(form.especie)           p.especie=form.especie;
       if(form.codigo_barra)      p.codigo_barra=form.codigo_barra;
       else                       p.codigo_barra=null;
       p.destacado=form.destacado?1:0; p.activo=form.activo?1:0; p.requiere_formula=form.requiere_formula?1:0;
+      p.uso_clinico=form.uso_clinico?1:0;
       if(!p.slug&&p.nombre) p.slug=p.nombre.toLowerCase().normalize("NFD")
         .replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
       if(editando){await api.put(`/productos/${editando.id}`,p);showMsg("Producto actualizado.");}
@@ -1084,21 +1582,162 @@ function Productos() {
             <Input label="Stock mínimo (alerta)" type="number" value={form.stock_minimo}
               onChange={ff("stock_minimo")} placeholder="5"/>
           </div>
-          <Input label="URL imagen" value={form.imagen_url} onChange={ff("imagen_url")}
-            placeholder="/imagenes/producto.jpg"/>
+          {/* ── Galería de imágenes (1 principal + 4 referencias) ── */}
+          <div style={{
+            border: `1px solid ${T.border}`,
+            borderRadius: 14,
+            padding: 16,
+            background: T.surfaceAlt,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2, color: T.textTer }}>
+                Galería · Imágenes del producto
+              </p>
+              <span style={{ fontSize: 10, color: T.textMuted }}>
+                1 principal + 4 referencias (URLs)
+              </span>
+            </div>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "1.4fr 1fr 1fr 1fr 1fr",
+              gap: 10,
+              marginBottom: 12,
+            }}>
+              {[
+                { k: "imagen_url", label: "Principal", required: true },
+                { k: "imagen_v2",  label: "V2" },
+                { k: "imagen_v3",  label: "V3" },
+                { k: "imagen_v4",  label: "V4" },
+                { k: "imagen_v5",  label: "V5" },
+              ].map(img => {
+                const url = form[img.k];
+                return (
+                  <div key={img.k} style={{
+                    aspectRatio: "1 / 1",
+                    borderRadius: 10,
+                    border: `1.5px solid ${url ? T.brandBorder : T.border}`,
+                    background: T.surface,
+                    overflow: "hidden",
+                    position: "relative",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {url ? (
+                      <img src={url} alt={img.label}
+                        style={{ width: "100%", height: "100%", objectFit: "contain", padding: 6 }}
+                        onError={e => { e.target.style.display = "none"; }}
+                      />
+                    ) : (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700,
+                        color: T.textMuted, letterSpacing: 1,
+                      }}>
+                        {img.label.toUpperCase()}
+                      </span>
+                    )}
+                    {img.required && (
+                      <span style={{
+                        position: "absolute", top: 4, left: 4,
+                        padding: "1px 5px", borderRadius: 4,
+                        background: T.brand, color: "#fff",
+                        fontSize: 8, fontWeight: 700, letterSpacing: 0.5,
+                      }}>
+                        PRINCIPAL
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[
+                { k: "imagen_url", label: "URL imagen principal",   placeholder: "https://… o /imagenes/producto.jpg" },
+                { k: "imagen_v2",  label: "URL imagen referencia 2", placeholder: "https://… (opcional)" },
+                { k: "imagen_v3",  label: "URL imagen referencia 3", placeholder: "https://… (opcional)" },
+                { k: "imagen_v4",  label: "URL imagen referencia 4", placeholder: "https://… (opcional)" },
+                { k: "imagen_v5",  label: "URL imagen referencia 5", placeholder: "https://… (opcional)" },
+              ].map(img => (
+                <div key={img.k}>
+                  <label style={{
+                    display: "block", fontSize: 10, fontWeight: 700,
+                    textTransform: "uppercase", letterSpacing: 1,
+                    color: T.textTer, marginBottom: 4,
+                  }}>
+                    {img.label}
+                  </label>
+                  <input
+                    value={form[img.k]}
+                    onChange={ff(img.k)}
+                    placeholder={img.placeholder}
+                    style={{
+                      width: "100%", height: 36,
+                      padding: "0 12px",
+                      borderRadius: 8,
+                      border: `1px solid ${T.border}`,
+                      background: T.surface, color: T.text,
+                      fontSize: 12,
+                      outline: "none",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{color:T.textTer}}>Especie (separadas por coma)</label>
             <input value={form.especie} onChange={ff("especie")} placeholder="ej: perros,gatos"
               className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none"
               style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}/>
           </div>
-          <div className="flex gap-6 pt-1">
-            {[{key:"activo",label:"Activo"},{key:"destacado",label:"Destacado ★"},{key:"requiere_formula",label:"Requiere fórmula"}].map(({key,label})=>(
+          <div className="flex gap-6 pt-1 flex-wrap">
+            {[
+              {key:"activo",label:"Activo"},
+              {key:"destacado",label:"Destacado ★"},
+              {key:"requiere_formula",label:"Requiere fórmula"},
+            ].map(({key,label})=>(
               <label key={key} className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={!!form[key]} onChange={fc(key)} className="rounded accent-green-700"/>
                 <span className="text-sm" style={{color:T.text}}>{label}</span>
               </label>
             ))}
+          </div>
+
+          {/* Toggle "Uso clínico" — destacado en morado */}
+          <div style={{
+            padding: "12px 14px",
+            borderRadius: 12,
+            background: form.uso_clinico ? "#f3e8ff" : T.surfaceAlt,
+            border: `1.5px solid ${form.uso_clinico ? "#a855f7" : T.border}`,
+            display: "flex", alignItems: "center", gap: 12,
+            transition: "all 0.18s",
+          }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", flex: 1 }}>
+              <input
+                type="checkbox"
+                checked={!!form.uso_clinico}
+                onChange={fc("uso_clinico")}
+                style={{ accentColor: "#7c3aed", width: 18, height: 18 }}
+              />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: form.uso_clinico ? "#6b21a8" : T.text }}>
+                  <FontAwesomeIcon icon={faPills} style={{ marginRight: 6, color: "#7c3aed" }}/>
+                  Uso clínico / Farmacéutico
+                </div>
+                <div style={{ fontSize: 11, color: form.uso_clinico ? "#7c3aed" : T.textMuted, marginTop: 2 }}>
+                  Solo productos marcados aparecerán en el panel del veterinario al agregar insumos a una consulta
+                </div>
+              </div>
+            </label>
+            {form.uso_clinico && (
+              <span style={{
+                padding: "3px 10px", borderRadius: 999,
+                background: "#7c3aed", color: "#fff",
+                fontSize: 10, fontWeight: 800, letterSpacing: 0.5,
+              }}>
+                CLÍNICO
+              </span>
+            )}
           </div>
           <div className="flex justify-end gap-3 pt-2" style={{borderTop:`1px solid ${T.border}`}}>
             <Btn variant="ghost" onClick={()=>setModal(false)}>Cancelar</Btn>
@@ -1112,6 +1751,7 @@ function Productos() {
 
 // ─── ÓRDENES ──────────────────────────────────────────────────
 function Ordenes() {
+  const { C: T } = useTheme();
   const [lista,setLista]=useState([]); const [total,setTotal]=useState(0);
   const [pagina,setPagina]=useState(1); const [filtro,setFiltro]=useState("");
   const [cargando,setCargando]=useState(true);
@@ -1232,7 +1872,8 @@ function Ordenes() {
                   {detalle.telefono && <p className="text-xs" style={{color:T.textMuted}}>{detalle.telefono}</p>}
                   {detalle.direccion_entrega && (
                     <p className="text-xs mt-1" style={{color:T.textTer}}>
-                      📍 {detalle.direccion_entrega}{detalle.ciudad_entrega?`, ${detalle.ciudad_entrega}`:""}
+                      <FontAwesomeIcon icon={faLocationDot} style={{ marginRight: 6, color: T.brand }}/>
+                      {detalle.direccion_entrega}{detalle.ciudad_entrega?`, ${detalle.ciudad_entrega}`:""}
                     </p>
                   )}
                 </div>
@@ -1249,6 +1890,70 @@ function Ordenes() {
                   style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}>
                   {ESTADOS.map(e=><option key={e} value={e}>{ESTADO_LABEL[e]||e}</option>)}
                 </select>
+
+                {/* Atajos de acción según estado actual */}
+                {detalle.estado === "pagada" && (
+                  <button onClick={() => cambiarEstado(detalle.id, "enviada")}
+                    style={{
+                      width: "100%", padding: "10px 14px",
+                      borderRadius: 12, border: "none",
+                      background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
+                      color: "#fff", fontSize: 12, fontWeight: 700,
+                      cursor: "pointer",
+                      display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)",
+                    }}>
+                    <FontAwesomeIcon icon={faTruck} style={{ fontSize: 12 }}/>
+                    Marcar como enviada
+                  </button>
+                )}
+
+                {detalle.estado === "enviada" && (
+                  <div style={{
+                    padding: "14px 16px", borderRadius: 12,
+                    background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
+                    color: "#fff",
+                  }}>
+                    <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: 1.2 }}>
+                      Código de entrega (cliente)
+                    </p>
+                    <p style={{
+                      margin: "4px 0 12px",
+                      fontFamily: font.mono,
+                      fontSize: 18, fontWeight: 800, color: "#fff",
+                      letterSpacing: 1.5,
+                    }}>
+                      {detalle.codigo}
+                    </p>
+                    <p style={{ margin: "0 0 12px", fontSize: 11, color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
+                      El repartidor debe confirmar este código con el cliente al entregar.
+                    </p>
+                    <button onClick={() => cambiarEstado(detalle.id, "entregada")}
+                      style={{
+                        width: "100%", padding: "10px 14px",
+                        borderRadius: 10, border: "none",
+                        background: "#fff", color: "#1e3a8a",
+                        fontSize: 12, fontWeight: 800,
+                        cursor: "pointer",
+                        display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      }}>
+                      <FontAwesomeIcon icon={faCheck}/>
+                      Verificar entrega
+                    </button>
+                  </div>
+                )}
+
+                {detalle.estado === "entregada" && (
+                  <div style={{
+                    padding: "12px 14px", borderRadius: 12,
+                    background: T.successBg, border: `1px solid ${T.successBorder}`,
+                    color: T.success, fontSize: 12, fontWeight: 600,
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    width: "100%",
+                  }}>
+                    <FontAwesomeIcon icon={faCircleCheck}/> Entrega verificada · Pedido completado
+                  </div>
+                )}
 
                 {/* Ítems */}
                 {detalle.items?.length > 0 && (
@@ -1315,6 +2020,7 @@ function Ordenes() {
 
 // ─── CAJEROS ──────────────────────────────────────────────────
 function Cajeros({ onIrUsuarios }) {
+  const { C: T } = useTheme();
   const [lista, setLista] = useState([]);
   const [cargando, setCargando] = useState(true);
 
@@ -1407,6 +2113,7 @@ function Cajeros({ onIrUsuarios }) {
 
 // ─── PROVEEDORES ──────────────────────────────────────────────
 function Proveedores() {
+  const { C: T } = useTheme();
   const VACIO = { nombre:"", contacto:"", telefono:"", email:"" };
   const [lista,      setLista]      = useState([]);
   const [cargando,   setCargando]   = useState(true);
@@ -1565,6 +2272,7 @@ const CITA_ESTADOS = {
 };
 
 function BadgeCita({ estado }) {
+  const { C: T } = useTheme();
   const s = CITA_ESTADOS[estado] || CITA_ESTADOS.pendiente;
   return (
     <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
@@ -1575,6 +2283,7 @@ function BadgeCita({ estado }) {
 }
 
 function Veterinarios() {
+  const { C: T } = useTheme();
   const [vets, setVets]       = useState([]);
   const [citas, setCitas]     = useState([]);
   const [filtroEstado, setFiltroEstado] = useState("pendiente");
@@ -2161,6 +2870,7 @@ function Veterinarios() {
 
 // ─── LAYOUT PRINCIPAL ─────────────────────────────────────────
 export default function Admin() {
+  const { C: T } = useTheme();
   const {usuario,esAdmin}=useAuth();
   const navigate=useNavigate();
   const [seccion,setSeccion]=useState("dashboard");

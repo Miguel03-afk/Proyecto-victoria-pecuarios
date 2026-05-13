@@ -1,11 +1,13 @@
 // src/pages/admin/ReporteVentas.jsx
 import { useState } from 'react';
 import api from '../../services/api';
-import { T, shadow, font, fmt, fdoc, estadoStyle } from '../../styles/admin.tokens';
+import { shadow, font, fmt, fdoc, estadoStyle } from '../../styles/admin.tokens';
+import { useTheme } from '../../styles/ThemeProvider.jsx';
 
 const ESTADOS_FILTRO = ['todos','pendiente','pagada','procesando','enviada','entregada','cancelada'];
 
 export default function ReporteVentas() {
+  const { C: T } = useTheme();
   const [filtros, setFiltros] = useState({ fecha_inicio:'', fecha_fin:'', estado:'todos' });
   const [datos, setDatos]     = useState(null);
   const [cargando, setCargando] = useState(false);
@@ -24,7 +26,7 @@ export default function ReporteVentas() {
   };
 
   const Badge = ({ estado }) => {
-    const s = estadoStyle(estado);
+    const s = estadoStyle(estado, T);
     return <span className="px-2 py-0.5 rounded-full text-xs font-semibold capitalize"
       style={{ background:s.bg, color:s.text, border:`1px solid ${s.border}` }}>{estado}</span>;
   };

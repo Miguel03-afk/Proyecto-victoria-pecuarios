@@ -2,7 +2,8 @@
 // Componente reutilizable para crear/editar variantes de un producto
 // Uso: <VariantesEditor variantes={variantes} onChange={setVariantes} />
 
-import { T, fmt } from "../../styles/admin.tokens";
+import { fmt } from "../../styles/admin.tokens";
+import { useTheme } from "../../styles/ThemeProvider.jsx";
 
 const IVA = 19;
 
@@ -12,6 +13,7 @@ const VACIO = {
 };
 
 export default function VariantesEditor({ variantes = [], onChange }) {
+  const { C: T } = useTheme();
   const agregar = () => onChange([...variantes, { ...VACIO, orden: variantes.length }]);
 
   const actualizar = (i, campo, valor) => {

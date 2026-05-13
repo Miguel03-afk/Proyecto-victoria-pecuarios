@@ -2,8 +2,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useCarrito } from "../context/CarritoContext";
-import { useAuth } from "../context/AuthContext";
+import { useAuth }    from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "../styles/ThemeProvider.jsx";
+import { FONT, RADIUS } from "../styles/admin.tokens";
 
 const fmt = (n) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(Number(n) || 0);
@@ -14,16 +16,19 @@ const descPct = (precio, antes) =>
     : null;
 
 export default function ProductCard({ producto }) {
+  const { C }         = useTheme();
   const { agregar }   = useCarrito();
   const { usuario }   = useAuth();
   const navigate      = useNavigate();
-  const [agregado, setAgregado] = useState(false);
+  const [agregado,  setAgregado]  = useState(false);
+  const [hovered,   setHovered]   = useState(false);
 
-  const dc = descPct(producto.precio, producto.precio_antes);
+  const dc       = descPct(producto.precio, producto.precio_antes);
   const hayStock = producto.stock > 0;
+  const stockBajo = producto.stock > 0 && producto.stock <= 5;
 
   const handleAgregar = (e) => {
-    e.preventDefault(); // no navegar al hacer click en el botón
+    e.preventDefault();
     if (!usuario) { navigate("/login"); return; }
     if (!hayStock) return;
     agregar({
@@ -44,38 +49,98 @@ export default function ProductCard({ producto }) {
   return (
     <Link
       to={`/producto/${producto.slug}`}
-      className="group bg-white rounded-2xl overflow-hidden border border-green-100 hover:border-green-300 hover:shadow-lg transition-all duration-300 flex flex-col">
-
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', flexDirection: 'column',
+        background: C.surface,
+        border: `1px solid ${hovered ? C.brandBorder : C.line}`,
+        borderRadius: RADIUS.lg,
+        overflow: 'hidden',
+        textDecoration: 'none',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
+        transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
+        boxShadow: hovered ? C.shadowMd : C.shadowSm,
+        cursor: 'pointer',
+      }}
+    >
       {/* Imagen */}
-      <div className="relative h-44 bg-gradient-to-br from-green-50 to-emerald-50 overflow-hidden flex items-center justify-center">
+      <div style={{
+        position: 'relative',
+        height: 180,
+        overflow: 'hidden',
+        background: `repeating-linear-gradient(135deg, ${C.brandSoft} 0 14px, ${C.surfaceAlt} 14px 28px)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
         {producto.imagen_url ? (
           <img
             src={producto.imagen_url}
             alt={producto.nombre}
-            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-400"
-            onError={e => { e.target.style.display = "none"; }}
+            style={{
+              width: '100%', height: '100%',
+              objectFit: 'contain',
+              transition: 'transform 0.4s ease',
+              transform: hovered ? 'scale(1.05)' : 'scale(1)',
+            }}
+            onError={e => { e.target.style.display = 'none'; }}
           />
         ) : (
-          <span className="text-6xl">🐾</span>
+          <span style={{
+            fontFamily: FONT.mono, fontSize: 10, textTransform: 'uppercase',
+            letterSpacing: 0.5, padding: '4px 12px',
+            background: 'rgba(255,255,255,0.8)',
+            borderRadius: RADIUS.pill,
+            border: `1px dashed ${C.brandBorder}`,
+            color: C.ink3,
+          }}>foto · producto</span>
         )}
 
-        {/* Badges */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
+        {/* Badges top-left */}
+        <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {dc && (
-            <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-lg shadow-sm">
+            <span style={{
+              background: C.coral, color: '#fff',
+              fontSize: 10, fontWeight: 800,
+              padding: '2px 7px', borderRadius: RADIUS.sm,
+              letterSpacing: 0.2,
+            }}>
               -{dc}%
             </span>
           )}
-          {producto.destacado ? (
-            <span className="bg-amber-400 text-amber-900 text-xs font-bold px-2 py-0.5 rounded-lg shadow-sm">
-              ★ Top
+          {producto.destacado && (
+            <span style={{
+              background: C.amber, color: '#fff',
+              fontSize: 10, fontWeight: 800,
+              padding: '2px 7px', borderRadius: RADIUS.sm,
+            }}>
+              ★ Más vendido
             </span>
-          ) : null}
+          )}
+          {stockBajo && (
+            <span style={{
+              background: C.dangerBg, color: C.danger,
+              border: `1px solid ${C.danger}33`,
+              fontSize: 9, fontWeight: 700,
+              padding: '2px 7px', borderRadius: RADIUS.sm,
+            }}>
+              Solo {producto.stock}
+            </span>
+          )}
         </div>
 
+        {/* Sin stock overlay */}
         {!hayStock && (
-          <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-            <span className="text-xs font-bold text-gray-500 bg-white px-3 py-1.5 rounded-xl border border-gray-200">
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(255,255,255,0.75)',
+            backdropFilter: 'blur(2px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{
+              fontSize: 11, fontWeight: 700, color: C.ink3,
+              background: C.surface, padding: '5px 12px',
+              borderRadius: RADIUS.pill, border: `1px solid ${C.line}`,
+            }}>
               Sin stock
             </span>
           </div>
@@ -83,42 +148,82 @@ export default function ProductCard({ producto }) {
       </div>
 
       {/* Info */}
-      <div className="p-4 flex flex-col flex-1">
-        <span className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1">
-          {producto.categoria}
-        </span>
-        <h3 className="text-sm font-semibold text-green-950 line-clamp-2 leading-snug mb-1 group-hover:text-green-700 transition-colors flex-1">
-          {producto.nombre}
-        </h3>
+      <div style={{ padding: '14px 16px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {/* Marca */}
         {producto.marca && (
-          <p className="text-xs text-green-600/50 mb-2">{producto.marca}</p>
-        )}
-        {producto.descripcion_corta && (
-          <p className="text-xs text-gray-400 line-clamp-2 mb-3 leading-relaxed">
-            {producto.descripcion_corta}
-          </p>
+          <span style={{
+            fontFamily: FONT.mono, fontSize: 9, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: 1.2,
+            color: C.muted,
+          }}>
+            {producto.marca}
+          </span>
         )}
 
-        {/* Precio y CTA */}
-        <div className="mt-auto">
-          <div className="flex items-end gap-1.5 mb-3">
-            <span className="text-base font-bold text-green-700 tabular-nums">{fmt(producto.precio)}</span>
+        {/* Nombre */}
+        <h3 style={{
+          margin: 0,
+          fontSize: 13, fontWeight: 600,
+          color: C.ink,
+          lineHeight: 1.4,
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          flex: 1,
+          transition: 'color 0.15s',
+          ...(hovered ? { color: C.brand } : {}),
+        }}>
+          {producto.nombre}
+        </h3>
+
+        {/* Categoría */}
+        {producto.categoria && (
+          <span style={{ fontSize: 10, color: C.brand, fontWeight: 600, letterSpacing: 0.3 }}>
+            {producto.categoria}
+          </span>
+        )}
+
+        {/* Precio + botón */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 8, gap: 8 }}>
+          <div>
+            <div style={{
+              fontFamily: FONT.display,
+              fontSize: 18, fontWeight: 700,
+              color: C.ink, lineHeight: 1,
+            }}>
+              {fmt(producto.precio)}
+            </div>
             {producto.precio_antes && Number(producto.precio_antes) > 0 && (
-              <span className="text-xs text-green-600/40 line-through tabular-nums">{fmt(producto.precio_antes)}</span>
+              <span style={{
+                fontSize: 11, color: C.muted,
+                textDecoration: 'line-through',
+                fontFamily: FONT.mono,
+              }}>
+                {fmt(producto.precio_antes)}
+              </span>
             )}
           </div>
 
           <button
             onClick={handleAgregar}
             disabled={!hayStock}
-            className={`w-full py-2 rounded-xl text-xs font-bold transition-all duration-200 active:scale-95 ${
-              agregado
-                ? "bg-green-600 text-white"
-                : hayStock
-                ? "bg-green-700 hover:bg-green-800 text-white"
-                : "bg-gray-100 text-gray-400 cursor-not-allowed"
-            }`}>
-            {agregado ? "✓ Agregado" : hayStock ? "Agregar al carrito" : "Sin stock"}
+            style={{
+              width: 36, height: 36, borderRadius: '50%',
+              border: 'none',
+              background: agregado ? C.success + '22' : hayStock ? C.ink : C.surfaceAlt,
+              color: agregado ? C.success : hayStock ? '#fff' : C.muted,
+              fontSize: 16, fontWeight: 700,
+              cursor: hayStock ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+              transition: 'all 0.2s',
+              transform: agregado ? 'scale(0.9)' : 'scale(1)',
+            }}
+            onMouseEnter={e => { if (hayStock && !agregado) { e.currentTarget.style.background = C.brand; e.currentTarget.style.transform = 'scale(1.1)'; } }}
+            onMouseLeave={e => { if (!agregado) { e.currentTarget.style.background = hayStock ? C.ink : C.surfaceAlt; e.currentTarget.style.transform = 'scale(1)'; } }}
+          >
+            {agregado ? '✓' : '+'}
           </button>
         </div>
       </div>

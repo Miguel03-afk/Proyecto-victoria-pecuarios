@@ -30,6 +30,8 @@ export function CarritoProvider({ children }) {
   };
 
   // ── Validar stock contra backend ──────────────────────────
+  // El endpoint /productos/:slug devuelve { producto, variantes, relacionados }
+  // No el producto plano — hay que entrar a .producto
   const validarCarrito = useCallback(async (itemsActuales) => {
     if (!itemsActuales.length) return itemsActuales;
     setValidando(true);
@@ -40,15 +42,33 @@ export function CarritoProvider({ children }) {
         )
       );
       const actualizados = itemsActuales.map((item, i) => {
-        const prod = resultados[i];
-        if (!prod) return { ...item, activo: false, stock: 0 };
+        const resp = resultados[i];
+        // El producto puede venir envuelto en { producto: {...} } o plano (compat)
+        const prod = resp?.producto || resp;
+        if (!prod || !prod.id) return { ...item, activo: false, stock: 0 };
+
+        // Si el item tiene variante_id, buscar stock/precio en la variante
+        if (item.variante_id && Array.isArray(resp?.variantes)) {
+          const v = resp.variantes.find(x => x.id === item.variante_id);
+          if (v) {
+            const stockReal = Number(v.stock ?? 0);
+            return {
+              ...item,
+              precio: Number(v.precio),
+              stock:  stockReal,
+              activo: prod.activo === 1 || prod.activo === true,
+              cantidad: Math.max(1, Math.min(item.cantidad, Math.max(stockReal, 1))),
+            };
+          }
+        }
+
         const stockReal = Number(prod.stock ?? 0);
         return {
           ...item,
           precio:   Number(prod.precio),
           stock:    stockReal,
           activo:   prod.activo === 1 || prod.activo === true,
-          cantidad: Math.max(1, Math.min(item.cantidad, stockReal)),
+          cantidad: Math.max(1, Math.min(item.cantidad, Math.max(stockReal, 1))),
         };
       });
       guardarLocal(actualizados);

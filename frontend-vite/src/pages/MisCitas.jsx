@@ -2,31 +2,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import api from "../services/api";
+import { useTheme } from "../styles/ThemeProvider.jsx";
 import Navbar from "../components/Navbar";
-
-const C = {
-  brand:        "#0A6B40",
-  brandMid:     "#138553",
-  brandDark:    "#064E30",
-  brandLight:   "#E4F5EC",
-  brandBorder:  "#95CCAD",
-  lime:         "#7AC143",
-  limeDark:     "#5a9030",
-  canvas:       "#F5FAF7",
-  surface:      "#ffffff",
-  surfaceAlt:   "#EDF6F1",
-  text:         "#101F16",
-  textSec:      "#2D4A38",
-  textTer:      "#5A7A65",
-  textMuted:    "#8FAA98",
-  border:       "rgba(0,0,0,0.08)",
-  danger:       "#dc2626",
-  dangerBg:     "#fef2f2",
-  dangerBorder: "#fecaca",
-  success:      "#16a34a",
-  successBg:    "#f0fdf4",
-  successBorder:"#bbf7d0",
-};
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faCalendarCheck, faCalendarXmark, faPaw, faCheck, faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 
 const ESTADO_CFG = {
   pendiente:         { bg:"#fef3c7", text:"#92400e", border:"#fde68a", dot:"#d97706", label:"Pendiente de confirmación" },
@@ -42,6 +23,7 @@ const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 
 function BadgeEstado({ estado }) {
+  const { C } = useTheme();
   const s = ESTADO_CFG[estado] || ESTADO_CFG.pendiente;
   return (
     <span style={{
@@ -57,6 +39,7 @@ function BadgeEstado({ estado }) {
 }
 
 function FechaDisplay({ fecha, hora }) {
+  const { C } = useTheme();
   const d = new Date(fecha + "T00:00:00");
   const [hh, mm] = hora.split(":");
   const n = parseInt(hh);
@@ -86,6 +69,7 @@ function FechaDisplay({ fecha, hora }) {
 
 /* ─── Modal de cancelación ──────────────────────────────────── */
 function ModalCancelar({ cita, onCancelar, onCerrar }) {
+  const { C } = useTheme();
   const [motivo, setMotivo] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
@@ -201,6 +185,7 @@ function useCountdown(expiraEn) {
 
 /* ─── Banner de reagendamiento ─────────────────────────────── */
 function BannerReagendamiento({ cita, onResponder }) {
+  const { C } = useTheme();
   const [accionando,    setAccionando]    = useState(null);
   const [msg,           setMsg]           = useState("");
   const [rechazando,    setRechazando]    = useState(false); // muestra mini-form
@@ -295,7 +280,7 @@ function BannerReagendamiento({ cita, onResponder }) {
                     fontSize:12, fontWeight:700, cursor: accionando ? "default" : "pointer",
                   }}
                 >
-                  {accionando === "aceptar" ? "Aceptando..." : "✓ Aceptar nueva fecha"}
+                  {accionando === "aceptar" ? "Aceptando..." : <><FontAwesomeIcon icon={faCheck} style={{ marginRight: 6 }}/>Aceptar nueva fecha</>}
                 </button>
                 <button
                   onClick={() => setRechazando(true)}
@@ -361,6 +346,7 @@ function BannerReagendamiento({ cita, onResponder }) {
 
 /* ─── Tarjeta de cita ───────────────────────────────────────── */
 function TarjetaCita({ cita, onCancelar }) {
+  const { C } = useTheme();
   const [expandida, setExpandida] = useState(false);
   const [modalCancelar, setModalCancelar] = useState(false);
   const puedeCancelar = ["pendiente","confirmada"].includes(cita.estado) && cita.reagendamiento_estado !== "propuesta";
@@ -405,7 +391,8 @@ function TarjetaCita({ cita, onCancelar }) {
             </p>
             <p style={{ margin:"0 0 6px", fontSize:12, color:C.brand, fontWeight:600 }}>{cita.especialidad}</p>
             <p style={{ margin:0, fontSize:13, color:C.textSec }}>
-              🐾 {cita.nombre_mascota} <span style={{ color:C.textMuted }}>({cita.especie_mascota})</span>
+              <FontAwesomeIcon icon={faPaw} style={{ color: C.brand, marginRight: 4 }}/>
+              {cita.nombre_mascota} <span style={{ color:C.textMuted }}>({cita.especie_mascota})</span>
             </p>
           </div>
 
@@ -487,6 +474,7 @@ const FILTROS = [
 ];
 
 export default function MisCitas() {
+  const { C } = useTheme();
   const [citas,    setCitas]    = useState([]);
   const [cargando, setCargando] = useState(true);
   const [filtro,   setFiltro]   = useState("todas");
@@ -629,7 +617,14 @@ export default function MisCitas() {
             </div>
           ) : citasFiltradas.length === 0 ? (
             <div style={{ textAlign:"center", padding:"60px 24px", background:C.surface, borderRadius:20, border:`1px solid ${C.border}` }}>
-              <div style={{ fontSize:56, marginBottom:14 }}>📅</div>
+              <div style={{
+                width: 80, height: 80, borderRadius: 20,
+                background: C.brandSoft, color: C.brand,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 34, margin: "0 auto 14px",
+              }}>
+                <FontAwesomeIcon icon={faCalendarXmark}/>
+              </div>
               <h3 style={{ margin:"0 0 8px", fontSize:18, fontWeight:700, color:C.text }}>
                 {citas.length === 0 ? "Aún no tienes citas" : "Sin citas con ese filtro"}
               </h3>

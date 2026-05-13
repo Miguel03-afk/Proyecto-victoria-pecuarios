@@ -3,38 +3,12 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
-
-// ─── Tokens VP ────────────────────────────────────────────────────────────────
-const T = {
-  canvas:       "#F5FAF7",
-  surface:      "#ffffff",
-  surfaceAlt:   "#EDF6F1",
-  surfaceHov:   "#dff0e6",
-  brand:        "#0A6B40",
-  brandMid:     "#138553",
-  brandDark:    "#064E30",
-  brandLight:   "#E4F5EC",
-  brandBorder:  "#95CCAD",
-  lime:         "#7AC143",
-  limeDark:     "#5a9030",
-  limeLight:    "#eef7e3",
-  text:         "#101F16",
-  textSec:      "#2D4A38",
-  textTer:      "#5A7A65",
-  textMuted:    "#8FAA98",
-  border:       "rgba(0,0,0,0.07)",
-  borderMed:    "rgba(0,0,0,0.11)",
-  danger:       "#dc2626",
-  dangerBg:     "#fef2f2",
-  dangerBorder: "rgba(220,38,38,0.2)",
-  success:      "#16a34a",
-  successBg:    "#f0fdf4",
-  successBorder:"rgba(22,163,74,0.2)",
-};
+import { useTheme } from "../styles/ThemeProvider.jsx";
 
 // ─── Primitivas de UI ─────────────────────────────────────────────────────────
 
 function Campo({ label, value, onChange, type="text", disabled=false, hint, placeholder, noPaste }) {
+  const { C: T } = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <div>
@@ -56,6 +30,7 @@ function Campo({ label, value, onChange, type="text", disabled=false, hint, plac
 }
 
 function Sel({ label, value, onChange, children }) {
+  const { C: T } = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <div>
@@ -72,6 +47,7 @@ function Sel({ label, value, onChange, children }) {
 }
 
 function CampoPass({ label, value, onChange, placeholder }) {
+  const { C: T } = useTheme();
   const [ver, setVer] = useState(false);
   const [focused, setFocused] = useState(false);
   return (
@@ -98,6 +74,7 @@ function CampoPass({ label, value, onChange, placeholder }) {
 }
 
 function Msg({ texto, tipo="ok" }) {
+  const { C: T } = useTheme();
   if (!texto) return null;
   const esOk = tipo === "ok";
   return (
@@ -109,6 +86,7 @@ function Msg({ texto, tipo="ok" }) {
 }
 
 function BtnGuardar({ onClick, cargando, disabled: extraDisabled, texto="Guardar cambios" }) {
+  const { C: T } = useTheme();
   const dis = cargando || extraDisabled;
   return (
     <button onClick={onClick} disabled={dis}
@@ -122,6 +100,7 @@ function BtnGuardar({ onClick, cargando, disabled: extraDisabled, texto="Guardar
 
 // ─── Sección: Datos personales ────────────────────────────────────────────────
 function DatosPersonales({ usuario, onActualizado }) {
+  const { C: T } = useTheme();
   const [form, setForm] = useState({
     nombre:   usuario.nombre   || "",
     apellido: usuario.apellido || "",
@@ -164,6 +143,7 @@ function DatosPersonales({ usuario, onActualizado }) {
 
 // ─── Sección: Mis direcciones (localStorage) ──────────────────────────────────
 function MisDirecciones() {
+  const { C: T } = useTheme();
   const [dirs, setDirs] = useState(() => {
     try { return JSON.parse(localStorage.getItem("vp_direcciones") || "[]"); }
     catch { return []; }
@@ -249,6 +229,7 @@ function MisDirecciones() {
 
 // ─── Sección: Datos de facturación ────────────────────────────────────────────
 function DatosFacturacion({ usuario, onActualizado }) {
+  const { C: T } = useTheme();
   const fac = usuario.facturacion || {};
   const [form, setForm] = useState({
     razon_social:     fac.razon_social     || "",
@@ -300,6 +281,7 @@ function DatosFacturacion({ usuario, onActualizado }) {
 
 // ─── Sección: Cambiar correo ──────────────────────────────────────────────────
 function CambiarEmail({ usuario }) {
+  const { C: T } = useTheme();
   const [form, setForm]         = useState({ nuevo_email:"", password_actual:"" });
   const [msg,  setMsg]          = useState({});
   const [cargando, setCargando] = useState(false);
@@ -335,6 +317,7 @@ function CambiarEmail({ usuario }) {
 
 // ─── Sección: Cambiar contraseña ──────────────────────────────────────────────
 function CambiarPassword() {
+  const { C: T } = useTheme();
   const [form, setForm]         = useState({ actual:"", nueva:"", confirmar:"" });
   const [msg,  setMsg]          = useState({});
   const [cargando, setCargando] = useState(false);
@@ -403,6 +386,7 @@ const TAB_INFO = {
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function Perfil() {
+  const { C: T } = useTheme();
   const { usuario, logout } = useAuth();
   const navigate = useNavigate();
   const [tab,      setTab]      = useState("datos");

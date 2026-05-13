@@ -1,47 +1,16 @@
-import { useState, useRef } from "react";
+// src/pages/Auth.jsx — Diseño Victoria Pets (PDF style)
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faEye, faEyeSlash, faPaw, faEnvelope, faLock, faUser, faIdCard,
-  faShieldHalved, faPaperPlane, faRightToBracket, faUserPlus,
-  faRotateRight, faCircleCheck, faTriangleExclamation,
-  faArrowLeft, faArrowRight,
-} from "@fortawesome/free-solid-svg-icons";
-
-const C = {
-  brand:       "#0A6B40",
-  brandMid:    "#138553",
-  brandDark:   "#064E30",
-  brandLight:  "#E4F5EC",
-  brandBorder: "#95CCAD",
-  lime:        "#7AC143",
-  limeDark:    "#5a9030",
-  canvas:      "#F5FAF7",
-  surface:     "#ffffff",
-  surfaceAlt:  "#EDF6F1",
-  text:        "#101F16",
-  textSec:     "#2D4A38",
-  textTer:     "#5A7A65",
-  textMuted:   "#8FAA98",
-  border:      "rgba(0,0,0,0.09)",
-
-  // Rosa — calidez del logo VP
-  rose:        "#D4457A",
-  roseMid:     "#E8608A",
-  roseLight:   "#FFF0F5",
-  roseBorder:  "#F9C0D0",
-
-  danger:      "#dc2626",
-  dangerBg:    "#fef2f2",
-  dangerBorder:"#fecaca",
-};
+import { useTheme } from "../styles/ThemeProvider.jsx";
+import { FONT, RADIUS } from "../styles/admin.tokens";
 
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/* ─── Campo ───────────────────────────────────────────────────────────────── */
-function Campo({ label, type="text", value, onChange, onBlur: handleBlur, placeholder, error, noPaste, disabled }) {
+/* ─── Campo ──────────────────────────────────────────────────────────────── */
+function Campo({ label, type="text", value, onChange, onBlur, placeholder, error, noPaste, autoComplete }) {
+  const { C } = useTheme();
   const [verPass, setVerPass] = useState(false);
   const [focused, setFocused] = useState(false);
   const esPass = type === "password";
@@ -49,374 +18,373 @@ function Campo({ label, type="text", value, onChange, onBlur: handleBlur, placeh
   return (
     <div>
       <label style={{
-        display:"block", fontSize:11, fontWeight:700,
-        textTransform:"uppercase", letterSpacing:0.8,
-        color: error ? C.danger : focused ? C.brand : C.textTer,
-        marginBottom:6, transition:"color 0.15s",
+        display: "block", fontSize: 10, fontWeight: 700,
+        textTransform: "uppercase", letterSpacing: 1,
+        color: error ? C.danger : focused ? C.brand : C.ink3,
+        marginBottom: 7, transition: "color 0.15s",
       }}>
         {label}
       </label>
-      <div style={{ position:"relative" }}>
+      <div style={{ position: "relative" }}>
         <input
           type={esPass ? (verPass ? "text" : "password") : type}
           value={value}
           onChange={onChange}
-          placeholder={placeholder}
-          disabled={disabled}
           onFocus={() => setFocused(true)}
-          onBlur={e => { setFocused(false); handleBlur?.(e); }}
-          onPaste={noPaste ? e => e.preventDefault() : undefined}
+          onBlur={(e) => { setFocused(false); onBlur?.(e); }}
+          onPaste={noPaste ? (e) => e.preventDefault() : undefined}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
           style={{
-            width:"100%",
-            padding: esPass ? "11px 44px 11px 14px" : "11px 14px",
-            borderRadius:12,
-            border:`1.5px solid ${error ? C.danger : focused ? C.brand : C.border}`,
-            background: C.surfaceAlt,
-            color: disabled ? C.textMuted : C.text,
-            fontSize:14, outline:"none", transition:"all 0.15s",
-            cursor: disabled ? "not-allowed" : "text",
-            boxShadow: error
-              ? `0 0 0 3px rgba(220,38,38,0.08)`
-              : focused ? `0 0 0 3px rgba(10,107,64,0.10)` : "none",
+            width: "100%", height: 44,
+            padding: esPass ? "0 42px 0 14px" : "0 14px",
+            borderRadius: RADIUS.sm,
+            border: `1px solid ${error ? C.danger : focused ? C.brand : C.lineStrong}`,
+            background: C.surface, color: C.ink,
+            fontSize: 14, fontFamily: FONT.ui,
+            outline: "none",
+            transition: "border-color 0.15s, box-shadow 0.15s",
+            boxShadow: focused ? `0 0 0 3px ${C.brand}1f` : "none",
           }}
         />
         {esPass && (
-          <button type="button" tabIndex={-1} onClick={() => setVerPass(v => !v)}
-            style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:C.textMuted, fontSize:15, padding:2 }}
-            onMouseEnter={e => { e.currentTarget.style.color = C.brand; }}
-            onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; }}>
-            <FontAwesomeIcon icon={verPass ? faEyeSlash : faEye} />
+          <button type="button" onClick={() => setVerPass(v => !v)}
+            style={{
+              position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+              width: 26, height: 26, padding: 0,
+              background: "transparent", border: "none",
+              cursor: "pointer", color: C.muted, fontSize: 13,
+            }}>
+            {verPass ? "🙈" : "👁"}
           </button>
         )}
       </div>
-      {error && <p style={{ margin:"4px 0 0", fontSize:11, color:C.danger, lineHeight:1.4 }}>{error}</p>}
+      {error && (
+        <p style={{ margin: "6px 0 0", fontSize: 11, color: C.danger, lineHeight: 1.4 }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }
 
 /* ─── Barra de fuerza ────────────────────────────────────────────────────── */
 function BarraFuerza({ pass }) {
+  const { C } = useTheme();
   if (!pass) return null;
   const checks = [
-    { ok: pass.length >= 8,    label:"8+ chars" },
-    { ok: /[0-9]/.test(pass),  label:"Número" },
-    { ok: /[A-Z]/.test(pass),  label:"Mayúscula" },
+    { ok: pass.length >= 8,    label: "8+ caracteres" },
+    { ok: /[0-9]/.test(pass),  label: "1 número"      },
+    { ok: /[A-Z]/.test(pass),  label: "1 mayúscula"   },
   ];
+  const score = checks.filter(c => c.ok).length;
+  const colors = [C.danger, C.warning, C.warning, C.success];
+  const labels = ["Débil", "Mejorable", "Buena", "Fuerte"];
+
   return (
-    <div style={{ display:"flex", gap:4 }}>
-      {checks.map((f, i) => (
-        <div key={i} style={{ flex:1 }}>
-          <div style={{ height:3, borderRadius:2, background: f.ok ? C.lime : C.border, transition:"background 0.25s" }}/>
-          <span style={{ fontSize:9, color: f.ok ? C.limeDark : C.textMuted, marginTop:3, display:"block" }}>{f.label}</span>
-        </div>
-      ))}
+    <div style={{ marginTop: -4 }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+        {[0,1,2].map(i => (
+          <div key={i} style={{
+            flex: 1, height: 3, borderRadius: 2,
+            background: i < score ? colors[score] : C.surfaceAlt,
+            transition: "background 0.2s",
+          }}/>
+        ))}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.ink3 }}>
+        <span style={{ color: colors[score], fontWeight: 600 }}>{labels[score]}</span>
+        <span style={{ display: "flex", gap: 8 }}>
+          {checks.map((c, i) => (
+            <span key={i} style={{ color: c.ok ? C.success : C.muted }}>
+              {c.ok ? "✓" : "·"} {c.label}
+            </span>
+          ))}
+        </span>
+      </div>
     </div>
   );
 }
 
-/* ─── OTP 6 dígitos ──────────────────────────────────────────────────────── */
+/* ─── OTP ────────────────────────────────────────────────────────────────── */
 function OtpInput({ value, onChange }) {
+  const { C } = useTheme();
   const refs = useRef([]);
   const digits = (value + "      ").slice(0, 6).split("");
 
   const handleChange = (idx, e) => {
     const raw = e.target.value.replace(/\D/g, "");
     if (raw.length > 1) {
-      // pegado masivo
-      const next = (value.slice(0, idx) + raw).slice(0, 6);
-      onChange(next);
-      refs.current[Math.min(idx + raw.length, 5)]?.focus();
+      const pasted = raw.slice(0, 6).padEnd(6, " ").slice(0, 6);
+      onChange(pasted.trim());
+      const nextEmpty = pasted.indexOf(" ");
+      const focusIdx = nextEmpty === -1 ? 5 : nextEmpty;
+      refs.current[focusIdx]?.focus();
       return;
     }
-    if (!raw) {
-      onChange(value.slice(0, idx) + " " + value.slice(idx + 1));
-      return;
-    }
-    const next = value.slice(0, idx) + raw + value.slice(idx + 1);
-    onChange(next.trimEnd());
-    if (idx < 5) refs.current[idx + 1]?.focus();
+    const arr = value.padEnd(6, " ").split("");
+    arr[idx] = raw || " ";
+    onChange(arr.join("").trim());
+    if (raw && idx < 5) refs.current[idx + 1]?.focus();
   };
 
   const handleKey = (idx, e) => {
-    if (e.key === "Backspace") {
-      e.preventDefault();
-      if (digits[idx].trim()) {
-        onChange(value.slice(0, idx) + " " + value.slice(idx + 1));
-      } else if (idx > 0) {
-        onChange(value.slice(0, idx - 1) + " " + value.slice(idx));
-        refs.current[idx - 1]?.focus();
-      }
+    if (e.key === "Backspace" && !digits[idx].trim() && idx > 0) {
+      refs.current[idx - 1]?.focus();
     }
-    if (e.key === "ArrowLeft"  && idx > 0) refs.current[idx - 1]?.focus();
-    if (e.key === "ArrowRight" && idx < 5) refs.current[idx + 1]?.focus();
   };
 
   return (
-    <div style={{ display:"flex", gap:8, justifyContent:"center" }}>
-      {digits.map((d, i) => {
-        const filled = !!d.trim();
-        return (
-          <input key={i}
-            ref={el => refs.current[i] = el}
-            value={filled ? d : ""}
-            onChange={e => handleChange(i, e)}
-            onKeyDown={e => handleKey(i, e)}
-            maxLength={6}
-            inputMode="numeric"
-            style={{
-              width:48, height:58, textAlign:"center",
-              fontSize:26, fontWeight:800, letterSpacing:0,
-              borderRadius:12, outline:"none",
-              border:`2px solid ${filled ? C.brand : C.border}`,
-              background: filled ? C.brandLight : C.surfaceAlt,
-              color: C.text, transition:"all 0.15s",
-              boxShadow: filled ? `0 0 0 3px rgba(10,107,64,0.12)` : "none",
-              fontFamily:"monospace",
-            }}
-          />
-        );
-      })}
+    <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+      {digits.map((d, i) => (
+        <input
+          key={i}
+          ref={el => refs.current[i] = el}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={d.trim()}
+          onChange={e => handleChange(i, e)}
+          onKeyDown={e => handleKey(i, e)}
+          style={{
+            width: 44, height: 52,
+            textAlign: "center",
+            borderRadius: RADIUS.sm,
+            border: `1.5px solid ${d.trim() ? C.brand : C.lineStrong}`,
+            background: C.surface, color: C.ink,
+            fontSize: 22, fontWeight: 700,
+            fontFamily: FONT.mono,
+            outline: "none",
+            transition: "all 0.15s",
+          }}
+        />
+      ))}
     </div>
   );
 }
 
-/* ─── Botón submit ────────────────────────────────────────────────────────── */
-function BtnSubmit({ cargando, texto, textoCargando, disabled: extraDisabled }) {
-  const isDisabled = cargando || extraDisabled;
+/* ─── Botón submit ───────────────────────────────────────────────────────── */
+function BtnSubmit({ cargando, texto, textoCargando, disabled }) {
+  const { C } = useTheme();
+  const dis = cargando || disabled;
   return (
-    <button type="submit" disabled={isDisabled}
+    <button type="submit" disabled={dis}
       style={{
-        width:"100%", padding:"13px 0", borderRadius:12,
-        border:`1px solid ${isDisabled ? C.border : C.limeDark}`,
-        background: isDisabled ? C.surfaceAlt : C.lime,
-        color: isDisabled ? C.textMuted : "#fff",
-        fontSize:14, fontWeight:800,
-        cursor: isDisabled ? "not-allowed" : "pointer",
-        transition:"all 0.2s", letterSpacing:0.3,
+        width: "100%", height: 46,
+        borderRadius: RADIUS.sm,
+        border: "none",
+        background: dis ? C.surfaceAlt : C.brand,
+        color: dis ? C.muted : "#fff",
+        fontSize: 14, fontWeight: 700,
+        fontFamily: FONT.ui,
+        cursor: dis ? "default" : "pointer",
+        transition: "background 0.15s, transform 0.08s",
+        display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
       }}
-      onMouseEnter={e => { if (!isDisabled) e.currentTarget.style.background = C.limeDark; }}
-      onMouseLeave={e => { if (!isDisabled) e.currentTarget.style.background = C.lime; }}
+      onMouseEnter={e => { if (!dis) e.currentTarget.style.background = C.brandMid; }}
+      onMouseLeave={e => { if (!dis) e.currentTarget.style.background = C.brand; }}
     >
-      {cargando ? (
-        <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-          <span style={{ width:14, height:14, borderRadius:"50%", border:`2px solid rgba(255,255,255,0.3)`, borderTopColor:"#fff", display:"inline-block", animation:"spin 0.8s linear infinite" }}/>
-          {textoCargando}
-        </span>
-      ) : texto}
+      {cargando && (
+        <span style={{
+          width: 14, height: 14, borderRadius: "50%",
+          border: "2px solid rgba(255,255,255,0.3)",
+          borderTopColor: "#fff",
+          animation: "vp-spin 0.8s linear infinite",
+        }}/>
+      )}
+      {cargando ? textoCargando : texto}
     </button>
   );
 }
 
-/* ─── Panel izquierdo decorativo ──────────────────────────────────────────── */
-function PanelIzquierdo({ titulo, subtitulo, items }) {
+/* ─── Panel marca (izquierda) ────────────────────────────────────────────── */
+function PanelMarca({ titulo, subtitulo }) {
+  const { C } = useTheme();
   return (
     <div style={{
-      background:`linear-gradient(155deg, ${C.brandDark} 0%, #0d6038 55%, ${C.brand} 100%)`,
-      padding:"36px 32px",
-      display:"flex", flexDirection:"column",
-      position:"relative", overflow:"hidden",
+      flex: 1, position: "relative", overflow: "hidden",
+      background: C.brandDark, color: "#fff",
+      padding: "48px 56px",
+      display: "flex", flexDirection: "column", justifyContent: "space-between",
     }}>
-      {/* Decoraciones — verde lima + rosa */}
-      <div style={{ position:"absolute", top:-70, right:-50, width:240, height:240, background:"rgba(122,193,67,0.07)", borderRadius:"50%", pointerEvents:"none" }}/>
-      <div style={{ position:"absolute", bottom:-60, left:-40, width:220, height:220, background:"rgba(212,69,122,0.07)", borderRadius:"50%", pointerEvents:"none" }}/>
-      <div style={{ position:"absolute", top:"45%", right:-30, width:100, height:100, background:"rgba(212,69,122,0.05)", borderRadius:"50%", pointerEvents:"none" }}/>
-
       {/* Logo */}
-      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:32, position:"relative" }}>
-        <div style={{ width:40, height:40, borderRadius:12, background:"rgba(255,255,255,0.13)", border:"1px solid rgba(255,255,255,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>🐾</div>
-        <div>
-          <div style={{ fontSize:15, fontWeight:700, color:"#fff", fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>Victoria Pets</div>
-          <div style={{ fontSize:9, color:"rgba(255,255,255,0.45)", letterSpacing:1.4, textTransform:"uppercase" }}>Veterinaria · Ibagué</div>
-        </div>
-      </div>
+      <Link to="/" style={{
+        display: "inline-flex", alignItems: "center", gap: 10,
+        textDecoration: "none", color: "#fff",
+        fontFamily: FONT.display, fontStyle: "italic",
+        fontWeight: 600, fontSize: 22,
+        position: "relative", zIndex: 2,
+      }}>
+        <span style={{
+          width: 26, height: 26, borderRadius: 6,
+          background: C.lime, color: C.brandDark,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 14, fontWeight: 900,
+        }}>✦</span>
+        Victoria·Pets
+      </Link>
 
-      {/* Titular */}
-      <div style={{ position:"relative", marginBottom:24 }}>
-        <h2 style={{ margin:"0 0 8px", fontFamily:"'Playfair Display',Georgia,serif", fontStyle:"italic", fontWeight:600, fontSize:"clamp(20px,2.2vw,26px)", color:"#fff", lineHeight:1.25 }}>
+      {/* Texto central */}
+      <div style={{ position: "relative", zIndex: 2 }}>
+        <h1 style={{
+          fontFamily: FONT.display, fontWeight: 600,
+          fontSize: "clamp(28px, 3.4vw, 44px)",
+          lineHeight: 1.1, letterSpacing: -0.3,
+          margin: "0 0 18px",
+          color: "#fff",
+        }}>
           {titulo}
-        </h2>
-        <p style={{ margin:0, fontSize:12, color:"rgba(255,255,255,0.52)", lineHeight:1.65 }}>{subtitulo}</p>
+        </h1>
+        <p style={{
+          margin: 0, fontSize: 15,
+          color: "rgba(255,255,255,0.65)",
+          lineHeight: 1.6,
+          maxWidth: 380,
+        }}>
+          {subtitulo}
+        </p>
       </div>
 
-      {/* Feature cards — alternando rosa y verde */}
-      <div style={{ display:"flex", flexDirection:"column", gap:8, position:"relative", flex:1 }}>
-        {items.map((it, i) => {
-          const isRose = i % 2 === 1;
-          return (
-            <div key={i} style={{
-              display:"flex", alignItems:"center", gap:12,
-              padding:"10px 14px", borderRadius:12,
-              background: isRose ? "rgba(212,69,122,0.13)" : "rgba(122,193,67,0.11)",
-              border:`1px solid ${isRose ? "rgba(212,69,122,0.22)" : "rgba(122,193,67,0.2)"}`,
-            }}>
-              <div style={{
-                width:30, height:30, borderRadius:9, flexShrink:0,
-                background: isRose ? "rgba(212,69,122,0.28)" : "rgba(122,193,67,0.22)",
-                display:"flex", alignItems:"center", justifyContent:"center",
-              }}>
-                <span style={{ fontSize:14, color: isRose ? "#F78FB3" : C.lime }}>✓</span>
-              </div>
-              <span style={{ fontSize:13, color:"rgba(255,255,255,0.83)", lineHeight:1.45 }}>{it}</span>
-            </div>
-          );
-        })}
+      {/* Footer */}
+      <div style={{
+        position: "relative", zIndex: 2,
+        display: "inline-flex", alignItems: "center", gap: 8,
+        fontSize: 11, color: "rgba(255,255,255,0.5)",
+      }}>
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.lime }}/>
+        Sistema operativo · v2.4.1 · Ibagué
       </div>
 
-      {/* Stats de prueba social */}
-      <div style={{ marginTop:28, paddingTop:20, borderTop:"1px solid rgba(255,255,255,0.09)",
-        display:"flex", gap:0, position:"relative" }}>
-        {[{num:"500+",lbl:"Productos"},{num:"2.000+",lbl:"Clientes"},{num:"5 ★",lbl:"Calificación"}].map((s,i) => (
-          <div key={s.lbl} style={{ flex:1, textAlign: i===1 ? "center" : i===2 ? "right" : "left",
-            borderRight: i < 2 ? "1px solid rgba(255,255,255,0.08)" : "none",
-            paddingRight: i < 2 ? 12 : 0, paddingLeft: i > 0 ? 12 : 0 }}>
-            <div style={{ fontSize:16, fontWeight:800, color:"#fff", fontFamily:"monospace", lineHeight:1 }}>{s.num}</div>
-            <div style={{ fontSize:9, color:"rgba(255,255,255,0.38)", textTransform:"uppercase", letterSpacing:0.9, marginTop:3 }}>{s.lbl}</div>
-          </div>
-        ))}
-      </div>
+      {/* Círculos decorativos sutiles */}
+      <div style={{
+        position: "absolute", top: -120, right: -120,
+        width: 360, height: 360, borderRadius: "50%",
+        border: "1px solid rgba(255,255,255,0.06)",
+      }}/>
+      <div style={{
+        position: "absolute", top: 80, right: 40,
+        width: 180, height: 180, borderRadius: "50%",
+        border: "1px solid rgba(255,255,255,0.04)",
+      }}/>
+      <div style={{
+        position: "absolute", bottom: -100, left: -80,
+        width: 280, height: 280, borderRadius: "50%",
+        border: "1px solid rgba(255,255,255,0.05)",
+      }}/>
     </div>
   );
 }
 
-/* ════════════════════════════════════════════════════════════════════════════
-   VERIFICACIÓN DE EMAIL
-   ════════════════════════════════════════════════════════════════════════════ */
+/* ─── Verificación email ─────────────────────────────────────────────────── */
 function VerificacionEmail({ email, onVerificado }) {
+  const { C } = useTheme();
   const [codigo, setCodigo]     = useState("");
   const [error, setError]       = useState("");
   const [cargando, setCargando] = useState(false);
-  const [reenviando, setRe]     = useState(false);
+  const [reenviando, setReenviando] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  const [okMsg, setOkMsg]       = useState("");
 
-  const codigoLimpio = codigo.replace(/\s/g, "");
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown(s => s - 1), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
 
-  const verificar = async () => {
-    if (codigoLimpio.length < 6) { setError("Ingresa los 6 dígitos del código."); return; }
+  const verificar = async (e) => {
+    e?.preventDefault();
+    if (codigo.length !== 6) return;
     setError(""); setCargando(true);
     try {
-      const { data } = await api.post("/auth/verificar-email", { email, codigo: codigoLimpio });
+      const { data } = await api.post("/auth/verificar-email", { email, codigo });
       onVerificado(data.token, data.usuario);
     } catch (err) {
-      const resp = err.response?.data;
-      if (resp?.expirado) {
-        setError("El código expiró. Solicita uno nuevo.");
-        setCodigo("");
-      } else {
-        setError(resp?.error || "Código incorrecto.");
-      }
+      setError(err.response?.data?.error || "Código inválido o expirado.");
     } finally { setCargando(false); }
   };
 
   const reenviar = async () => {
-    setRe(true); setError(""); setOkMsg("");
+    if (cooldown > 0) return;
+    setReenviando(true); setError("");
     try {
       await api.post("/auth/reenviar-codigo", { email });
-      setOkMsg("Nuevo código enviado. Revisa tu bandeja de entrada.");
-      setCodigo("");
       setCooldown(60);
-      const iv = setInterval(() => setCooldown(c => { if (c <= 1) { clearInterval(iv); return 0; } return c - 1; }), 1000);
     } catch (err) {
       setError(err.response?.data?.error || "No se pudo reenviar el código.");
-    } finally { setRe(false); }
+    } finally { setReenviando(false); }
   };
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&display=swap');
-        @keyframes spin      { to { transform: rotate(360deg); } }
-        @keyframes fadeUp    { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes envelope  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-        * { box-sizing:border-box; }
-      `}</style>
+      <Estilos/>
+      <div style={{ minHeight: "100vh", display: "flex", background: C.canvas, fontFamily: FONT.ui }}>
+        <div className="vp-auth-left" style={{ display: "none", width: "44%", flexShrink: 0 }}>
+          <PanelMarca
+            titulo="Confirma tu correo para entrar."
+            subtitulo="Un último paso para asegurarnos de que tu cuenta esté protegida."
+          />
+        </div>
 
-      <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:C.canvas, padding:"40px 24px" }}>
-        <div style={{ width:"100%", maxWidth:420, animation:"fadeUp 0.4s ease" }}>
-
-          {/* Logo */}
-          <div style={{ textAlign:"center", marginBottom:28 }}>
-            <Link to="/" style={{ textDecoration:"none", display:"inline-flex", flexDirection:"column", alignItems:"center", gap:8 }}>
-              <div style={{ width:52, height:52, borderRadius:16, background:C.brand, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, border:`1px solid ${C.brandDark}` }}>🐾</div>
-              <span style={{ fontFamily:"'Playfair Display',serif", fontStyle:"italic", fontWeight:600, fontSize:18, color:C.brand }}>Victoria Pets</span>
-            </Link>
-          </div>
-
-          <div style={{ background:C.surface, borderRadius:20, padding:"32px 28px 28px", border:`1px solid ${C.brandBorder}` }}>
-
-            {/* Icono animado */}
-            <div style={{ textAlign:"center", marginBottom:20 }}>
-              <div style={{ width:72, height:72, borderRadius:20, background:C.brandLight, border:`2px solid ${C.brandBorder}`, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:36, animation:"envelope 2.5s ease-in-out infinite" }}>
-                📧
-              </div>
-              <h2 style={{ margin:"14px 0 4px", fontSize:20, fontWeight:800, color:C.text, fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>
-                Verifica tu correo
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
+          <div style={{ width: "100%", maxWidth: 420 }}>
+            <div style={{ marginBottom: 32 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: C.brand, letterSpacing: 1.5, textTransform: "uppercase" }}>
+                Verificación de cuenta
+              </span>
+              <h2 style={{
+                fontFamily: FONT.display, fontStyle: "italic", fontWeight: 600,
+                fontSize: 32, color: C.ink, margin: "8px 0 12px",
+                letterSpacing: -0.3,
+              }}>
+                Revisa tu correo
               </h2>
-              <p style={{ margin:0, fontSize:13, color:C.textMuted, lineHeight:1.55 }}>
-                Enviamos un código de 6 dígitos a<br/>
-                <strong style={{ color:C.brand }}>{email}</strong>
+              <p style={{ fontSize: 14, color: C.ink3, margin: 0, lineHeight: 1.6 }}>
+                Enviamos un código de 6 dígitos a{" "}
+                <strong style={{ color: C.ink }}>{email}</strong>
               </p>
             </div>
 
-            {/* Mensaje OK */}
-            {okMsg && (
-              <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", marginBottom:14, borderRadius:12, background:"#E4F5EC", border:`1px solid ${C.brandBorder}`, color:C.brand, fontSize:13 }}>
-                <span style={{ fontSize:16 }}>✅</span>
-                <span>{okMsg}</span>
-              </div>
-            )}
-
-            {/* Error */}
             {error && (
-              <div style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"10px 14px", marginBottom:14, borderRadius:12, background:C.dangerBg, border:`1px solid ${C.dangerBorder}`, color:C.danger, fontSize:13 }}>
-                <span style={{ fontSize:16, flexShrink:0 }}>⚠️</span>
-                <span>{error}</span>
+              <div style={{
+                padding: "12px 14px", marginBottom: 18, borderRadius: RADIUS.sm,
+                background: C.dangerBg, border: `1px solid ${C.dangerBorder}`,
+                color: C.danger, fontSize: 13,
+              }}>
+                ⚠ {error}
               </div>
             )}
 
-            {/* Inputs OTP */}
-            <div style={{ marginBottom:20 }}>
-              <p style={{ margin:"0 0 12px", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8, color:C.textTer, textAlign:"center" }}>Código de verificación</p>
-              <OtpInput value={codigo.padEnd(6," ")} onChange={v => { setCodigo(v); setError(""); }}/>
-            </div>
+            <form onSubmit={verificar} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <OtpInput value={codigo} onChange={setCodigo}/>
+              <BtnSubmit
+                cargando={cargando}
+                texto="Verificar y entrar"
+                textoCargando="Verificando..."
+                disabled={codigo.length !== 6}
+              />
+            </form>
 
-            {/* Botón verificar */}
-            <button onClick={verificar} disabled={cargando || codigoLimpio.length < 6}
-              style={{
-                width:"100%", padding:"13px 0", borderRadius:12,
-                border:`1px solid ${(cargando||codigoLimpio.length<6) ? C.border : C.limeDark}`,
-                background: (cargando||codigoLimpio.length<6) ? C.surfaceAlt : C.lime,
-                color: (cargando||codigoLimpio.length<6) ? C.textMuted : "#fff",
-                fontSize:14, fontWeight:800, cursor:(cargando||codigoLimpio.length<6)?"not-allowed":"pointer",
-                transition:"all 0.2s", marginBottom:16,
-              }}
-              onMouseEnter={e => { if (!cargando && codigoLimpio.length===6) e.currentTarget.style.background=C.limeDark; }}
-              onMouseLeave={e => { if (!cargando && codigoLimpio.length===6) e.currentTarget.style.background=C.lime; }}>
-              {cargando ? (
-                <span style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-                  <span style={{ width:14, height:14, borderRadius:"50%", border:"2px solid rgba(255,255,255,0.3)", borderTopColor:"#fff", display:"inline-block", animation:"spin 0.8s linear infinite" }}/>
-                  Verificando...
-                </span>
-              ) : "Verificar cuenta →"}
-            </button>
-
-            {/* Reenviar */}
-            <div style={{ textAlign:"center", paddingTop:12, borderTop:`1px solid ${C.border}` }}>
-              <p style={{ margin:"0 0 8px", fontSize:12, color:C.textMuted }}>¿No recibiste el código?</p>
+            <div style={{ textAlign: "center", marginTop: 24 }}>
+              <p style={{ fontSize: 12, color: C.ink3, margin: "0 0 6px" }}>
+                ¿No recibiste el código?
+              </p>
               <button onClick={reenviar} disabled={reenviando || cooldown > 0}
-                style={{ background:"none", border:"none", color: cooldown>0 ? C.textMuted : C.brand, fontSize:13, fontWeight:700, cursor: cooldown>0 ? "default" : "pointer", textDecoration: cooldown>0 ? "none" : "underline", padding:0 }}>
+                style={{
+                  background: "none", border: "none",
+                  color: cooldown > 0 ? C.muted : C.brand,
+                  fontSize: 13, fontWeight: 700,
+                  cursor: cooldown > 0 ? "default" : "pointer",
+                  textDecoration: cooldown > 0 ? "none" : "underline",
+                  padding: 0,
+                }}>
                 {reenviando ? "Enviando..." : cooldown > 0 ? `Reenviar en ${cooldown}s` : "Reenviar código"}
               </button>
             </div>
 
-          </div>
-
-          <div style={{ textAlign:"center", marginTop:20 }}>
-            <Link to="/" style={{ fontSize:12, color:C.textMuted, textDecoration:"none" }}
-              onMouseEnter={e => { e.target.style.color = C.brand; }}
-              onMouseLeave={e => { e.target.style.color = C.textMuted; }}>
-              ← Volver a la tienda
-            </Link>
+            <div style={{ textAlign: "center", marginTop: 32 }}>
+              <Link to="/" style={{ fontSize: 12, color: C.muted, textDecoration: "none" }}>
+                ← Volver a la tienda
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -424,28 +392,53 @@ function VerificacionEmail({ email, onVerificado }) {
   );
 }
 
+/* ─── Estilos globales ───────────────────────────────────────────────────── */
+function Estilos() {
+  return (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap');
+      @keyframes vp-spin   { to { transform: rotate(360deg); } }
+      @keyframes vp-fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+      * { box-sizing: border-box; }
+      input::placeholder { color: #8FAA98; }
+      @media (min-width: 900px) {
+        .vp-auth-left { display: flex !important; }
+      }
+    `}</style>
+  );
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    LOGIN
    ════════════════════════════════════════════════════════════════════════════ */
 export function Login() {
+  const { C } = useTheme();
   const { login } = useAuth();
-  const navigate  = useNavigate();
-  const location  = useLocation();
-  const desde     = location.state?.desde || "/";
-  const [form, setForm]         = useState({ email:"", password:"" });
-  const [error, setError]       = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const desde = location.state?.desde || "/";
+  const [form, setForm] = useState({ email: "", password: "", recordar: true });
+  const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
   const [mostraRecuperar, setMostraRecuperar] = useState(false);
-  const [verificarEmail, setVerificarEmail]   = useState(null); // email pendiente de verificar
+  const [verificarEmail, setVerificarEmail] = useState(null);
+
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(""); setCargando(true);
     try {
-      const { data } = await api.post("/auth/login", form);
+      const { data } = await api.post("/auth/login", { email: form.email, password: form.password });
       login(data.token, data.usuario);
-      navigate(desde, { replace: true });
+      // Redirección por rol — la lógica de fondo decide
+      const rol = data.usuario?.rol;
+      const destino =
+        rol === "admin" || rol === "superadmin" ? "/admin" :
+        rol === "veterinario" ? "/veterinario" :
+        rol === "cajero" ? "/cajero" :
+        desde;
+      navigate(destino, { replace: true });
     } catch (err) {
       const resp = err.response?.data;
       if (resp?.pendienteVerificacion) {
@@ -457,97 +450,178 @@ export function Login() {
   };
 
   if (verificarEmail) {
-    return <VerificacionEmail email={verificarEmail} onVerificado={(token, usuario) => { login(token, usuario); navigate(desde, { replace: true }); }}/>;
+    return <VerificacionEmail email={verificarEmail} onVerificado={(token, usuario) => {
+      login(token, usuario);
+      const rol = usuario?.rol;
+      const destino =
+        rol === "admin" || rol === "superadmin" ? "/admin" :
+        rol === "veterinario" ? "/veterinario" :
+        rol === "cajero" ? "/cajero" :
+        desde;
+      navigate(destino, { replace: true });
+    }}/>;
   }
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&display=swap');
-        @keyframes spin    { to { transform: rotate(360deg); } }
-        @keyframes fadeUp  { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
-        @keyframes shimmer { to { background-position:-200% 0; } }
-        * { box-sizing:border-box; }
-        input::placeholder { color:#8FAA98; }
-      `}</style>
-
-      <div style={{ minHeight:"100vh", display:"flex", background:C.canvas }}>
-        <div style={{ display:"none", width:"44%", flexShrink:0 }} className="auth-left">
-          <PanelIzquierdo
-            titulo="Cuidamos a tus animales como si fueran nuestros"
-            subtitulo="Productos veterinarios de calidad, atención profesional y el amor que tus mascotas merecen."
-            items={["Más de 500 productos disponibles","Entregas a domicilio en Ibagué","Atención veterinaria profesional","IVA transparente en cada compra"]}
+      <Estilos/>
+      <div style={{ minHeight: "100vh", display: "flex", background: C.canvas, fontFamily: FONT.ui }}>
+        <div className="vp-auth-left" style={{ display: "none", width: "44%", flexShrink: 0 }}>
+          <PanelMarca
+            titulo={<>Bienvenido de vuelta al equipo de <em style={{ fontStyle: "italic" }}>Victoria Pets.</em></>}
+            subtitulo="Tu jornada empieza aquí: pacientes, ventas e inventario, todo en un solo lugar."
           />
         </div>
 
-        <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:"40px 24px" }}>
-          <div style={{ width:"100%", maxWidth:400, animation:"fadeUp 0.4s ease" }}>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
+          <div style={{ width: "100%", maxWidth: 420, animation: "vp-fadeUp 0.4s ease" }}>
 
-            <div style={{ textAlign:"center", marginBottom:32 }}>
-              <Link to="/" style={{ textDecoration:"none", display:"inline-flex", flexDirection:"column", alignItems:"center", gap:8 }}>
-                <div style={{ width:52, height:52, borderRadius:16, background:C.brand, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, border:`1px solid ${C.brandDark}` }}>🐾</div>
-                <span style={{ fontFamily:"'Playfair Display',serif", fontStyle:"italic", fontWeight:600, fontSize:18, color:C.brand }}>Victoria Pets</span>
-              </Link>
-              <p style={{ margin:"6px 0 0", fontSize:13, color:C.textMuted }}>Inicia sesión para continuar</p>
+            <div style={{ marginBottom: 32 }}>
+              <span style={{
+                fontSize: 10, fontWeight: 700,
+                color: C.brand, letterSpacing: 1.5,
+                textTransform: "uppercase",
+              }}>
+                Iniciar sesión
+              </span>
+              <h2 style={{
+                fontFamily: FONT.display, fontStyle: "italic", fontWeight: 600,
+                fontSize: 32, color: C.ink,
+                margin: "8px 0 10px",
+                letterSpacing: -0.3,
+              }}>
+                Hola de nuevo
+              </h2>
+              <p style={{ fontSize: 14, color: C.ink3, margin: 0, lineHeight: 1.6 }}>
+                Ingresa tus datos para entrar a tu espacio.
+              </p>
             </div>
 
-            <div style={{ background:C.surface, borderRadius:20, padding:"28px 28px 24px", border:`1px solid ${C.brandBorder}` }}>
-              <h2 style={{ margin:"0 0 20px", fontSize:20, fontWeight:800, color:C.text, fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>
-                Bienvenido de vuelta
-              </h2>
+            {error && (
+              <div style={{
+                padding: "12px 14px", marginBottom: 18, borderRadius: RADIUS.sm,
+                background: C.dangerBg, border: `1px solid ${C.dangerBorder}`,
+                color: C.danger, fontSize: 13,
+                display: "flex", alignItems: "flex-start", gap: 10,
+              }}>
+                <span style={{ flexShrink: 0 }}>⚠</span>
+                <span>{error}</span>
+              </div>
+            )}
 
-              <form onSubmit={handleSubmit} style={{ display:"flex", flexDirection:"column", gap:14 }}>
-                {error && (
-                  <div style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"12px 14px", borderRadius:12, background:C.dangerBg, border:`1px solid ${C.dangerBorder}`, color:C.danger, fontSize:13 }}>
-                    <span style={{ fontSize:16, flexShrink:0 }}>⚠️</span>
-                    <span>{error}</span>
-                  </div>
-                )}
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <Campo
+                label="Correo"
+                type="email"
+                value={form.email}
+                onChange={set("email")}
+                placeholder="andrea@victoriapets.co"
+                autoComplete="email"
+              />
 
-                <Campo label="Correo electrónico" type="email" value={form.email} onChange={set("email")} placeholder="tucorreo@ejemplo.com"/>
-                <Campo label="Contraseña" type="password" value={form.password} onChange={set("password")} placeholder="••••••••"/>
-
-                <div style={{ textAlign:"right", marginTop:-6 }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: C.ink3, letterSpacing: 1, textTransform: "uppercase" }}>
+                    Contraseña
+                  </span>
                   <button type="button" onClick={() => setMostraRecuperar(v => !v)}
-                    style={{ background:"none", border:"none", color:C.brand, fontSize:11, cursor:"pointer", textDecoration:"underline", fontWeight:500, padding:0 }}>
-                    ¿Olvidaste tu contraseña?
+                    style={{
+                      background: "none", border: "none",
+                      color: C.brand, fontSize: 11, fontWeight: 600,
+                      cursor: "pointer", padding: 0,
+                    }}>
+                    ¿Olvidaste?
                   </button>
                 </div>
-
-                {mostraRecuperar && (
-                  <div style={{ padding:"12px 14px", borderRadius:12, background:C.brandLight, border:`1px solid ${C.brandBorder}`, fontSize:12, color:C.brand, lineHeight:1.6 }}>
-                    Escríbenos a <strong>victoriavetpets@gmail.com</strong> con el asunto <em>"Recuperar contraseña"</em> y te ayudamos a restablecerla.
-                  </div>
-                )}
-
-                <div style={{ paddingTop:4 }}>
-                  <BtnSubmit cargando={cargando} texto="Iniciar sesión" textoCargando="Ingresando..."/>
-                </div>
-              </form>
-
-              <div style={{ marginTop:20, paddingTop:16, borderTop:`1px solid ${C.border}`, textAlign:"center" }}>
-                <p style={{ fontSize:13, color:C.textMuted, margin:0 }}>
-                  ¿No tienes cuenta?{" "}
-                  <Link to="/registro" style={{ color:C.brand, fontWeight:700, textDecoration:"none" }}>Regístrate gratis</Link>
-                </p>
+                <Campo
+                  label=""
+                  type="password"
+                  value={form.password}
+                  onChange={set("password")}
+                  placeholder="••••••••••"
+                  autoComplete="current-password"
+                />
               </div>
+
+              {mostraRecuperar && (
+                <div style={{
+                  padding: "12px 14px", borderRadius: RADIUS.sm,
+                  background: C.brandSoft, border: `1px solid ${C.brandBorder}`,
+                  fontSize: 12, color: C.brand, lineHeight: 1.55,
+                }}>
+                  Escríbenos a <strong>victoriavetpets@gmail.com</strong> con el asunto <em>"Recuperar contraseña"</em> y te ayudamos a restablecerla.
+                </div>
+              )}
+
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, color: C.ink2 }}>
+                <input
+                  type="checkbox"
+                  checked={form.recordar}
+                  onChange={e => setForm(f => ({ ...f, recordar: e.target.checked }))}
+                  style={{ accentColor: C.brand, width: 14, height: 14, cursor: "pointer" }}
+                />
+                Recordar este equipo durante 30 días
+              </label>
+
+              <BtnSubmit
+                cargando={cargando}
+                texto="→ Entrar"
+                textoCargando="Ingresando..."
+                disabled={!form.email || !form.password}
+              />
+            </form>
+
+            <div style={{
+              margin: "28px 0",
+              display: "flex", alignItems: "center", gap: 14,
+              fontSize: 11, color: C.muted,
+            }}>
+              <div style={{ flex: 1, height: 1, background: C.line }}/>
+              o continúa con
+              <div style={{ flex: 1, height: 1, background: C.line }}/>
             </div>
 
-            <div style={{ textAlign:"center", marginTop:20 }}>
-              <Link to="/" style={{ fontSize:12, color:C.textMuted, textDecoration:"none" }}
-                onMouseEnter={e => { e.target.style.color = C.brand; }}
-                onMouseLeave={e => { e.target.style.color = C.textMuted; }}>
-                ← Volver a la tienda
+            <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
+              <button type="button" style={{
+                flex: 1, height: 42,
+                borderRadius: RADIUS.sm,
+                border: `1px solid ${C.lineStrong}`,
+                background: C.surface, color: C.ink,
+                fontSize: 13, fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: FONT.ui,
+              }}>
+                Google
+              </button>
+              <button type="button" style={{
+                flex: 1, height: 42,
+                borderRadius: RADIUS.sm,
+                border: `1px solid ${C.lineStrong}`,
+                background: C.surface, color: C.ink,
+                fontSize: 13, fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: FONT.ui,
+              }}>
+                SSO interno
+              </button>
+            </div>
+
+            <div style={{ textAlign: "center", fontSize: 12, color: C.ink3 }}>
+              ¿Eres cliente y quieres comprar?{" "}
+              <Link to="/" style={{ color: C.brand, fontWeight: 700, textDecoration: "none" }}>
+                Ir a la tienda →
+              </Link>
+            </div>
+
+            <div style={{ textAlign: "center", marginTop: 16, fontSize: 12, color: C.muted }}>
+              ¿Sin cuenta?{" "}
+              <Link to="/registro" style={{ color: C.brand, fontWeight: 700, textDecoration: "none" }}>
+                Crear cuenta
               </Link>
             </div>
           </div>
         </div>
       </div>
-
-      <style>{`
-        @media (min-width: 768px) { .auth-left { display: flex !important; } }
-      `}</style>
     </>
   );
 }
@@ -556,17 +630,18 @@ export function Login() {
    REGISTRO
    ════════════════════════════════════════════════════════════════════════════ */
 export function Registro() {
-  const { login }  = useAuth();
-  const navigate   = useNavigate();
+  const { C } = useTheme();
+  const { login } = useAuth();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
-    email:"", confirmEmail:"",
-    nombre:"", apellido:"",
-    password:"", confirmPass:"",
-    terminos:false,
+    email: "", confirmEmail: "",
+    nombre: "", apellido: "",
+    password: "", confirmPass: "",
+    terminos: false,
   });
-  const [touched, setTouched]     = useState({});
+  const [touched, setTouched] = useState({});
   const [errGlobal, setErrGlobal] = useState("");
-  const [cargando, setCargando]   = useState(false);
+  const [cargando, setCargando] = useState(false);
   const [emailPendiente, setEmailPendiente] = useState(null);
 
   const set    = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }));
@@ -574,14 +649,14 @@ export function Registro() {
   const touch  = (k) => ()  => setTouched(p => ({ ...p, [k]: true }));
 
   const errs = {};
-  if (!form.email || !RE_EMAIL.test(form.email))               errs.email       = "Ingresa un correo válido";
+  if (!form.email || !RE_EMAIL.test(form.email))               errs.email        = "Ingresa un correo válido";
   if (form.confirmEmail !== form.email)                        errs.confirmEmail = "Los correos no coinciden";
-  if (!form.nombre.trim())                                     errs.nombre      = "Ingresa tu nombre";
-  if (!form.apellido.trim())                                   errs.apellido    = "Ingresa tu apellido";
-  if (form.password.length < 8)                                errs.password    = "Mínimo 8 caracteres";
-  else if (!/[0-9]/.test(form.password))                      errs.password    = "Debe incluir al menos 1 número";
+  if (!form.nombre.trim())                                     errs.nombre       = "Ingresa tu nombre";
+  if (!form.apellido.trim())                                   errs.apellido     = "Ingresa tu apellido";
+  if (form.password.length < 8)                                errs.password     = "Mínimo 8 caracteres";
+  else if (!/[0-9]/.test(form.password))                       errs.password     = "Debe incluir al menos 1 número";
   if (!form.confirmPass || form.confirmPass !== form.password) errs.confirmPass  = "Las contraseñas no coinciden";
-  if (!form.terminos)                                          errs.terminos    = true;
+  if (!form.terminos)                                          errs.terminos     = true;
 
   const puedeEnviar = Object.keys(errs).length === 0;
 
@@ -591,8 +666,8 @@ export function Registro() {
     setErrGlobal(""); setCargando(true);
     try {
       const { data } = await api.post("/auth/registro", {
-        email:    form.email,
-        nombre:   form.nombre.trim(),
+        email: form.email,
+        nombre: form.nombre.trim(),
         apellido: form.apellido.trim(),
         password: form.password,
       });
@@ -610,167 +685,165 @@ export function Registro() {
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&display=swap');
-        @keyframes spin   { to { transform: rotate(360deg); } }
-        @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-        * { box-sizing:border-box; }
-      `}</style>
-
-      <div style={{ minHeight:"100vh", display:"flex", background:C.canvas }}>
-        <div style={{ display:"none", width:"44%", flexShrink:0 }} className="auth-left">
-          <PanelIzquierdo
-            titulo="Tu mascota merece lo mejor"
-            subtitulo="Únete a miles de clientes que confían en Victoria Pets para el cuidado de sus animales."
-            items={["Cuenta gratis, sin complicaciones","Historial de compras organizado","Acceso a ofertas exclusivas","Citas veterinarias desde tu perfil"]}
+      <Estilos/>
+      <div style={{ minHeight: "100vh", display: "flex", background: C.canvas, fontFamily: FONT.ui }}>
+        <div className="vp-auth-left" style={{ display: "none", width: "44%", flexShrink: 0 }}>
+          <PanelMarca
+            titulo={<>Crea tu cuenta y empieza a cuidar a tu <em style={{ fontStyle: "italic" }}>mascota.</em></>}
+            subtitulo="Únete a miles de familias que confían en Victoria Pets para el cuidado de sus animales."
           />
         </div>
 
-        <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:"40px 24px", overflowY:"auto" }}>
-          <div style={{ width:"100%", maxWidth:460, animation:"fadeUp 0.4s ease" }}>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px", overflowY: "auto" }}>
+          <div style={{ width: "100%", maxWidth: 460, animation: "vp-fadeUp 0.4s ease" }}>
 
-            <div style={{ textAlign:"center", marginBottom:28 }}>
-              <Link to="/" style={{ textDecoration:"none", display:"inline-flex", flexDirection:"column", alignItems:"center", gap:8 }}>
-                <div style={{ width:52, height:52, borderRadius:16, background:C.brand, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, border:`1px solid ${C.brandDark}` }}>🐾</div>
-                <span style={{ fontFamily:"'Playfair Display',serif", fontStyle:"italic", fontWeight:600, fontSize:18, color:C.brand }}>Victoria Pets</span>
-              </Link>
-              <p style={{ margin:"6px 0 0", fontSize:13, color:C.textMuted }}>Crea tu cuenta · Rápido y seguro</p>
-            </div>
-
-            <div style={{ background:C.surface, borderRadius:20, padding:"28px 28px 24px", border:`1px solid ${C.brandBorder}` }}>
-              <h2 style={{ margin:"0 0 4px", fontSize:18, fontWeight:800, color:C.text, fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>
-                Información de registro
+            <div style={{ marginBottom: 28 }}>
+              <span style={{
+                fontSize: 10, fontWeight: 700,
+                color: C.brand, letterSpacing: 1.5,
+                textTransform: "uppercase",
+              }}>
+                Crear cuenta
+              </span>
+              <h2 style={{
+                fontFamily: FONT.display, fontStyle: "italic", fontWeight: 600,
+                fontSize: 32, color: C.ink,
+                margin: "8px 0 10px",
+                letterSpacing: -0.3,
+              }}>
+                Bienvenido
               </h2>
-              <p style={{ margin:"0 0 20px", fontSize:12, color:C.textMuted }}>Todos los campos son obligatorios</p>
-
-              {errGlobal && (
-                <div style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"12px 14px", marginBottom:14, borderRadius:12, background:C.dangerBg, border:`1px solid ${C.dangerBorder}`, color:C.danger, fontSize:13 }}>
-                  <span style={{ fontSize:16, flexShrink:0 }}>⚠️</span>
-                  <span>{errGlobal}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                <Campo
-                  label="Correo electrónico"
-                  type="email"
-                  value={form.email}
-                  onChange={set("email")}
-                  onBlur={touch("email")}
-                  placeholder="tucorreo@ejemplo.com"
-                  error={touched.email ? errs.email : undefined}
-                />
-                <Campo
-                  label="Confirmar correo"
-                  type="email"
-                  value={form.confirmEmail}
-                  onChange={set("confirmEmail")}
-                  onBlur={touch("confirmEmail")}
-                  placeholder="Repite tu correo"
-                  noPaste
-                  error={touched.confirmEmail ? errs.confirmEmail : undefined}
-                />
-
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-                  <Campo
-                    label="Nombre"
-                    value={form.nombre}
-                    onChange={set("nombre")}
-                    onBlur={touch("nombre")}
-                    placeholder="Juan"
-                    error={touched.nombre ? errs.nombre : undefined}
-                  />
-                  <Campo
-                    label="Apellido"
-                    value={form.apellido}
-                    onChange={set("apellido")}
-                    onBlur={touch("apellido")}
-                    placeholder="Pérez"
-                    error={touched.apellido ? errs.apellido : undefined}
-                  />
-                </div>
-
-                <Campo
-                  label="Contraseña"
-                  type="password"
-                  value={form.password}
-                  onChange={set("password")}
-                  onBlur={touch("password")}
-                  placeholder="Mínimo 8 caracteres, incluye 1 número"
-                  error={touched.password ? errs.password : undefined}
-                />
-                <BarraFuerza pass={form.password}/>
-
-                <Campo
-                  label="Confirmar contraseña"
-                  type="password"
-                  value={form.confirmPass}
-                  onChange={set("confirmPass")}
-                  onBlur={touch("confirmPass")}
-                  placeholder="Repite tu contraseña"
-                  noPaste
-                  error={touched.confirmPass ? errs.confirmPass : undefined}
-                />
-
-                {/* Checkbox términos */}
-                <label style={{ display:"flex", alignItems:"flex-start", gap:10, cursor:"pointer" }}>
-                  <div
-                    onClick={toggle("terminos")}
-                    style={{
-                      marginTop:2, width:18, height:18, borderRadius:5, flexShrink:0,
-                      border:`1.5px solid ${form.terminos ? C.lime : C.border}`,
-                      background: form.terminos ? C.lime : C.surface,
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                      cursor:"pointer", transition:"all 0.15s",
-                    }}>
-                    {form.terminos && <span style={{ fontSize:10, color:"#fff", fontWeight:800 }}>✓</span>}
-                  </div>
-                  <span style={{ fontSize:12, color:C.textSec, lineHeight:1.55 }}>
-                    Acepto los{" "}
-                    <span style={{ color:C.brand, textDecoration:"underline", cursor:"pointer" }}>Términos de servicio</span>
-                    {" "}y la{" "}
-                    <span style={{ color:C.brand, textDecoration:"underline", cursor:"pointer" }}>Política de privacidad</span>
-                    {" "}de Victoria Pets
-                  </span>
-                </label>
-
-                <div style={{ paddingTop:4 }}>
-                  <BtnSubmit
-                    cargando={cargando}
-                    texto="Crear cuenta"
-                    textoCargando="Creando cuenta..."
-                    disabled={!puedeEnviar}
-                  />
-                  {!puedeEnviar && Object.keys(touched).length > 0 && (
-                    <p style={{ margin:"6px 0 0", fontSize:11, color:C.textMuted, textAlign:"center" }}>
-                      Completa todos los campos correctamente para continuar
-                    </p>
-                  )}
-                </div>
-              </form>
-
-              <div style={{ marginTop:20, paddingTop:16, borderTop:`1px solid ${C.border}`, textAlign:"center" }}>
-                <p style={{ fontSize:13, color:C.textMuted, margin:0 }}>
-                  ¿Ya tienes cuenta?{" "}
-                  <Link to="/login" style={{ color:C.brand, fontWeight:700, textDecoration:"none" }}>Inicia sesión</Link>
-                </p>
-              </div>
+              <p style={{ fontSize: 14, color: C.ink3, margin: 0, lineHeight: 1.6 }}>
+                Completa tus datos para empezar.
+              </p>
             </div>
 
-            <div style={{ textAlign:"center", marginTop:20 }}>
-              <Link to="/" style={{ fontSize:12, color:C.textMuted, textDecoration:"none" }}
-                onMouseEnter={e => { e.target.style.color = C.brand; }}
-                onMouseLeave={e => { e.target.style.color = C.textMuted; }}>
+            {errGlobal && (
+              <div style={{
+                padding: "12px 14px", marginBottom: 16, borderRadius: RADIUS.sm,
+                background: C.dangerBg, border: `1px solid ${C.dangerBorder}`,
+                color: C.danger, fontSize: 13,
+                display: "flex", alignItems: "flex-start", gap: 10,
+              }}>
+                <span style={{ flexShrink: 0 }}>⚠</span>
+                <span>{errGlobal}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <Campo
+                label="Correo electrónico"
+                type="email"
+                value={form.email}
+                onChange={set("email")}
+                onBlur={touch("email")}
+                placeholder="tucorreo@ejemplo.com"
+                error={touched.email ? errs.email : undefined}
+                autoComplete="email"
+              />
+              <Campo
+                label="Confirmar correo"
+                type="email"
+                value={form.confirmEmail}
+                onChange={set("confirmEmail")}
+                onBlur={touch("confirmEmail")}
+                placeholder="Repite tu correo"
+                noPaste
+                error={touched.confirmEmail ? errs.confirmEmail : undefined}
+              />
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <Campo
+                  label="Nombre"
+                  value={form.nombre}
+                  onChange={set("nombre")}
+                  onBlur={touch("nombre")}
+                  placeholder="Juan"
+                  error={touched.nombre ? errs.nombre : undefined}
+                  autoComplete="given-name"
+                />
+                <Campo
+                  label="Apellido"
+                  value={form.apellido}
+                  onChange={set("apellido")}
+                  onBlur={touch("apellido")}
+                  placeholder="Pérez"
+                  error={touched.apellido ? errs.apellido : undefined}
+                  autoComplete="family-name"
+                />
+              </div>
+
+              <Campo
+                label="Contraseña"
+                type="password"
+                value={form.password}
+                onChange={set("password")}
+                onBlur={touch("password")}
+                placeholder="Mínimo 8 caracteres, incluye 1 número"
+                error={touched.password ? errs.password : undefined}
+                autoComplete="new-password"
+              />
+              <BarraFuerza pass={form.password}/>
+
+              <Campo
+                label="Confirmar contraseña"
+                type="password"
+                value={form.confirmPass}
+                onChange={set("confirmPass")}
+                onBlur={touch("confirmPass")}
+                placeholder="Repite tu contraseña"
+                noPaste
+                error={touched.confirmPass ? errs.confirmPass : undefined}
+                autoComplete="new-password"
+              />
+
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", marginTop: 4 }}>
+                <input
+                  type="checkbox"
+                  checked={form.terminos}
+                  onChange={toggle("terminos")}
+                  style={{ accentColor: C.brand, width: 16, height: 16, marginTop: 2, cursor: "pointer", flexShrink: 0 }}
+                />
+                <span style={{ fontSize: 12, color: C.ink2, lineHeight: 1.55 }}>
+                  Acepto los{" "}
+                  <span style={{ color: C.brand, textDecoration: "underline", cursor: "pointer" }}>Términos</span>
+                  {" "}y la{" "}
+                  <span style={{ color: C.brand, textDecoration: "underline", cursor: "pointer" }}>Política de privacidad</span>
+                  {" "}de Victoria Pets
+                </span>
+              </label>
+
+              <div style={{ paddingTop: 6 }}>
+                <BtnSubmit
+                  cargando={cargando}
+                  texto="Crear cuenta"
+                  textoCargando="Creando..."
+                  disabled={!puedeEnviar}
+                />
+              </div>
+            </form>
+
+            <div style={{
+              marginTop: 22, paddingTop: 18,
+              borderTop: `1px solid ${C.line}`,
+              textAlign: "center",
+            }}>
+              <p style={{ fontSize: 13, color: C.ink3, margin: 0 }}>
+                ¿Ya tienes cuenta?{" "}
+                <Link to="/login" style={{ color: C.brand, fontWeight: 700, textDecoration: "none" }}>
+                  Inicia sesión
+                </Link>
+              </p>
+            </div>
+
+            <div style={{ textAlign: "center", marginTop: 16 }}>
+              <Link to="/" style={{ fontSize: 12, color: C.muted, textDecoration: "none" }}>
                 ← Volver a la tienda
               </Link>
             </div>
           </div>
         </div>
       </div>
-
-      <style>{`
-        @media (min-width: 768px) { .auth-left { display: flex !important; } }
-      `}</style>
     </>
   );
 }

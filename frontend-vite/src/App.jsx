@@ -1,7 +1,10 @@
 // src/App.jsx
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { AuthProvider }    from "./context/AuthContext";
 import { CarritoProvider } from "./context/CarritoContext";
+import { ThemeProvider, useTheme } from "./styles/ThemeProvider.jsx";
+import { FONT } from "./styles/admin.tokens";
 import { RutaProtegida, RutaAdmin, RutaCajero } from "./components/RutaProtegida";
 import CarritoPanel from "./components/CarritoPanel";
 import Navbar       from "./components/Navbar";
@@ -21,19 +24,38 @@ import Perfil     from "./pages/Perfil";
 import MisOrdenes     from "./pages/MisOrdenes";
 import PagoRespuesta  from "./pages/PagoRespuesta";
 
-const NoEncontrado = () => (
-  <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-4"
-    style={{ background: "#F5FAF7" }}>
-    <div className="text-7xl select-none">🐾</div>
-    <h1 className="text-3xl font-bold" style={{ color: "#101F16" }}>Página no encontrada</h1>
-    <p className="text-sm" style={{ color: "#5A7A65" }}>La página que buscas no existe o fue movida.</p>
-    <a href="/"
-      className="mt-2 px-6 py-2.5 rounded-2xl font-semibold text-sm text-white transition-colors"
-      style={{ background: "#0A6B40" }}>
-      Volver al inicio
-    </a>
-  </div>
-);
+const NoEncontrado = () => {
+  const { C } = useTheme();
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: C.canvas, color: C.ink,
+      fontFamily: FONT.ui,
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      gap: 18, textAlign: "center", padding: 24,
+    }}>
+      <div style={{ fontSize: 72 }}>🐾</div>
+      <h1 style={{
+        margin: 0,
+        fontFamily: FONT.display, fontStyle: "italic",
+        fontWeight: 600, fontSize: 36, color: C.ink,
+      }}>
+        Página no encontrada
+      </h1>
+      <p style={{ margin: 0, fontSize: 14, color: C.ink3 }}>
+        La página que buscas no existe o fue movida.
+      </p>
+      <a href="/" style={{
+        marginTop: 8, padding: "12px 26px", borderRadius: 12,
+        background: C.brand, color: "#fff", textDecoration: "none",
+        fontSize: 14, fontWeight: 700,
+      }}>
+        Volver al inicio
+      </a>
+    </div>
+  );
+};
 
 function LayoutConNav({ children }) {
   return (
@@ -44,14 +66,49 @@ function LayoutConNav({ children }) {
   );
 }
 
+/* Wrapper de transición fade entre rutas */
+function PageFade({ children }) {
+  const location = useLocation();
+  const [visible, setVisible] = useState(false);
+  const [displayedPath, setDisplayedPath] = useState(location.pathname);
+
+  useEffect(() => {
+    if (location.pathname !== displayedPath) {
+      setVisible(false);
+      const t = setTimeout(() => {
+        setDisplayedPath(location.pathname);
+        setVisible(true);
+      }, 160);
+      return () => clearTimeout(t);
+    } else {
+      const t = setTimeout(() => setVisible(true), 30);
+      return () => clearTimeout(t);
+    }
+  }, [location.pathname, displayedPath]);
+
+  return (
+    <div
+      style={{
+        opacity: visible ? 1 : 0,
+        transition: "opacity 0.25s ease",
+        minHeight: "100vh",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <ThemeProvider>
       <AuthProvider>
         <CarritoProvider>
           {/* Panel carrito global */}
           <CarritoPanel />
 
+          <PageFade>
           <Routes>
             {/* Landing — sin Navbar */}
             <Route path="/"         element={<Landing />} />
@@ -98,8 +155,10 @@ export default function App() {
             {/* 404 */}
             <Route path="*" element={<NoEncontrado />} />
           </Routes>
+          </PageFade>
         </CarritoProvider>
       </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

@@ -1,13 +1,11 @@
-// src/pages/Producto.jsx
-// FIX DISEÑO: selector de variantes ahora usa PILLS/CHIPS en vez de dropdown con flecha
-// FIX DISEÑO: breadcrumb con separador "·" en vez de "/"
-// FIX DISEÑO: botón "Seguir comprando" sin flecha
-// FIX DISEÑO: zoom hint sin ícono lupa SVG
-import { useState, useEffect, useRef } from "react";
+// src/pages/Producto.jsx — Victoria Pets · diseño PDF
+import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useCarrito } from "../context/CarritoContext";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../styles/ThemeProvider.jsx";
+import { FONT, RADIUS } from "../styles/admin.tokens";
 
 const IVA_PCT = 19;
 
@@ -21,49 +19,30 @@ const descPct = (precio, antes) =>
     ? Math.round(((Number(antes) - Number(precio)) / Number(antes)) * 100)
     : null;
 
-const C = {
-  brand:       "#0A6B40",
-  brandMid:    "#138553",
-  brandDark:   "#064E30",
-  brandLight:  "#E4F5EC",
-  brandBorder: "#95CCAD",
-  lime:        "#7AC143",
-  limeDark:    "#5a9030",
-  canvas:      "#F5FAF7",
-  surface:     "#ffffff",
-  surfaceAlt:  "#EDF6F1",
-  text:        "#101F16",
-  textSec:     "#2D4A38",
-  textTer:     "#5A7A65",
-  textMuted:   "#8FAA98",
-  border:      "rgba(0,0,0,0.07)",
-  gold:        "#b08a24",
-  success:     "#14532d",
-  successBg:   "#dcfce7",
-  danger:      "#7f1d1d",
-  dangerBg:    "#fee2e2",
-  info:        "#1B4F8A",
-  infoBg:      "#dce8f7",
-};
-
-// ── Skeleton ──────────────────────────────────────────────────
+/* ─── Skeleton ───────────────────────────────────────────────────────────── */
 function Skeleton() {
+  const { C } = useTheme();
+  const shimmer = `linear-gradient(90deg, ${C.surfaceAlt} 25%, ${C.surface} 50%, ${C.surfaceAlt} 75%)`;
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-pulse">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        <div className="space-y-3">
-          <div className="aspect-square rounded-3xl" style={{ background: C.brandLight }} />
-          <div className="grid grid-cols-4 gap-2">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="aspect-square rounded-xl" style={{ background: C.brandLight }} />
-            ))}
-          </div>
-        </div>
-        <div className="space-y-5 pt-4">
-          {[["w-1/4", "h-3"], ["w-3/4", "h-8"], ["w-1/2", "h-6"],
-            ["w-full", "h-14"], ["w-full", "h-12"], ["w-full", "h-14"]
-          ].map(([w, h], i) => (
-            <div key={i} className={`${h} ${w} rounded-xl`} style={{ background: C.brandLight }} />
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px" }}>
+      <div style={{
+        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 56,
+      }}>
+        <div style={{
+          aspectRatio: "1 / 1",
+          borderRadius: RADIUS.lg,
+          background: shimmer, backgroundSize: "200% 100%",
+          animation: "vp-shimmer 1.5s infinite",
+        }}/>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {[60, 88, 40, 100, 70, 50].map((w, i) => (
+            <div key={i} style={{
+              height: i === 1 ? 32 : 14,
+              width: `${w}%`,
+              borderRadius: 4,
+              background: shimmer, backgroundSize: "200% 100%",
+              animation: "vp-shimmer 1.5s infinite",
+            }}/>
           ))}
         </div>
       </div>
@@ -71,242 +50,135 @@ function Skeleton() {
   );
 }
 
-// ── Galería con zoom ──────────────────────────────────────────
+/* ─── Galería (1 grande + 4 thumbs estilo PDF) ───────────────────────────── */
 function Galeria({ imagenPrincipal, imagenesExtra, nombre }) {
-  const [activa, setActiva] = useState(0);
-  const [zoom, setZoom]     = useState(false);
-  const [pos, setPos]       = useState({ x: 50, y: 50 });
-  const ref                 = useRef(null);
-
+  const { C } = useTheme();
   const todas = [imagenPrincipal, ...(imagenesExtra || [])].filter(Boolean);
-  if (!todas.length) todas.push(null);
+  const [activa, setActiva] = useState(0);
 
-  const handleMove = (e) => {
-    if (!ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    setPos({
-      x: ((e.clientX - r.left) / r.width) * 100,
-      y: ((e.clientY - r.top) / r.height) * 100,
-    });
-  };
+  const placeholder = `repeating-linear-gradient(135deg, ${C.brandSoft} 0 18px, ${C.surfaceAlt} 18px 36px)`;
 
   return (
-    <div className="space-y-3 lg:sticky lg:top-24">
-      {/* Principal */}
-      <div
-        ref={ref}
-        className="relative aspect-square rounded-3xl overflow-hidden border"
-        style={{
-          background: `linear-gradient(135deg, ${C.brandLight} 0%, #e8f5e8 100%)`,
-          borderColor: C.brandBorder,
-          cursor: zoom ? "zoom-out" : "zoom-in",
-        }}
-        onMouseEnter={() => setZoom(true)}
-        onMouseLeave={() => setZoom(false)}
-        onMouseMove={handleMove}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Imagen principal */}
+      <div style={{
+        position: "relative",
+        aspectRatio: "1 / 1",
+        borderRadius: RADIUS.lg,
+        background: placeholder,
+        overflow: "hidden",
+        border: `1px solid ${C.line}`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
         {todas[activa] ? (
           <img
-            src={todas[activa]} alt={nombre}
-            className="w-full h-full object-contain transition-transform duration-200 select-none"
+            src={todas[activa]}
+            alt={nombre}
             style={{
-              transform: zoom ? "scale(2.2)" : "scale(1)",
-              transformOrigin: `${pos.x}% ${pos.y}%`,
+              width: "100%", height: "100%",
+              objectFit: "contain",
+              userSelect: "none",
             }}
             draggable={false}
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-3">
-            <span className="text-8xl select-none">🐾</span>
-            <p className="text-sm font-medium" style={{ color: C.textMuted }}>Sin imagen</p>
-          </div>
-        )}
-
-        {/* FIX DISEÑO: hint de zoom sin SVG extra, solo texto */}
-        {todas[activa] && !zoom && (
-          <div className="absolute bottom-3 right-3 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
-            style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(4px)", color: C.textSec }}>
-            Zoom
-          </div>
+          <span style={{
+            fontFamily: FONT.mono,
+            fontSize: 12, textTransform: "uppercase",
+            letterSpacing: 0.5, padding: "6px 16px",
+            background: "rgba(255,255,255,0.8)",
+            borderRadius: RADIUS.pill,
+            border: `1px dashed ${C.lineStrong}`,
+            color: C.ink3,
+          }}>
+            foto principal · {nombre.slice(0, 12)}
+          </span>
         )}
       </div>
 
-      {/* Miniaturas */}
-      {todas.length > 1 && (
-        <div className="grid grid-cols-5 gap-2">
-          {todas.map((img, i) => (
-            <button key={i} onClick={() => setActiva(i)}
-              className="aspect-square rounded-xl overflow-hidden border-2 transition-all duration-150"
+      {/* Thumbnails fila 4 columnas */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gap: 10,
+      }}>
+        {[0, 1, 2, 3].map(i => {
+          const img = todas[i + 1] || todas[i] || null;
+          const idx = todas[i + 1] ? i + 1 : i;
+          return (
+            <button key={i}
+              onClick={() => setActiva(idx)}
               style={{
-                borderColor: i === activa ? C.brand : "transparent",
-                boxShadow:   i === activa ? `0 0 0 2px ${C.brandLight}` : "none",
+                aspectRatio: "1 / 1",
+                borderRadius: RADIUS.md,
+                background: placeholder,
+                overflow: "hidden",
+                border: `1.5px solid ${activa === idx ? C.brand : C.line}`,
+                cursor: "pointer",
+                padding: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "border-color 0.15s",
               }}>
               {img ? (
-                <img src={img} alt="" className="w-full h-full object-contain" style={{ background: C.surfaceAlt }} />
+                <img src={img} alt={`V${i+1}`}
+                  style={{ width: "100%", height: "100%", objectFit: "contain", padding: 4 }}
+                  onError={e => { e.target.style.display = "none"; }}/>
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-xl" style={{ background: C.surfaceAlt }}>🐾</div>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── FIX: Selector de variantes como PILLS (no dropdown con flecha) ──
-// Muestra las presentaciones como chips seleccionables tipo:
-//   [● Perro Pollo 200ml]  [Perro Pollo 100ml]  [Perro Pollo 25ml]
-// La presentación activa queda resaltada en verde.
-function SelectorVariante({ variantes, varianteIdx, onChange }) {
-  const activa = variantes[varianteIdx];
-
-  return (
-    <div>
-      <p className="text-xs font-bold uppercase tracking-[0.12em] mb-3" style={{ color: C.textTer }}>
-        Presentación — {activa.nombre}
-        {activa.stock > 0 && activa.stock <= (activa.stock_minimo || 5) && (
-          <span className="ml-2 font-normal normal-case" style={{ color: "#d97706" }}>
-            · últimas {activa.stock} uds
-          </span>
-        )}
-      </p>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        {variantes.map((v, i) => {
-          const esActiva  = i === varianteIdx;
-          const sinStock  = v.stock === 0;
-          const dc        = descPct(v.precio, v.precio_antes);
-
-          return (
-            <button
-              key={v.id}
-              onClick={() => { if (!sinStock) onChange(i); }}
-              disabled={sinStock}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start",
-                gap: 2,
-                padding: "8px 14px",
-                borderRadius: 10,
-                border: `2px solid ${esActiva ? C.brand : sinStock ? C.border : C.brandBorder}`,
-                background: esActiva ? C.brandLight : sinStock ? C.surfaceAlt : C.surface,
-                color: sinStock ? C.textMuted : C.text,
-                cursor: sinStock ? "not-allowed" : "pointer",
-                opacity: sinStock ? 0.55 : 1,
-                transition: "all 0.15s",
-                position: "relative",
-                minWidth: 72,
-              }}
-              onMouseEnter={e => { if (!esActiva && !sinStock) { e.currentTarget.style.borderColor = C.brand; e.currentTarget.style.background = C.brandLight + "88"; } }}
-              onMouseLeave={e => { if (!esActiva && !sinStock) { e.currentTarget.style.borderColor = C.brandBorder; e.currentTarget.style.background = C.surface; } }}
-            >
-              {/* Indicador stock */}
-              <span style={{
-                width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
-                background: sinStock ? "#d1d5db" : esActiva ? C.brand : "#22c55e",
-                marginBottom: 2,
-              }}/>
-
-              {/* Nombre */}
-              <span style={{
-                fontSize: 12, fontWeight: esActiva ? 700 : 500,
-                color: sinStock ? C.textMuted : esActiva ? C.brand : C.text,
-                lineHeight: 1.2,
-              }}>
-                {v.nombre}
-              </span>
-
-              {/* Precio */}
-              <span style={{
-                fontSize: 11,
-                fontFamily: "'JetBrains Mono', monospace",
-                fontWeight: 700,
-                color: sinStock ? C.textMuted : C.brand,
-              }}>
-                {fmt(v.precio)}
-              </span>
-
-              {/* Badge descuento */}
-              {dc && !sinStock && (
                 <span style={{
-                  fontSize: 9, fontWeight: 700,
-                  background: "#fee2e2", color: "#ef4444",
-                  padding: "1px 4px", borderRadius: 4,
+                  fontFamily: FONT.mono, fontSize: 10,
+                  color: C.muted, letterSpacing: 0.5,
                 }}>
-                  -{dc}%
+                  V{i + 1}
                 </span>
-              )}
-
-              {sinStock && (
-                <span style={{ fontSize: 9, color: C.textMuted, marginTop: 1 }}>Agotado</span>
-              )}
-
-              {/* Checkmark activa */}
-              {esActiva && (
-                <span style={{
-                  position: "absolute", top: 4, right: 6,
-                  fontSize: 11, color: C.brand, fontWeight: 800,
-                }}>✓</span>
               )}
             </button>
           );
         })}
       </div>
-
-      {activa.sku && (
-        <p className="text-xs mt-2" style={{ color: C.textMuted, fontFamily: "monospace" }}>
-          SKU: {activa.sku}
-        </p>
-      )}
     </div>
   );
 }
 
-// ── Panel de compra ───────────────────────────────────────────
+/* ─── Panel de compra (derecha) ──────────────────────────────────────────── */
 function PanelCompra({ producto, variantes }) {
-  const { agregar }   = useCarrito();
-  const { usuario }   = useAuth();
-  const navigate      = useNavigate();
-
-  const [varIdx, setVarIdx]     = useState(0);
+  const { C } = useTheme();
+  const { agregar } = useCarrito();
+  const { usuario } = useAuth();
+  const navigate = useNavigate();
+  const [varIdx, setVarIdx] = useState(0);
   const [cantidad, setCantidad] = useState(1);
-  const [editandoCantidad, setEditandoCantidad] = useState(false);
-  const [inputCantidad, setInputCantidad] = useState("");
-  const cantidadRef = useRef(null);
   const [agregado, setAgregado] = useState(false);
-  const [error, setError]       = useState("");
+  const [favorito, setFavorito] = useState(false);
+  const [error, setError] = useState("");
 
   const tieneVariantes = variantes && variantes.length > 0;
-  const varActiva      = tieneVariantes ? variantes[varIdx] : null;
+  const varActiva = tieneVariantes ? variantes[varIdx] : null;
 
-  const precio    = tieneVariantes ? Number(varActiva.precio)       : Number(producto.precio);
-  const precAntes = tieneVariantes ? Number(varActiva.precio_antes) : Number(producto.precio_antes);
-  const stock     = tieneVariantes ? varActiva.stock                : producto.stock;
-  const stockMin  = tieneVariantes ? varActiva.stock_minimo         : producto.stock_minimo;
+  const precio    = tieneVariantes ? Number(varActiva.precio)        : Number(producto.precio);
+  const precAntes = tieneVariantes ? Number(varActiva.precio_antes)  : Number(producto.precio_antes);
+  const stock     = tieneVariantes ? varActiva.stock                 : producto.stock;
+  const stockMin  = tieneVariantes ? varActiva.stock_minimo          : producto.stock_minimo;
   const hayStock  = stock > 0;
   const dc        = descPct(precio, precAntes);
 
   const subtotal = precio * cantidad;
-  const iva      = subtotal * 0.19;
+  const iva      = subtotal * (IVA_PCT / 100);
   const total    = subtotal + iva;
-
-  const handleVariante = (i) => { setVarIdx(i); setCantidad(1); setError(""); };
 
   const handleAgregar = () => {
     setError("");
     if (!hayStock) return;
     if (cantidad > stock) return setError(`Solo hay ${stock} unidades disponibles.`);
-    if (!usuario)  { navigate("/login"); return; }
+    if (!usuario) { navigate("/login"); return; }
 
     agregar({
-      id:          tieneVariantes ? `${producto.id}-v${varActiva.id}` : producto.id,
+      id: tieneVariantes ? `${producto.id}-v${varActiva.id}` : producto.id,
       producto_id: producto.id,
       variante_id: varActiva?.id || null,
-      nombre:      tieneVariantes ? `${producto.nombre} — ${varActiva.nombre}` : producto.nombre,
-      slug:        producto.slug,
+      nombre: tieneVariantes ? `${producto.nombre} — ${varActiva.nombre}` : producto.nombre,
+      slug: producto.slug,
       precio,
-      imagen_url:  producto.imagen_url,
+      imagen_url: producto.imagen_url,
       stock,
       activo: 1,
     }, cantidad);
@@ -316,200 +188,285 @@ function PanelCompra({ producto, variantes }) {
   };
 
   return (
-    <div className="space-y-6 pt-1">
-      {/* FIX DISEÑO: breadcrumb con "·" como separador, sin "/" */}
-      <nav className="flex items-center gap-2 text-xs flex-wrap" style={{ color: C.textMuted }}>
-        <Link to="/" className="hover:text-green-700 transition-colors">Inicio</Link>
-        <span style={{ color: C.border }}>·</span>
-        <Link to="/tienda" className="hover:text-green-700 transition-colors">Tienda</Link>
-        <span style={{ color: C.border }}>·</span>
-        <Link to={`/tienda?categoria=${producto.categoria_slug}`}
-          className="hover:text-green-700 transition-colors capitalize">{producto.categoria}</Link>
-        <span style={{ color: C.border }}>·</span>
-        <span className="font-medium truncate max-w-[160px]" style={{ color: C.textSec }}>{producto.nombre}</span>
-      </nav>
+    <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
 
-      {/* Marca */}
+      {/* Marca eyebrow */}
       {producto.marca && (
-        <p className="text-xs font-bold uppercase tracking-[0.18em]" style={{ color: C.brand }}>
+        <span style={{
+          fontFamily: FONT.mono,
+          fontSize: 11, fontWeight: 700,
+          textTransform: "uppercase", letterSpacing: 2,
+          color: C.brand,
+        }}>
           {producto.marca}
-        </p>
+        </span>
       )}
 
-      {/* Nombre */}
-      <h1 className="text-2xl sm:text-3xl font-bold leading-tight"
-        style={{ color: C.text, fontFamily: "'Playfair Display', Georgia, serif" }}>
+      {/* Nombre Playfair */}
+      <h1 style={{
+        margin: "-12px 0 0",
+        fontFamily: FONT.display,
+        fontWeight: 700,
+        fontSize: "clamp(28px, 4vw, 40px)",
+        lineHeight: 1.05,
+        letterSpacing: -0.6,
+        color: C.ink,
+      }}>
         {producto.nombre}
       </h1>
 
-      {/* Precio activo */}
-      <div className="flex items-end gap-3 flex-wrap">
-        <span className="text-3xl font-bold" style={{ color: C.brand, fontFamily: "system-ui, sans-serif" }}>
+      {/* Stars + reseñas + estado stock */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          {[1,2,3,4,5].map(s => (
+            <span key={s} style={{
+              color: s <= 4 ? "#F59E0B" : C.muted,
+              fontSize: 14,
+            }}>★</span>
+          ))}
+          <span style={{ marginLeft: 6, fontSize: 13, color: C.ink2, fontWeight: 500 }}>
+            4.7 · 124 reseñas
+          </span>
+        </div>
+        <span style={{ color: C.line }}>|</span>
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          padding: "3px 10px", borderRadius: RADIUS.pill,
+          background: hayStock ? C.successBg : C.dangerBg,
+          color: hayStock ? C.success : C.danger,
+          fontSize: 11, fontWeight: 700,
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }}/>
+          {hayStock ? (stock <= (stockMin || 5) ? `Últimas ${stock}` : "En stock") : "Sin stock"}
+        </span>
+      </div>
+
+      {/* Precio */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
+        <span style={{
+          fontFamily: FONT.display,
+          fontWeight: 700,
+          fontSize: "clamp(32px, 5vw, 48px)",
+          color: C.ink,
+          letterSpacing: -1,
+          lineHeight: 1,
+        }}>
           {fmt(precio)}
         </span>
-        {precAntes > 0 && <span className="text-lg line-through" style={{ color: C.textMuted }}>{fmt(precAntes)}</span>}
+        {precAntes > 0 && (
+          <span style={{
+            fontSize: 16, color: C.muted,
+            textDecoration: "line-through",
+            fontFamily: FONT.mono,
+          }}>
+            {fmt(precAntes)}
+          </span>
+        )}
         {dc && (
-          <span className="px-2.5 py-1 rounded-xl text-xs font-bold"
-            style={{ background: "#fee2e2", color: "#dc2626" }}>−{dc}%</span>
+          <span style={{
+            padding: "4px 10px",
+            borderRadius: RADIUS.sm,
+            background: C.coralSoft,
+            color: C.coral,
+            fontSize: 12, fontWeight: 800,
+            fontFamily: FONT.mono,
+          }}>
+            -{dc}%
+          </span>
         )}
       </div>
 
-      {/* FIX: Selector de presentaciones como pills (no dropdown) */}
-      {tieneVariantes && (
-        <SelectorVariante
-          variantes={variantes}
-          varianteIdx={varIdx}
-          onChange={handleVariante}
-        />
-      )}
-
-      {/* Stock sin variantes */}
-      {!tieneVariantes && (
-        <div className="flex items-center gap-2 text-xs">
-          <div className="w-2 h-2 rounded-full" style={{ background: hayStock ? "#22c55e" : "#ef4444" }} />
-          {hayStock
-            ? stock <= stockMin
-              ? <span className="font-semibold" style={{ color: "#d97706" }}>Últimas {stock} unidades</span>
-              : <span className="font-semibold" style={{ color: C.success }}>{stock} unidades disponibles</span>
-            : <span className="font-semibold" style={{ color: C.danger }}>Sin stock</span>}
-        </div>
-      )}
-
-      {/* Desglose IVA */}
-      <div className="rounded-2xl p-4 space-y-2"
-        style={{ background: C.brandLight, border: `1px solid ${C.brandBorder}` }}>
-        <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: C.textTer }}>
-          Resumen de precio
+      {/* Descripción corta */}
+      {producto.descripcion_corta && (
+        <p style={{
+          margin: 0,
+          fontSize: 14, color: C.ink3,
+          lineHeight: 1.6,
+        }}>
+          {producto.descripcion_corta}
         </p>
-        <div className="flex justify-between text-xs" style={{ color: C.textSec }}>
-          <span>Subtotal ({cantidad} {cantidad === 1 ? "ud" : "uds"})</span>
-          <span className="font-semibold tabular-nums">{fmt(subtotal)}</span>
-        </div>
-        <div className="flex justify-between text-xs" style={{ color: C.info }}>
-          <span>IVA incluido (19% · Colombia)</span>
-          <span className="font-semibold tabular-nums">{fmt(iva)}</span>
-        </div>
-        <div className="flex justify-between text-sm font-bold pt-2"
-          style={{ borderTop: `1px solid ${C.brandBorder}`, color: C.text }}>
-          <span>Total</span>
-          <span className="tabular-nums" style={{ color: C.brand }}>{fmt(total)}</span>
-        </div>
-      </div>
+      )}
 
-      {/* Cantidad */}
-      {hayStock && (
-        <div className="flex items-center gap-4">
-          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: C.textTer }}>Cantidad</p>
-          <div className="flex items-center rounded-2xl overflow-hidden border-2"
-            style={{ borderColor: C.brandBorder }}>
-            <button onClick={() => setCantidad(c => Math.max(1, c - 1))}
-              className="w-10 h-10 flex items-center justify-center text-lg font-bold transition-colors"
-              style={{ color: C.brand }}
-              onMouseEnter={e => e.currentTarget.style.background = C.brandLight}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-              −
-            </button>
-            {editandoCantidad ? (
-              <input
-                ref={cantidadRef}
-                type="text"
-                value={inputCantidad}
-                onChange={e => { const v = e.target.value; if (!/^\d*$/.test(v)) return; const n = parseInt(v, 10); if (!isNaN(n) && n > stock) return; setInputCantidad(v); }}
-                onBlur={() => {
-                  const v = parseInt(inputCantidad, 10);
-                  setEditandoCantidad(false);
-                  if (!isNaN(v) && v >= 1) setCantidad(Math.min(v, stock));
-                  else setInputCantidad(String(cantidad));
-                }}
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    const v = parseInt(inputCantidad, 10);
-                    setEditandoCantidad(false);
-                    if (!isNaN(v) && v >= 1) setCantidad(Math.min(v, stock));
-                  }
-                  if (e.key === "Escape") setEditandoCantidad(false);
-                }}
-                style={{
-                  width: 40, border: "none", background: "transparent",
-                  textAlign: "center", fontSize: 14, fontWeight: 700,
-                  color: C.text, outline: "none", padding: 0,
-                  fontFamily: "monospace",
-                }}
-              />
-            ) : (
-              <span
-                className="w-10 text-center font-bold tabular-nums"
-                style={{ color: C.text, cursor: "text" }}
-                title="Toca para editar"
-                onClick={() => { setInputCantidad(String(cantidad)); setEditandoCantidad(true); setTimeout(() => cantidadRef.current?.select(), 0); }}
-              >{cantidad}</span>
-            )}
-            <button onClick={() => setCantidad(c => Math.min(stock, c + 1))}
-              disabled={cantidad >= stock}
-              className="w-10 h-10 flex items-center justify-center text-lg font-bold transition-colors disabled:opacity-30"
-              style={{ color: C.brand }}
-              onMouseEnter={e => e.currentTarget.style.background = C.brandLight}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-              +
-            </button>
+      {/* Variantes — chips estilo PDF */}
+      {tieneVariantes && (
+        <div>
+          <p style={{
+            margin: "0 0 10px",
+            fontSize: 10, fontWeight: 700,
+            textTransform: "uppercase", letterSpacing: 1.5,
+            color: C.ink3,
+          }}>
+            Presentación
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {variantes.map((v, i) => {
+              const activo = i === varIdx;
+              const sinStock = v.stock === 0;
+              return (
+                <button key={v.id}
+                  onClick={() => { if (!sinStock) { setVarIdx(i); setCantidad(1); setError(""); } }}
+                  disabled={sinStock}
+                  style={{
+                    padding: "10px 16px",
+                    borderRadius: RADIUS.sm,
+                    border: `1.5px solid ${activo ? C.brand : C.lineStrong}`,
+                    background: activo ? C.brandSoft : sinStock ? C.surfaceAlt : C.surface,
+                    color: sinStock ? C.muted : activo ? C.brand : C.ink,
+                    fontSize: 13, fontWeight: activo ? 700 : 500,
+                    cursor: sinStock ? "not-allowed" : "pointer",
+                    opacity: sinStock ? 0.55 : 1,
+                    transition: "all 0.15s",
+                    fontFamily: FONT.ui,
+                  }}>
+                  {v.nombre}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Error */}
+      {/* Cantidad + CTA */}
+      <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
+        <div style={{
+          display: "inline-flex", alignItems: "center",
+          border: `1.5px solid ${C.lineStrong}`,
+          borderRadius: RADIUS.sm,
+          background: C.surface,
+          overflow: "hidden",
+          height: 50,
+        }}>
+          <button
+            onClick={() => setCantidad(c => Math.max(1, c - 1))}
+            disabled={cantidad <= 1}
+            style={{
+              width: 42, height: "100%",
+              border: "none", background: "transparent",
+              color: cantidad > 1 ? C.ink : C.muted,
+              fontSize: 18, cursor: cantidad > 1 ? "pointer" : "default",
+              fontFamily: FONT.ui,
+            }}>−</button>
+          <span style={{
+            minWidth: 44, padding: "0 6px",
+            fontSize: 16, fontWeight: 700,
+            color: C.ink, textAlign: "center",
+            fontFamily: FONT.mono,
+          }}>
+            {cantidad}
+          </span>
+          <button
+            onClick={() => setCantidad(c => Math.min(stock, c + 1))}
+            disabled={cantidad >= stock}
+            style={{
+              width: 42, height: "100%",
+              border: "none", background: "transparent",
+              color: cantidad < stock ? C.ink : C.muted,
+              fontSize: 18, cursor: cantidad < stock ? "pointer" : "default",
+              fontFamily: FONT.ui,
+            }}>+</button>
+        </div>
+
+        <button
+          onClick={handleAgregar}
+          disabled={!hayStock}
+          style={{
+            flex: 1, height: 50,
+            borderRadius: RADIUS.sm,
+            border: "none",
+            background: agregado ? C.success : hayStock ? C.brand : C.surfaceAlt,
+            color: agregado || hayStock ? "#fff" : C.muted,
+            fontSize: 14, fontWeight: 700,
+            fontFamily: FONT.ui,
+            cursor: hayStock ? "pointer" : "not-allowed",
+            display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
+            transition: "background 0.15s",
+          }}
+          onMouseEnter={e => { if (hayStock && !agregado) e.currentTarget.style.background = C.brandMid; }}
+          onMouseLeave={e => { if (hayStock && !agregado) e.currentTarget.style.background = C.brand; }}
+        >
+          {agregado ? "✓ Agregado" : hayStock ? `🛒 Añadir al carrito · ${fmt(total)}` : "Sin stock"}
+        </button>
+
+        <button
+          onClick={() => setFavorito(f => !f)}
+          aria-label="Favorito"
+          style={{
+            width: 50, height: 50,
+            borderRadius: RADIUS.sm,
+            border: `1.5px solid ${favorito ? C.coral : C.lineStrong}`,
+            background: favorito ? C.coralSoft : C.surface,
+            color: favorito ? C.coral : C.ink3,
+            fontSize: 18, cursor: "pointer",
+            transition: "all 0.15s",
+          }}>
+          {favorito ? "♥" : "♡"}
+        </button>
+      </div>
+
       {error && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium"
-          style={{ background: C.dangerBg, color: C.danger, border: `1px solid #fca5a5` }}>
+        <div style={{
+          padding: "10px 14px", borderRadius: RADIUS.sm,
+          background: C.dangerBg, border: `1px solid ${C.dangerBorder}`,
+          color: C.danger, fontSize: 13,
+        }}>
           {error}
         </div>
       )}
 
-      {/* CTA principal */}
-      <div className="space-y-2.5">
-        <button onClick={handleAgregar} disabled={!hayStock}
-          className="w-full py-4 rounded-2xl text-sm font-bold tracking-wide transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2.5"
-          style={agregado
-            ? { background: "#16a34a", color: "#fff" }
-            : hayStock
-            ? { background: C.brand, color: "#fff", boxShadow: "0 4px 16px rgba(26,92,26,0.25)" }
-            : { background: C.surfaceAlt, color: C.textMuted, cursor: "not-allowed" }}>
-          {agregado
-            ? "¡Agregado al carrito!"
-            : hayStock
-            ? `Agregar al carrito · ${fmt(total)}`
-            : "Sin stock disponible"}
-        </button>
-
-        {/* FIX DISEÑO: sin flecha en "Seguir comprando" */}
-        <Link to="/tienda"
-          className="w-full py-3 rounded-2xl text-sm font-semibold flex items-center justify-center transition-all"
-          style={{ border: `2px solid ${C.brandBorder}`, color: C.brand, background: "transparent" }}
-          onMouseEnter={e => e.currentTarget.style.background = C.brandLight}
-          onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-          Seguir comprando
-        </Link>
-      </div>
-
-      {/* Garantías */}
-      <div className="grid grid-cols-2 gap-2 pt-1">
+      {/* Garantías 2x2 estilo PDF */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 10,
+      }}>
         {[
-          { icon: "🚚", text: "Envío gratis +$80k" },
-          { icon: "🔒", text: "Compra segura" },
-          { icon: "↩️", text: "Devolución 15 días" },
-          { icon: "💊", text: "Cert. Invima" },
-        ].map(({ icon, text }) => (
-          <div key={text} className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium"
-            style={{ background: C.surfaceAlt, color: C.textSec }}>
-            <span className="text-base">{icon}</span>{text}
+          { icon: "🚚", titulo: "Envío gratis",         sub: "En Ibagué desde $80.000" },
+          { icon: "✓",  titulo: "Garantía oficial",     sub: "Producto verificado" },
+          { icon: "🩺", titulo: "Recomendado por vets", sub: "Aprobado por nuestra clínica" },
+          { icon: "📍", titulo: "Recoge en tienda",     sub: "Cra. 5 #34-12" },
+        ].map(g => (
+          <div key={g.titulo} style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "12px 14px",
+            borderRadius: RADIUS.sm,
+            border: `1px solid ${C.line}`,
+            background: C.surface,
+          }}>
+            <span style={{
+              width: 32, height: 32, borderRadius: RADIUS.sm,
+              background: C.brandSoft, color: C.brand,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 14, flexShrink: 0,
+            }}>{g.icon}</span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.ink, lineHeight: 1.2 }}>
+                {g.titulo}
+              </div>
+              <div style={{ fontSize: 10, color: C.ink3, marginTop: 2 }}>
+                {g.sub}
+              </div>
+            </div>
           </div>
         ))}
       </div>
+
+      {/* IVA info */}
+      <p style={{
+        margin: 0, fontSize: 11, color: C.muted,
+        textAlign: "center",
+        padding: "8px 12px",
+        borderRadius: RADIUS.sm,
+        background: C.surfaceAlt,
+      }}>
+        IVA 19% incluido · Subtotal {fmt(subtotal)} · IVA {fmt(iva)} · Total <strong style={{ color: C.ink }}>{fmt(total)}</strong>
+      </p>
     </div>
   );
 }
 
-// ── Tabs: descripción / detalles / presentaciones ─────────────
+/* ─── Tabs descripción / especificaciones ────────────────────────────────── */
 function TabsInfo({ producto, variantes }) {
+  const { C } = useTheme();
   const [tab, setTab] = useState("descripcion");
 
   const TABS = [
@@ -529,141 +486,230 @@ function TabsInfo({ producto, variantes }) {
   ].filter(s => s.v && s.v !== "No");
 
   return (
-    <div className="mt-16 pt-10" style={{ borderTop: `1px solid ${C.brandBorder}` }}>
+    <div style={{
+      marginTop: 64, paddingTop: 40,
+      borderTop: `1px solid ${C.line}`,
+    }}>
       {/* Tabs */}
-      <div className="flex gap-0 mb-8" style={{ borderBottom: `2px solid ${C.brandLight}` }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className="px-6 py-3 text-sm font-semibold transition-all duration-150 border-b-2 -mb-0.5"
-            style={{
-              borderColor: tab === t.id ? C.brand : "transparent",
-              color: tab === t.id ? C.brand : C.textTer,
-            }}>
-            {t.label}
-          </button>
-        ))}
+      <div style={{
+        display: "flex", gap: 4,
+        borderBottom: `1px solid ${C.line}`,
+        marginBottom: 28,
+      }}>
+        {TABS.map(t => {
+          const activo = tab === t.id;
+          return (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              style={{
+                padding: "12px 20px",
+                background: "transparent", border: "none",
+                borderBottom: `2px solid ${activo ? C.brand : "transparent"}`,
+                marginBottom: -1,
+                fontSize: 14,
+                fontWeight: activo ? 700 : 500,
+                color: activo ? C.ink : C.ink3,
+                cursor: "pointer",
+                transition: "all 0.15s",
+                fontFamily: FONT.ui,
+              }}>
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Descripción */}
+      {/* Contenido tab */}
       {tab === "descripcion" && (
-        <div className="max-w-2xl">
-          {producto.descripcion_corta && (
-            <p className="text-base font-semibold mb-4 leading-relaxed" style={{ color: C.textSec }}>
-              {producto.descripcion_corta}
-            </p>
-          )}
-          {producto.descripcion ? (
-            <div className="space-y-3 text-sm leading-relaxed" style={{ color: C.textSec }}>
-              {producto.descripcion.split("\n").filter(Boolean).map((p, i) => (
-                <p key={i}>{p}</p>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm" style={{ color: C.textMuted }}>Sin descripción disponible.</p>
-          )}
+        <div style={{ maxWidth: 780 }}>
+          <p style={{
+            margin: 0, fontSize: 15, lineHeight: 1.7,
+            color: C.ink2,
+          }}>
+            {producto.descripcion || "Sin descripción disponible para este producto."}
+          </p>
         </div>
       )}
 
-      {/* Especificaciones */}
       {tab === "detalles" && (
-        <div className="max-w-xl">
-          {specs.length ? (
-            <table className="w-full">
-              <tbody>
-                {specs.map(({ k, v }) => (
-                  <tr key={k} style={{ borderBottom: `1px solid ${C.brandLight}` }}>
-                    <td className="py-3 pr-8 text-xs font-bold uppercase tracking-wider w-40"
-                      style={{ color: C.textTer }}>{k}</td>
-                    <td className="py-3 text-sm capitalize" style={{ color: C.text }}>{v}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="text-sm" style={{ color: C.textMuted }}>Sin especificaciones registradas.</p>
-          )}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+          gap: 0,
+          background: C.surface,
+          border: `1px solid ${C.line}`,
+          borderRadius: RADIUS.lg,
+          overflow: "hidden",
+        }}>
+          {specs.map((s, i) => (
+            <div key={i} style={{
+              padding: "14px 18px",
+              borderBottom: `1px solid ${C.line}`,
+              borderRight: `1px solid ${C.line}`,
+            }}>
+              <p style={{
+                margin: "0 0 4px",
+                fontSize: 10, fontWeight: 700,
+                textTransform: "uppercase", letterSpacing: 1.2,
+                color: C.muted,
+              }}>{s.k}</p>
+              <p style={{ margin: 0, fontSize: 14, color: C.ink, fontWeight: 500 }}>
+                {s.v}
+              </p>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Tabla de presentaciones */}
-      {tab === "variantes" && variantes?.length > 0 && (
-        <div className="max-w-2xl overflow-hidden rounded-2xl"
-          style={{ border: `1px solid ${C.brandBorder}` }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ background: C.brandLight }}>
-                {["Presentación", "Precio", "Con IVA (19%)", "Stock", "SKU"].map(h => (
-                  <th key={h} className="text-left py-3 px-4 text-xs font-bold uppercase tracking-wider"
-                    style={{ color: C.textTer }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {variantes.map((v, i) => {
-                const conIva = Number(v.precio) * 1.19;
-                const dc = descPct(v.precio, v.precio_antes);
-                return (
-                  <tr key={v.id} style={{
-                    background: i % 2 === 0 ? C.surface : C.surfaceAlt,
-                    borderTop: `1px solid ${C.brandLight}`,
-                  }}>
-                    <td className="px-4 py-3 font-semibold" style={{ color: C.text }}>{v.nombre}</td>
-                    <td className="px-4 py-3">
-                      <span className="font-bold tabular-nums" style={{ color: C.brand }}>{fmt(v.precio)}</span>
-                      {dc && <span className="ml-2 text-xs px-1.5 rounded font-bold" style={{ background: "#fee2e2", color: "#dc2626" }}>-{dc}%</span>}
-                    </td>
-                    <td className="px-4 py-3 font-semibold tabular-nums" style={{ color: C.textSec }}>{fmt(conIva)}</td>
-                    <td className="px-4 py-3">
-                      <span className="font-bold tabular-nums"
-                        style={{ color: v.stock <= v.stock_minimo ? C.danger : C.success }}>
-                        {v.stock}
-                      </span>
-                      <span className="text-xs ml-1" style={{ color: C.textMuted }}>uds</span>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs" style={{ color: C.textMuted }}>
-                      {v.sku || "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {tab === "variantes" && (
+        <div style={{
+          background: C.surface,
+          border: `1px solid ${C.line}`,
+          borderRadius: RADIUS.lg,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 120px 120px 100px",
+            gap: 14,
+            padding: "12px 18px",
+            background: C.canvas,
+            borderBottom: `1px solid ${C.line}`,
+            fontSize: 10, fontWeight: 700,
+            textTransform: "uppercase", letterSpacing: 1.5,
+            color: C.ink3,
+          }}>
+            <span>Presentación</span>
+            <span style={{ textAlign: "right" }}>Precio</span>
+            <span style={{ textAlign: "right" }}>Stock</span>
+            <span style={{ textAlign: "right" }}>SKU</span>
+          </div>
+          {variantes.map((v, i) => (
+            <div key={v.id} style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 120px 120px 100px",
+              gap: 14,
+              padding: "14px 18px",
+              fontSize: 13,
+              borderBottom: i < variantes.length - 1 ? `1px solid ${C.line}` : "none",
+            }}>
+              <span style={{ color: C.ink, fontWeight: 600 }}>{v.nombre}</span>
+              <span style={{ textAlign: "right", color: C.ink, fontFamily: FONT.mono }}>{fmt(v.precio)}</span>
+              <span style={{
+                textAlign: "right",
+                color: v.stock === 0 ? C.danger : v.stock <= (v.stock_minimo || 5) ? C.warning : C.success,
+                fontWeight: 600,
+              }}>
+                {v.stock === 0 ? "Agotado" : `${v.stock} unidades`}
+              </span>
+              <span style={{ textAlign: "right", color: C.muted, fontFamily: FONT.mono, fontSize: 11 }}>
+                {v.sku || "—"}
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-// ── Relacionados ──────────────────────────────────────────────
+/* ─── También te puede gustar ────────────────────────────────────────────── */
 function Relacionados({ productos }) {
-  if (!productos?.length) return null;
+  const { C } = useTheme();
+  if (!productos || productos.length === 0) return null;
+
   return (
-    <div className="mt-20 pt-12" style={{ borderTop: `1px solid ${C.brandLight}` }}>
-      <h2 className="text-xl font-bold mb-8" style={{ color: C.text, fontFamily: "'Playfair Display', Georgia, serif" }}>
-        También te puede interesar
+    <div style={{ marginTop: 64, paddingTop: 40, borderTop: `1px solid ${C.line}` }}>
+      <h2 style={{
+        margin: "0 0 24px",
+        fontFamily: FONT.display,
+        fontWeight: 700,
+        fontSize: 32,
+        color: C.ink,
+        letterSpacing: -0.3,
+      }}>
+        También te puede gustar
       </h2>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {productos.map(p => {
+
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+        gap: 18,
+      }}>
+        {productos.slice(0, 4).map(p => {
           const dc = descPct(p.precio, p.precio_antes);
           return (
             <Link key={p.id} to={`/producto/${p.slug}`}
-              className="group rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-              style={{ background: C.surface, border: `1px solid ${C.brandBorder}` }}>
-              <div className="relative aspect-square overflow-hidden" style={{ background: C.brandLight }}>
-                {p.imagen_url
-                  ? <img src={p.imagen_url} alt={p.nombre}
-                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-400"
-                      onError={e => { e.target.style.display = "none"; }} />
-                  : <div className="w-full h-full flex items-center justify-center text-5xl">🐾</div>}
+              style={{
+                background: C.surface,
+                border: `1px solid ${C.line}`,
+                borderRadius: RADIUS.lg,
+                overflow: "hidden",
+                textDecoration: "none",
+                transition: "all 0.2s",
+                display: "flex", flexDirection: "column",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.borderColor = C.brandBorder; e.currentTarget.style.boxShadow = C.shadowMd; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = C.line; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <div style={{
+                position: "relative",
+                aspectRatio: "1 / 1",
+                background: `repeating-linear-gradient(135deg, ${C.brandSoft} 0 14px, ${C.surfaceAlt} 14px 28px)`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                overflow: "hidden",
+              }}>
+                {p.imagen_url && (
+                  <img src={p.imagen_url} alt={p.nombre}
+                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                    onError={e => { e.target.style.display = "none"; }}/>
+                )}
                 {dc && (
-                  <span className="absolute top-2 left-2 text-xs font-bold px-2 py-0.5 rounded-lg"
-                    style={{ background: "#dc2626", color: "#fff" }}>-{dc}%</span>
+                  <span style={{
+                    position: "absolute", top: 10, left: 10,
+                    padding: "3px 9px", borderRadius: RADIUS.sm,
+                    background: C.coral, color: "#fff",
+                    fontSize: 11, fontWeight: 800,
+                    fontFamily: FONT.mono,
+                  }}>
+                    -{dc}%
+                  </span>
                 )}
               </div>
-              <div className="p-3">
-                {p.marca && <p className="text-xs font-bold uppercase tracking-wide mb-0.5" style={{ color: C.brand }}>{p.marca}</p>}
-                <h3 className="text-xs font-semibold line-clamp-2 leading-snug mb-2" style={{ color: C.text }}>{p.nombre}</h3>
-                <p className="text-sm font-bold tabular-nums" style={{ color: C.brand }}>{fmt(p.precio)}</p>
+              <div style={{ padding: 16, flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                {p.marca && (
+                  <span style={{
+                    fontFamily: FONT.mono,
+                    fontSize: 10, fontWeight: 700,
+                    textTransform: "uppercase", letterSpacing: 1.2,
+                    color: C.muted,
+                  }}>{p.marca}</span>
+                )}
+                <h3 style={{
+                  margin: 0,
+                  fontSize: 13, fontWeight: 600,
+                  color: C.ink, lineHeight: 1.4,
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                  flex: 1,
+                }}>
+                  {p.nombre}
+                </h3>
+                <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 4 }}>
+                  {[1,2,3,4,5].map(s => (
+                    <span key={s} style={{ color: s <= 4 ? "#F59E0B" : C.muted, fontSize: 10 }}>★</span>
+                  ))}
+                  <span style={{ marginLeft: 4, fontSize: 10, color: C.ink3 }}>(124)</span>
+                </div>
+                <div style={{
+                  marginTop: 6,
+                  fontFamily: FONT.display,
+                  fontSize: 18, fontWeight: 700,
+                  color: C.ink,
+                }}>
+                  {fmt(p.precio)}
+                </div>
               </div>
             </Link>
           );
@@ -673,80 +719,116 @@ function Relacionados({ productos }) {
   );
 }
 
-// ── Página principal ──────────────────────────────────────────
+/* ─── Página principal ───────────────────────────────────────────────────── */
 export default function Producto() {
+  const { C } = useTheme();
   const { slug } = useParams();
-  const [data, setData]         = useState(null);
+  const [data, setData] = useState(null);
   const [cargando, setCargando] = useState(true);
-  const [error, setError]       = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    setCargando(true);
-    setError(null);
+    setCargando(true); setError(null);
     api.get(`/productos/${slug}`)
       .then(({ data }) => setData(data))
       .catch(err => setError(err.response?.data?.error || "Producto no encontrado"))
       .finally(() => setCargando(false));
   }, [slug]);
 
-  if (cargando) return (
-    <div className="min-h-screen" style={{ background: C.canvas }}>
-      <div className="py-2.5" style={{ background: C.brand }}>
-        <p className="text-center text-xs font-semibold text-white/80">
-          🚚 Envíos gratis a partir de <span className="text-lime-300 font-bold">$80.000</span>
-        </p>
-      </div>
-      <Skeleton />
-    </div>
-  );
-
-  if (error) return (
-    <div className="min-h-screen" style={{ background: C.canvas }}>
-      <div className="flex flex-col items-center justify-center gap-5 py-32">
-        <div className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl"
-          style={{ background: C.dangerBg }}>⚠️</div>
-        <div className="text-center">
-          <h2 className="text-xl font-bold mb-2" style={{ color: C.text }}>Producto no encontrado</h2>
-          <p className="text-sm mb-6" style={{ color: C.textMuted }}>{error}</p>
-          <Link to="/tienda"
-            className="px-6 py-3 rounded-xl text-sm font-bold text-white transition-colors"
-            style={{ background: C.brand }}>
-            Volver a la tienda
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-
-  const { producto, variantes, relacionados } = data;
-
   return (
-    <div className="min-h-screen" style={{ background: C.canvas }}>
+    <>
+      <style>{`
+        @keyframes vp-shimmer { to { background-position: -200% 0; } }
+        * { box-sizing: border-box; }
+        @media (max-width: 900px) {
+          .vp-prod-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+        }
+      `}</style>
 
-      {/* Barra superior */}
-      <div className="py-2.5" style={{ background: C.brand }}>
-        <div className="max-w-6xl mx-auto px-4 flex items-center justify-center gap-6 text-xs text-white/70 font-medium">
-          {["✓ Certificado Invima", "🚚 Envío a todo Colombia", "🔒 Compra segura", "👨‍⚕️ Asesoría gratis"].map(t => (
-            <span key={t} className="hidden sm:block">{t}</span>
-          ))}
-          <span className="sm:hidden">✓ Certificado · Envío a Colombia</span>
-        </div>
+      <div style={{ minHeight: "100vh", background: C.canvas, fontFamily: FONT.ui }}>
+
+        {cargando && <Skeleton/>}
+
+        {error && (
+          <div style={{
+            textAlign: "center", padding: "80px 24px",
+            maxWidth: 480, margin: "0 auto",
+          }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: 20,
+              background: C.dangerBg,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 32, margin: "0 auto 18px",
+            }}>⚠</div>
+            <h2 style={{
+              margin: "0 0 8px",
+              fontFamily: FONT.display, fontStyle: "italic",
+              fontWeight: 600, fontSize: 24,
+              color: C.ink,
+            }}>
+              Producto no encontrado
+            </h2>
+            <p style={{ margin: "0 0 24px", fontSize: 14, color: C.ink3 }}>{error}</p>
+            <Link to="/tienda" style={{
+              display: "inline-block",
+              padding: "12px 28px", borderRadius: RADIUS.sm,
+              background: C.brand, color: "#fff",
+              textDecoration: "none", fontSize: 14, fontWeight: 700,
+            }}>
+              Volver a la tienda
+            </Link>
+          </div>
+        )}
+
+        {data && (() => {
+          const { producto, variantes, relacionados } = data;
+          return (
+            <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px 80px" }}>
+
+              {/* Breadcrumb */}
+              <nav style={{
+                display: "flex", alignItems: "center", gap: 8,
+                fontSize: 12, color: C.ink3,
+                marginBottom: 28, flexWrap: "wrap",
+              }}>
+                <Link to="/tienda" style={{ color: C.ink3, textDecoration: "none" }}>Tienda</Link>
+                <span>·</span>
+                {producto.categoria && (
+                  <>
+                    <Link to={`/tienda?categoria=${producto.categoria_slug || ""}`}
+                      style={{ color: C.ink3, textDecoration: "none" }}>
+                      {producto.categoria}
+                    </Link>
+                    <span>·</span>
+                  </>
+                )}
+                <span style={{ color: C.ink2 }}>{producto.nombre}</span>
+              </nav>
+
+              {/* Grid principal */}
+              <div className="vp-prod-grid" style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1.05fr",
+                gap: 56,
+                alignItems: "start",
+              }}>
+                <Galeria
+                  imagenPrincipal={producto.imagen_url}
+                  imagenesExtra={producto.imagenes_extra}
+                  nombre={producto.nombre}
+                />
+                <PanelCompra producto={producto} variantes={variantes}/>
+              </div>
+
+              {/* Tabs */}
+              <TabsInfo producto={producto} variantes={variantes}/>
+
+              {/* Relacionados */}
+              <Relacionados productos={relacionados}/>
+            </div>
+          );
+        })()}
       </div>
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Grid producto */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14">
-          <Galeria
-            imagenPrincipal={producto.imagen_url}
-            imagenesExtra={producto.imagenes_extra}
-            nombre={producto.nombre}
-          />
-          <PanelCompra producto={producto} variantes={variantes} />
-        </div>
-
-        <TabsInfo producto={producto} variantes={variantes} />
-        <Relacionados productos={relacionados} />
-      </div>
-    </div>
+    </>
   );
 }

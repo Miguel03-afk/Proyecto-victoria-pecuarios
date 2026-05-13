@@ -1,30 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../styles/ThemeProvider.jsx";
 import api from "../services/api";
 import logoVP from "../assets/WhatsApp Image 2026-04-22 at 1.19.17 PM.jpeg";
-
-const C = {
-  brand:        "#0A6B40",
-  brandMid:     "#138553",
-  brandDark:    "#064E30",
-  lime:         "#7AC143",
-  canvas:       "#F5FAF7",
-  surface:      "#ffffff",
-  text:         "#101F16",
-  textSec:      "#2D4A38",
-  textMuted:    "#8FAA98",
-  border:       "rgba(0,0,0,0.08)",
-  success:      "#16a34a",
-  successBg:    "#f0fdf4",
-  successBorder:"#bbf7d0",
-  danger:       "#dc2626",
-  dangerBg:     "#fef2f2",
-  dangerBorder: "#fecaca",
-  warning:      "#d97706",
-  warningBg:    "#fffbeb",
-  warningBorder:"#fde68a",
-};
 
 const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
 
@@ -35,7 +14,7 @@ const TIPOS = {
   Fallida:   "rechazada",
 };
 
-const CONFIG_TIPO = {
+const getConfigTipo = (C) => ({
   aprobada: {
     icono:    "✅",
     titulo:   "¡Pago aprobado!",
@@ -60,11 +39,12 @@ const CONFIG_TIPO = {
     border:   C.dangerBorder,
     color:    C.danger,
   },
-};
+});
 
 const REDIRECCION_SEG = 6;
 
 export default function PagoRespuesta() {
+  const { C } = useTheme();
   const [params]    = useSearchParams();
   const { usuario } = useAuth();
   const navigate    = useNavigate();
@@ -83,7 +63,7 @@ export default function PagoRespuesta() {
   const razon     = params.get("x_response_reason_text") || "";
 
   const tipo = TIPOS[xResponse] || "rechazada";
-  const cfg  = CONFIG_TIPO[tipo];
+  const cfg  = getConfigTipo(C)[tipo];
 
   // Finalizar orden en el backend (una sola vez)
   useEffect(() => {
@@ -289,6 +269,7 @@ export default function PagoRespuesta() {
 }
 
 function Row({ label, value, last }) {
+  const { C } = useTheme();
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: last ? 0 : 8, fontSize: 13 }}>
       <span style={{ color: "#8FAA98", fontWeight: 500 }}>{label}</span>

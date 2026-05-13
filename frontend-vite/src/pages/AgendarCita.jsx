@@ -3,32 +3,13 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../styles/ThemeProvider.jsx";
 import Navbar from "../components/Navbar";
-
-/* ─── Tokens ─────────────────────────────────────────────── */
-const C = {
-  brand:        "#0A6B40",
-  brandMid:     "#138553",
-  brandDark:    "#064E30",
-  brandLight:   "#E4F5EC",
-  brandBorder:  "#95CCAD",
-  lime:         "#7AC143",
-  limeDark:     "#5a9030",
-  canvas:       "#F5FAF7",
-  surface:      "#ffffff",
-  surfaceAlt:   "#EDF6F1",
-  text:         "#101F16",
-  textSec:      "#2D4A38",
-  textTer:      "#5A7A65",
-  textMuted:    "#8FAA98",
-  border:       "rgba(0,0,0,0.08)",
-  danger:       "#dc2626",
-  dangerBg:     "#fef2f2",
-  dangerBorder: "#fecaca",
-  success:      "#16a34a",
-  successBg:    "#f0fdf4",
-  successBorder:"#bbf7d0",
-};
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faCalendarCheck, faPaw, faClipboardList, faCheck,
+  faStethoscope, faClock as faClockI,
+} from "@fortawesome/free-solid-svg-icons";
 
 const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 const ESPECIES = ["Perro","Gato","Conejo","Ave","Reptil","Roedor","Otro"];
@@ -41,6 +22,7 @@ const fmt = (h) => {
 
 /* ─── Componentes base ─────────────────────────────────────── */
 function Campo({ label, value, onChange, type="text", placeholder, required, hint }) {
+  const { C } = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <div>
@@ -66,6 +48,7 @@ function Campo({ label, value, onChange, type="text", placeholder, required, hin
 }
 
 function Sel({ label, value, onChange, children }) {
+  const { C } = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <div>
@@ -88,6 +71,7 @@ function Sel({ label, value, onChange, children }) {
 
 /* ─── Paso 1: elegir veterinario ───────────────────────────── */
 function PasoVeterinario({ onElegir }) {
+  const { C } = useTheme();
   const [vets, setVets] = useState([]);
   const [cargando, setCargando] = useState(true);
 
@@ -213,6 +197,7 @@ function fmtRango(inicio, duracionMin) {
 const MESES_LARGO = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
 function PasoFechaHora({ vet, fecha, setFecha, hora, setHora }) {
+  const { C } = useTheme();
   const [slots,    setSlots]    = useState([]);
   const [cargando, setCargando] = useState(false);
   const [sinSlots, setSinSlots] = useState(false);
@@ -335,6 +320,7 @@ function PasoFechaHora({ vet, fecha, setFecha, hora, setHora }) {
 
 /* ─── Paso 3: datos de la mascota y motivo ─────────────────── */
 function PasoDetalles({ form, setForm }) {
+  const { C } = useTheme();
   const set = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }));
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
@@ -390,6 +376,7 @@ const PASOS = [
 ];
 
 export default function AgendarCita() {
+  const { C } = useTheme();
   const { usuario } = useAuth();
   const navigate    = useNavigate();
 
@@ -570,14 +557,21 @@ export default function AgendarCita() {
             {paso === 4 && (
               <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
                 {[
-                  { icon:"👨‍⚕️", label:"Veterinario", val:`Dr(a). ${vet?.nombre} ${vet?.apellido} · ${vet?.especialidad}` },
-                  { icon:"📅", label:"Fecha",       val: fmt2(fecha) },
-                  { icon:"🕐", label:"Hora",        val: hora ? fmtRango(hora, vet?.duracion_cita) : "" },
-                  { icon:"🐾", label:"Mascota",     val:`${form.nombre_mascota} (${form.especie_mascota})` },
-                  { icon:"📋", label:"Motivo",      val: form.motivo },
+                  { icon: faStethoscope,    label:"Veterinario", val:`Dr(a). ${vet?.nombre} ${vet?.apellido} · ${vet?.especialidad}` },
+                  { icon: faCalendarCheck,  label:"Fecha",       val: fmt2(fecha) },
+                  { icon: faClockI,         label:"Hora",        val: hora ? fmtRango(hora, vet?.duracion_cita) : "" },
+                  { icon: faPaw,            label:"Mascota",     val:`${form.nombre_mascota} (${form.especie_mascota})` },
+                  { icon: faClipboardList,  label:"Motivo",      val: form.motivo },
                 ].map(r => (
-                  <div key={r.label} style={{ display:"flex", gap:14, alignItems:"flex-start", padding:"12px 16px", borderRadius:12, background:C.surfaceAlt, border:`1px solid ${C.border}` }}>
-                    <span style={{ fontSize:20, flexShrink:0 }}>{r.icon}</span>
+                  <div key={r.label} style={{ display:"flex", gap:14, alignItems:"center", padding:"12px 16px", borderRadius:12, background:C.surfaceAlt, border:`1px solid ${C.border}` }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 10,
+                      background: C.brandSoft, color: C.brand,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 14, flexShrink: 0,
+                    }}>
+                      <FontAwesomeIcon icon={r.icon}/>
+                    </div>
                     <div>
                       <p style={{ margin:"0 0 2px", fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:C.textMuted }}>{r.label}</p>
                       <p style={{ margin:0, fontSize:14, color:C.text, fontWeight:500, lineHeight:1.5 }}>{r.val}</p>
@@ -639,7 +633,7 @@ export default function AgendarCita() {
                   boxShadow:"0 4px 12px rgba(26,92,26,0.25)",
                 }}
               >
-                {enviando ? "Agendando..." : "✓ Confirmar cita"}
+                {enviando ? "Agendando..." : <><FontAwesomeIcon icon={faCheck} style={{ marginRight: 6 }}/>Confirmar cita</>}
               </button>
             )}
           </div>

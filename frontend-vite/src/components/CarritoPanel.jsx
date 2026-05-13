@@ -1,31 +1,12 @@
 // src/components/CarritoPanel.jsx
 import { useNavigate, Link } from "react-router-dom";
 import { useCarrito } from "../context/CarritoContext";
-
-const C = {
-  brand:       "#0A6B40",
-  brandMid:    "#138553",
-  brandDark:   "#064E30",
-  brandLight:  "#E4F5EC",
-  brandBorder: "#95CCAD",
-  lime:        "#7AC143",
-  limeDark:    "#5a9030",
-  canvas:      "#F5FAF7",
-  surface:     "#ffffff",
-  surfaceAlt:  "#EDF6F1",
-  text:        "#101F16",
-  textSec:     "#2D4A38",
-  textTer:     "#5A7A65",
-  textMuted:   "#8FAA98",
-  border:      "rgba(0,0,0,0.08)",
-  danger:      "#dc2626",
-  dangerBg:    "#fef2f2",
-  dangerBorder:"#fecaca",
-};
+import { useTheme } from "../styles/ThemeProvider.jsx";
 
 const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
 
 export default function CarritoPanel() {
+  const { C } = useTheme();
   const {
     items, abierto, setAbierto,
     quitar, cambiarCantidad, vaciar, quitarNoDisponibles,

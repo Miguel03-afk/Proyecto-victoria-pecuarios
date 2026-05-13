@@ -1,11 +1,13 @@
 // src/pages/admin/ReporteSalidas.jsx
 import { useState } from 'react';
 import api from '../../services/api';
-import { T, shadow, font, fmt, fdoc, movimientoStyle } from '../../styles/admin.tokens';
+import { shadow, font, fmt, fdoc, movimientoStyle } from '../../styles/admin.tokens';
+import { useTheme } from '../../styles/ThemeProvider.jsx';
 
 const TIPOS = ['todos','venta','compra','ajuste_manual','devolucion'];
 
 export default function ReporteSalidas() {
+  const { C: T } = useTheme();
   const [filtros, setFiltros]   = useState({ fecha_inicio:'', fecha_fin:'', tipo_movimiento:'todos' });
   const [datos, setDatos]       = useState(null);
   const [cargando, setCargando] = useState(false);
@@ -65,7 +67,7 @@ export default function ReporteSalidas() {
           {/* Resumen por tipo */}
           <div className="flex flex-wrap gap-3">
             {datos.resumen.map(r => {
-              const s = movimientoStyle(r.tipo_movimiento);
+              const s = movimientoStyle(r.tipo_movimiento, T);
               return (
                 <div key={r.tipo_movimiento} className="px-4 py-2.5 rounded-xl text-xs font-semibold"
                   style={{ background:s.bg, color:s.text, border:`1px solid ${s.border}` }}>
@@ -93,7 +95,7 @@ export default function ReporteSalidas() {
               </thead>
               <tbody>
                 {datos.movimientos.map((m, i) => {
-                  const s = movimientoStyle(m.tipo_movimiento);
+                  const s = movimientoStyle(m.tipo_movimiento, T);
                   return (
                     <tr key={m.id} className="transition-colors"
                       style={{ borderBottom:`1px solid ${T.borderSub}`, background: i%2===0 ? T.surface : T.surfaceAlt }}

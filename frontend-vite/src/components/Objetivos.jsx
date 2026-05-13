@@ -4,7 +4,8 @@ import {
   Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import api from "../services/api";
-import { T, font, fmtMil } from "../styles/admin.tokens";
+import { font, fmtMil, LIGHT } from "../styles/admin.tokens";
+import { useTheme } from "../styles/ThemeProvider.jsx";
 
 const fmtCOP = (n) => "$" + new Intl.NumberFormat("es-CO").format(Number(n) || 0);
 const pct    = (real, meta) => meta > 0 ? Math.min(Math.round((real / meta) * 100), 100) : 0;
@@ -33,7 +34,9 @@ function Anillo({ porcentaje, color, size = 88, grosor = 9 }) {
 }
 
 // ─── KPI con anillo ─────────────────────────────────────────
-function KPIRing({ label, real, meta, formato = "numero", color = T.brand }) {
+function KPIRing({ label, real, meta, formato = "numero", color }) {
+  const { C: T } = useTheme();
+  if (!color) color = T.brand;
   const porcentaje = pct(real, meta);
   const realFmt    = formato === "dinero" ? fmtCOP(real) : real.toLocaleString("es-CO");
   const metaFmt    = formato === "dinero" ? fmtCOP(meta) : meta.toLocaleString("es-CO");
@@ -77,6 +80,7 @@ function KPIRing({ label, real, meta, formato = "numero", color = T.brand }) {
 
 // ─── Tooltip de gráfica ─────────────────────────────────────
 function VPTooltip({ active, payload, label }) {
+  const { C: T } = useTheme();
   if (!active || !payload?.length) return null;
   return (
     <div style={{
@@ -102,6 +106,7 @@ function VPTooltip({ active, payload, label }) {
 
 // ─── Tarjeta comparación mes ─────────────────────────────────
 function CompCard({ label, real, ant, variacion, formato = "numero" }) {
+  const { C: T } = useTheme();
   const realFmt = formato === "dinero" ? fmtCOP(real) : Number(real).toLocaleString("es-CO");
   const antFmt  = formato === "dinero" ? fmtCOP(ant)  : Number(ant).toLocaleString("es-CO");
   const up = variacion !== null && Number(variacion) >= 0;
@@ -124,6 +129,7 @@ function CompCard({ label, real, ant, variacion, formato = "numero" }) {
 
 // ─── Componente principal ────────────────────────────────────
 export default function Objetivos() {
+  const { C: T } = useTheme();
   const [mes, setMes]               = useState(mesHoy());
   const [datos, setDatos]           = useState(null);
   const [historial, setHistorial]   = useState([]);
