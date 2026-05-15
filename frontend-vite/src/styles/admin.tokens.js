@@ -1,7 +1,7 @@
 // src/styles/admin.tokens.js — Victoria Pets Design System
+// Paleta navy + lime (rediseño 2026-05).
 // ThemeProvider y useTheme viven en ThemeProvider.jsx (necesitan JSX).
 // IMPORTANTE: NO re-exportarlos aquí — causa dependencia circular.
-// Para usarlos: import { useTheme } from "@/styles/ThemeProvider.jsx";
 
 /* ─── Identidad fija ─────────────────────────────────────────────────────── */
 export const FONT = {
@@ -12,23 +12,28 @@ export const FONT = {
 
 export const RADIUS = { sm: 8, md: 12, lg: 16, xl: 20, pill: 999 };
 
-/* ─── MODO CLARO ─────────────────────────────────────────────────────────── */
+/* ─── MODO CLARO — navy + lime sobre crema ───────────────────────────────── */
 export const LIGHT = {
   mode: 'light',
 
-  // Marca
-  brand:       '#0A6B40',
-  brandMid:    '#138553',
-  brandDark:   '#064E30',
-  brandSoft:   '#E4F5EC',
-  brandLight:  '#E4F5EC',      // alias legacy
-  brandBorder: '#95CCAD',
+  // Marca (navy editorial)
+  brand:       '#1E3A8A',
+  brandMid:    '#2C4DA0',
+  brandDark:   '#0F2563',
+  brandSoft:   '#E5EAFB',
+  brandLight:  '#E5EAFB',      // alias legacy
+  brandBorder: '#9DB1F0',
 
-  // Acentos
-  lime:        '#7AC143',
-  limeDark:    '#5A9030',
+  // Acentos del diseño
+  navy:        '#1E3A8A',
+  navyDeep:    '#0F2563',
+  lime:        '#7BC142',
+  limeDark:    '#5DA328',
+  limeDeep:    '#5DA328',
   limeSoft:    '#EEF7E3',
   limeLight:   '#EEF7E3',      // alias legacy
+  red:         '#E63946',
+  redDeep:     '#C42836',
   pink:        '#D4457A',
   coral:       '#D97757',
   coralSoft:   '#FBE8DE',
@@ -41,39 +46,41 @@ export const LIGHT = {
   roseBorder:  '#F9C0D0',
   roseLight:   '#FFF0F5',
 
-  // Superficies
-  canvas:       '#F5FAF7',
+  // Superficies — crema cálida
+  canvas:       '#FAF7F0',
   surface:      '#FFFFFF',
-  surfaceAlt:   '#EDF6F1',
-  surfaceHov:   '#DFF0E6',
-  surfaceHover: '#DFF0E6',     // alias
+  surfaceAlt:   '#F2EDE0',
+  surfaceHov:   '#EDE6D2',
+  surfaceHover: '#EDE6D2',     // alias
   surfaceElev:  '#FFFFFF',
 
-  // Sidebar (admin / cajero / vet)
-  sidebar:       '#064E30',
-  sidebarBorder: '#0A5C38',
-  sidebarActive: '#0A6B40',
-  sidebarText:   '#7ABF99',
-  sidebarTextHi: '#C4E8D5',
+  // Sidebar (admin / cajero / vet) — navy profundo
+  sidebar:       '#0F2563',
+  sidebarBorder: '#1E3A8A',
+  sidebarActive: '#1E3A8A',
+  sidebarText:   '#9DB1F0',
+  sidebarTextHi: '#D5DEFA',
 
-  // Texto
-  ink:       '#101F16',
-  ink2:      '#2D4A38',
-  ink3:      '#5A7A65',
-  muted:     '#8FAA98',
-  text:      '#101F16',         // alias
-  textSec:   '#2D4A38',         // alias
-  textTer:   '#5A7A65',         // alias
-  textMuted: '#8FAA98',         // alias
+  // Texto — neutro frío
+  ink:       '#0A1426',
+  ink2:      'rgba(10,20,38,0.72)',
+  ink3:      'rgba(10,20,38,0.50)',
+  inkSoft:   'rgba(10,20,38,0.72)',
+  inkMuted:  'rgba(10,20,38,0.50)',
+  muted:     'rgba(10,20,38,0.45)',
+  text:      '#0A1426',         // alias
+  textSec:   'rgba(10,20,38,0.72)',
+  textTer:   'rgba(10,20,38,0.50)',
+  textMuted: 'rgba(10,20,38,0.45)',
   onBrand:   '#FFFFFF',
 
   // Bordes
-  line:        'rgba(0,0,0,0.07)',
-  lineStrong:  'rgba(0,0,0,0.12)',
-  border:      'rgba(0,0,0,0.07)',
-  borderSub:   'rgba(0,0,0,0.04)',
-  borderMed:   'rgba(0,0,0,0.11)',
-  borderStr:   'rgba(0,0,0,0.16)',
+  line:        '#EAE3D2',
+  lineStrong:  '#D6CDB7',
+  border:      '#EAE3D2',
+  borderSub:   'rgba(10,20,38,0.04)',
+  borderMed:   'rgba(10,20,38,0.11)',
+  borderStr:   'rgba(10,20,38,0.16)',
 
   // Semánticos
   success:       '#14532D',
@@ -87,7 +94,7 @@ export const LIGHT = {
   danger:        '#7F1D1D',
   dangerBg:      '#FEE2E2',
   dangerBorder:  '#FCA5A5',
-  info:          '#1B4F8A',
+  info:          '#1E3A8A',
   infoBg:        '#DCE8F7',
   infoBorder:    '#93C5FD',
 
@@ -97,36 +104,41 @@ export const LIGHT = {
   goldBorder: '#CCA83A',
 
   // Morado (consultas médicas / insumos clínicos)
-  purple:       '#7c3aed',
+  purple:       '#9B5DE5',
   purpleDeep:   '#6b21a8',
   purpleSoft:   '#faf5ff',
   purpleBg:     '#f3e8ff',
   purpleBorder: '#e9d5ff',
 
   // Sombras
-  shadowSm: '0 1px 3px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04)',
-  shadowMd: '0 4px 16px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04)',
-  shadowLg: '0 12px 32px rgba(0,0,0,0.09), 0 4px 12px rgba(0,0,0,0.05)',
-  glow:     '0 0 0 4px rgba(10,107,64,0.14)',
+  shadowSm: '0 1px 3px rgba(10,20,38,0.04), 0 2px 8px rgba(10,20,38,0.04)',
+  shadowMd: '0 4px 16px rgba(10,20,38,0.07), 0 2px 4px rgba(10,20,38,0.04)',
+  shadowLg: '0 12px 32px rgba(10,20,38,0.09), 0 4px 12px rgba(10,20,38,0.05)',
+  glow:     '0 0 0 4px rgba(30,58,138,0.14)',
 };
 
-/* ─── MODO OSCURO — verde-petróleo profundo refinado ─────────────────────── */
+/* ─── MODO OSCURO — navy profundo refinado ───────────────────────────────── */
 export const DARK = {
   mode: 'dark',
 
-  // Marca (verde claro vibrante sobre fondos oscuros)
-  brand:       '#4DD493',     // verde más vivo
-  brandMid:    '#3FBD7A',
-  brandDark:   '#0E2520',     // OSCURO para banners/hero (en dark se mantiene oscuro)
-  brandSoft:   'rgba(77,212,147,0.16)',
-  brandLight:  'rgba(77,212,147,0.12)',
-  brandBorder: 'rgba(77,212,147,0.32)',
+  // Marca (azul vibrante sobre fondos oscuros)
+  brand:       '#7BA1FF',
+  brandMid:    '#5B85F0',
+  brandDark:   '#0F2563',
+  brandSoft:   'rgba(123,161,255,0.16)',
+  brandLight:  'rgba(123,161,255,0.12)',
+  brandBorder: 'rgba(123,161,255,0.32)',
 
-  // Acentos
+  // Acentos del diseño
+  navy:        '#7BA1FF',
+  navyDeep:    '#0F2563',
   lime:        '#B4F26C',
   limeDark:    '#A4E36A',
+  limeDeep:    '#A4E36A',
   limeSoft:    'rgba(180,242,108,0.14)',
   limeLight:   'rgba(180,242,108,0.10)',
+  red:         '#FB7185',
+  redDeep:     '#E63946',
   pink:        '#F472B6',
   coral:       '#FB8C5C',
   coralSoft:   'rgba(251,140,92,0.16)',
@@ -139,41 +151,43 @@ export const DARK = {
   roseBorder:  'rgba(244,114,182,0.32)',
   roseLight:   'rgba(244,114,182,0.10)',
 
-  // Superficies — niveles de elevación bien diferenciados
-  canvas:       '#0D1F18',     // fondo de página (no negro puro, verde-petróleo)
-  surface:      '#152C23',     // tarjetas (claramente más claro que canvas)
-  surfaceAlt:   '#1B362C',     // inputs, hover
-  surfaceHov:   '#214035',
-  surfaceHover: '#214035',
-  surfaceElev:  '#1F3A2F',     // modales (más elevados)
+  // Superficies — navy oscuro estratificado
+  canvas:       '#0A0F1F',
+  surface:      '#141A2E',
+  surfaceAlt:   '#0E1426',
+  surfaceHov:   '#1B2342',
+  surfaceHover: '#1B2342',
+  surfaceElev:  '#1A2238',
 
-  // Sidebar (verde profundo, MÁS oscuro que canvas)
-  sidebar:       '#081813',
+  // Sidebar
+  sidebar:       '#06091A',
   sidebarBorder: 'rgba(255,255,255,0.06)',
-  sidebarActive: 'rgba(77,212,147,0.16)',
-  sidebarText:   '#8DAA9C',
-  sidebarTextHi: '#EAF5EE',
+  sidebarActive: 'rgba(123,161,255,0.16)',
+  sidebarText:   '#9AAAD1',
+  sidebarTextHi: '#EAEFFA',
 
   // Texto — alto contraste
-  ink:       '#F0F7F3',
-  ink2:      '#C8DCD0',
-  ink3:      '#92AC9F',
-  muted:     '#647C72',
-  text:      '#F0F7F3',
-  textSec:   '#C8DCD0',
-  textTer:   '#92AC9F',
-  textMuted: '#647C72',
-  onBrand:   '#08170F',
+  ink:       '#FAF7F0',
+  ink2:      'rgba(250,247,240,0.78)',
+  ink3:      'rgba(250,247,240,0.55)',
+  inkSoft:   'rgba(250,247,240,0.78)',
+  inkMuted:  'rgba(250,247,240,0.55)',
+  muted:     'rgba(250,247,240,0.45)',
+  text:      '#FAF7F0',
+  textSec:   'rgba(250,247,240,0.78)',
+  textTer:   'rgba(250,247,240,0.55)',
+  textMuted: 'rgba(250,247,240,0.45)',
+  onBrand:   '#06091A',
 
-  // Bordes — un poco más visibles para definir mejor las cards
-  line:        'rgba(255,255,255,0.08)',
-  lineStrong:  'rgba(255,255,255,0.16)',
-  border:      'rgba(255,255,255,0.08)',
+  // Bordes
+  line:        'rgba(255,255,255,0.10)',
+  lineStrong:  'rgba(255,255,255,0.18)',
+  border:      'rgba(255,255,255,0.10)',
   borderSub:   'rgba(255,255,255,0.05)',
   borderMed:   'rgba(255,255,255,0.13)',
   borderStr:   'rgba(255,255,255,0.20)',
 
-  // Semánticos — mejor contraste
+  // Semánticos
   success:       '#86EFAC',
   successBg:     'rgba(34,197,94,0.16)',
   successBorder: 'rgba(34,197,94,0.40)',
@@ -194,18 +208,18 @@ export const DARK = {
   goldBg:     'rgba(251,191,36,0.14)',
   goldBorder: 'rgba(251,191,36,0.36)',
 
-  // Morado (consultas médicas) — adaptado a dark
+  // Morado
   purple:       '#C084FC',
   purpleDeep:   '#A855F7',
   purpleSoft:   'rgba(192,132,252,0.08)',
   purpleBg:     'rgba(192,132,252,0.16)',
   purpleBorder: 'rgba(192,132,252,0.32)',
 
-  // Sombras — sutiles pero presentes
+  // Sombras
   shadowSm: '0 1px 3px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)',
   shadowMd: '0 8px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)',
   shadowLg: '0 24px 56px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.05)',
-  glow:     '0 0 0 4px rgba(77,212,147,0.22), 0 0 24px rgba(77,212,147,0.18)',
+  glow:     '0 0 0 4px rgba(123,161,255,0.22), 0 0 24px rgba(123,161,255,0.18)',
 };
 
 /* ─── Legacy T (compatibilidad con imports antiguos) ─────────────────────── */

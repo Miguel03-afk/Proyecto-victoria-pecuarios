@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+out/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Env y secretos
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Claude (auto-memory + contexto generado, no compartir)
+.claude/
+
+# Uploads del backend (datos de usuarios, no versionar)
+backend/uploads/
+
+# Coverage / temp
+coverage/
+.nyc_output/
+*.tmp
+.cache/
+
+# Carpetas de referencia que no van al repo
+victoria-pets/

@@ -399,57 +399,104 @@ function Dashboard() {
         gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
         gap: 14,
       }}>
-        {KPIs_PDF.map(kpi => (
-          <div key={kpi.label} style={{
-            background: T.surface,
-            border: `1px solid ${T.border}`,
-            borderRadius: 14,
-            padding: 18,
-            position: "relative",
-            overflow: "hidden",
-          }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 500, color: T.textTer }}>
-                {kpi.label}
-              </p>
-              {kpi.spark && kpi.spark.length > 1 && (
-                <div style={{ width: 70, height: 28, marginLeft: 8 }}>
-                  <SparkLine data={kpi.spark} dataKey="v" color={kpi.sparkColor} height={28}/>
-                </div>
-              )}
-            </div>
-            <div style={{
-              fontFamily: font.display,
-              fontWeight: 700, fontSize: 28,
-              color: T.text, letterSpacing: -0.5,
-              marginBottom: 6, lineHeight: 1.1,
-            }}>
-              {kpi.value}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: T.textTer, flexWrap: "wrap" }}>
-              {kpi.tendencia && (
-                <span style={{
-                  padding: "2px 7px", borderRadius: 999,
-                  background: kpi.tendencia.startsWith("+") || kpi.tendencia.startsWith("▲") ? T.successBg : T.dangerBg,
-                  color: kpi.tendencia.startsWith("+") || kpi.tendencia.startsWith("▲") ? T.success : T.danger,
-                  fontSize: 10, fontWeight: 700,
+        {KPIs_PDF.map((kpi, idx) => {
+          const accents = [T.navy || '#1E3A8A', T.lime || '#7BC142', T.purple || '#9B5DE5', T.red || '#E63946'];
+          const accent = accents[idx % accents.length];
+          return (
+            <div key={kpi.label}
+              className="vp-kpi-card"
+              style={{
+                background: T.surface,
+                border: `1px solid ${T.border}`,
+                borderRadius: 18,
+                padding: 22,
+                position: "relative",
+                overflow: "hidden",
+                transition: "transform 240ms cubic-bezier(0.16,1,0.3,1), box-shadow 240ms ease, border-color 240ms ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-3px)";
+                e.currentTarget.style.boxShadow = `0 22px 44px -22px ${accent}55`;
+                e.currentTarget.style.borderColor = `${accent}55`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+                e.currentTarget.style.borderColor = T.border;
+              }}
+            >
+              {/* Accent bar */}
+              <div aria-hidden="true" style={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+                background: `linear-gradient(90deg, ${accent} 0%, ${accent}00 100%)`,
+              }}/>
+              {/* Decorative blob */}
+              <div aria-hidden="true" style={{
+                position: 'absolute', top: -40, right: -40,
+                width: 140, height: 140, borderRadius: 999,
+                background: `radial-gradient(circle, ${accent}11 0%, transparent 70%)`,
+                pointerEvents: 'none',
+              }}/>
+
+              <div style={{
+                display: "flex", alignItems: "flex-start",
+                justifyContent: "space-between", marginBottom: 12,
+                position: 'relative', zIndex: 1,
+              }}>
+                <p style={{
+                  margin: 0, fontSize: 10, fontWeight: 800,
+                  letterSpacing: '0.16em', textTransform: 'uppercase',
+                  color: accent,
                 }}>
-                  {kpi.tendencia.startsWith("-") ? "▼" : "▲"} {kpi.tendencia.replace(/[+%▲▼]/g, "")}%
-                </span>
-              )}
-              {kpi.tag && (
-                <span style={{
-                  padding: "2px 8px", borderRadius: 6,
-                  background: T.coralSoft, color: T.coral,
-                  fontSize: 10, fontWeight: 700,
-                }}>
-                  {kpi.tag}
-                </span>
-              )}
-              <span>{kpi.sub}</span>
+                  {kpi.label}
+                </p>
+                {kpi.spark && kpi.spark.length > 1 && (
+                  <div style={{ width: 72, height: 30, marginLeft: 8 }}>
+                    <SparkLine data={kpi.spark} dataKey="v" color={kpi.sparkColor || accent} height={30}/>
+                  </div>
+                )}
+              </div>
+              <div style={{
+                fontFamily: font.display, fontStyle: 'italic',
+                fontWeight: 500, fontSize: 34,
+                color: T.text, letterSpacing: -0.6,
+                marginBottom: 8, lineHeight: 1.05,
+                fontVariantNumeric: 'tabular-nums',
+                position: 'relative', zIndex: 1,
+              }}>
+                {kpi.value}
+              </div>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                fontSize: 11, color: T.textTer, flexWrap: "wrap",
+                position: 'relative', zIndex: 1,
+              }}>
+                {kpi.tendencia && (
+                  <span style={{
+                    padding: "3px 10px", borderRadius: 999,
+                    background: kpi.tendencia.startsWith("+") || kpi.tendencia.startsWith("▲") ? T.successBg : T.dangerBg,
+                    color: kpi.tendencia.startsWith("+") || kpi.tendencia.startsWith("▲") ? T.success : T.danger,
+                    fontSize: 10, fontWeight: 800,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {kpi.tendencia.startsWith("-") ? "▼" : "▲"} {kpi.tendencia.replace(/[+%▲▼]/g, "")}%
+                  </span>
+                )}
+                {kpi.tag && (
+                  <span style={{
+                    padding: "3px 10px", borderRadius: 999,
+                    background: `${accent}15`, color: accent,
+                    fontSize: 10, fontWeight: 800,
+                    letterSpacing: '0.04em',
+                  }}>
+                    {kpi.tag}
+                  </span>
+                )}
+                <span>{kpi.sub}</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── Fila chart + canales ── */}
@@ -2931,21 +2978,44 @@ export default function Admin() {
         {/* Logo */}
         <div className="px-3 py-4" style={{borderBottom:`1px solid ${T.sidebarBorder}`}}>
           {!collapsed
-            ? <Link to="/" className="flex items-center gap-2.5 group" style={{textDecoration:"none"}}>
-                <img src={logoVP} alt="Victoria Pets"
-                  style={{width:36,height:36,borderRadius:10,objectFit:"cover",border:"2px solid rgba(196,232,213,0.25)",flexShrink:0,transition:"border-color 0.2s"}}
-                  onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(196,232,213,0.55)"}
-                  onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(196,232,213,0.25)"}
-                />
-                <div>
-                  <p className="text-sm font-bold leading-none" style={{color:T.sidebarTextHi,fontFamily:font.display,fontStyle:"italic"}}>Victoria Pets</p>
-                  <p style={{fontSize:9,letterSpacing:1.8,textTransform:"uppercase",color:T.sidebarText,marginTop:3,fontWeight:700}}>Panel Admin</p>
+            ? <Link to="/" className="flex items-center gap-3" style={{textDecoration:"none"}}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                  background: `linear-gradient(135deg, ${T.lime || '#7BC142'} 0%, ${T.navy || '#1E3A8A'} 100%)`,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontWeight: 800, fontSize: 15,
+                  fontFamily: font.display, fontStyle: 'italic',
+                  boxShadow: `0 6px 14px -6px ${T.lime || '#7BC142'}66`,
+                }}>
+                  VP
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+                  <span style={{
+                    fontFamily: font.display, fontStyle: 'italic',
+                    fontSize: 18, fontWeight: 600,
+                    color: T.sidebarTextHi, letterSpacing: '-0.02em',
+                  }}>
+                    Victoria
+                  </span>
+                  <span style={{
+                    fontSize: 9, fontWeight: 800, letterSpacing: '0.22em',
+                    color: T.lime || '#7BC142', textTransform: 'uppercase',
+                    marginTop: 5,
+                  }}>
+                    Panel Admin
+                  </span>
                 </div>
               </Link>
             : <Link to="/" className="flex justify-center" style={{textDecoration:"none"}}>
-                <img src={logoVP} alt="Victoria Pets"
-                  style={{width:34,height:34,borderRadius:10,objectFit:"cover",border:"2px solid rgba(196,232,213,0.25)"}}
-                />
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: `linear-gradient(135deg, ${T.lime || '#7BC142'} 0%, ${T.navy || '#1E3A8A'} 100%)`,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontWeight: 800, fontSize: 13,
+                  fontFamily: font.display, fontStyle: 'italic',
+                }}>
+                  VP
+                </div>
               </Link>
           }
         </div>
@@ -3017,13 +3087,26 @@ export default function Admin() {
 
       {/* Contenido */}
       <main className="vp-admin-main flex-1 min-w-0 flex flex-col">
-        <header className="px-8 py-4 flex items-center justify-between"
+        <header className="px-8 py-5 flex items-center justify-between"
           style={{background:T.surface,borderBottom:`1px solid ${T.border}`}}>
           <div>
-            <h1 className="text-base font-bold" style={{color:T.text,fontFamily:font.display}}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              fontSize: 9, fontWeight: 800, letterSpacing: '0.18em',
+              textTransform: 'uppercase', color: T.lime, marginBottom: 4,
+            }}>
+              <span style={{ width: 16, height: 1, backgroundColor: T.lime }} />
+              {seccion === "dashboard" ? "Panel principal" : "Sección"}
+            </div>
+            <h1 style={{
+              margin: 0,
+              fontFamily: font.display, fontStyle: 'italic',
+              fontWeight: 500, fontSize: 22,
+              color: T.text, letterSpacing: -0.3, lineHeight: 1.1,
+            }}>
               {TITULOS[seccion]}
             </h1>
-            <p className="text-xs mt-0.5" style={{color:T.textMuted}}>
+            <p className="text-xs mt-1" style={{color:T.textMuted}}>
               {new Date().toLocaleDateString("es-CO",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
             </p>
           </div>

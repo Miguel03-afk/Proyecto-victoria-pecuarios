@@ -22,15 +22,16 @@ function Campo({ label, value, onChange, type = "text", placeholder, required, h
   const { C } = useTheme();
   const [focused, setFocused] = useState(false);
   const Tag = rows ? "textarea" : "input";
+  const navy = C.navy || C.brand;
   return (
     <div>
       <label style={{
-        display: "block", fontSize: 10, fontWeight: 700,
-        textTransform: "uppercase", letterSpacing: 1,
-        color: focused ? C.brand : C.ink3,
-        marginBottom: 7, transition: "color 0.15s",
+        display: "block", fontSize: 10, fontWeight: 800,
+        textTransform: "uppercase", letterSpacing: "0.16em",
+        color: focused ? navy : (C.inkMuted || C.ink3),
+        marginBottom: 8, transition: "color 0.15s",
       }}>
-        {label}{required && <span style={{ color: C.danger, marginLeft: 4 }}>*</span>}
+        {label}{required && <span style={{ color: C.red || C.danger, marginLeft: 4 }}>*</span>}
       </label>
       <Tag
         type={type}
@@ -42,18 +43,19 @@ function Campo({ label, value, onChange, type = "text", placeholder, required, h
         onBlur={() => setFocused(false)}
         style={{
           width: "100%",
-          height: rows ? "auto" : 44,
-          padding: rows ? "11px 14px" : "0 14px",
-          borderRadius: RADIUS.sm,
-          border: `1px solid ${focused ? C.brand : C.lineStrong}`,
-          background: C.surface, color: C.ink,
-          fontSize: 14, fontFamily: FONT.ui,
+          height: rows ? "auto" : 48,
+          padding: rows ? "12px 16px" : "0 16px",
+          borderRadius: 14,
+          border: `1.5px solid ${focused ? navy : C.border}`,
+          background: focused ? C.surface : C.surfaceAlt,
+          color: C.ink,
+          fontSize: 14, fontFamily: FONT.ui, fontWeight: 500,
           outline: "none", resize: rows ? "vertical" : undefined,
-          transition: "border-color 0.15s, box-shadow 0.15s",
-          boxShadow: focused ? `0 0 0 3px ${C.brand}1f` : "none",
+          transition: "all 200ms ease",
+          boxShadow: focused ? `0 0 0 4px ${navy}15` : "none",
         }}
       />
-      {hint && <p style={{ margin: "6px 0 0", fontSize: 11, color: C.muted }}>{hint}</p>}
+      {hint && <p style={{ margin: "6px 0 0", fontSize: 11, color: C.inkMuted || C.muted }}>{hint}</p>}
     </div>
   );
 }
@@ -63,43 +65,62 @@ const PASOS = ["Datos", "Envío", "Pago"];
 
 function Stepper({ paso }) {
   const { C } = useTheme();
+  const navy     = C.navy     || C.brand;
+  const lime     = C.lime     || '#7BC142';
+  const limeDeep = C.limeDeep || '#5DA328';
+  const inkMuted = C.inkMuted || C.ink3;
   return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "center",
-      gap: 0, marginBottom: 36, flexWrap: "wrap",
+      gap: 0, marginBottom: 48, flexWrap: "wrap",
     }}>
       {PASOS.map((label, i) => {
         const completado = i < paso;
         const activo = i === paso;
         return (
           <div key={i} style={{ display: "flex", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{
-                width: 26, height: 26, borderRadius: "50%",
-                background: completado ? C.brand : activo ? C.brand : C.surfaceAlt,
-                color: completado || activo ? "#fff" : C.muted,
-                border: activo && !completado ? `2px solid ${C.brand}` : "none",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 12, fontWeight: 700,
+                width: 36, height: 36, borderRadius: 999,
+                background: completado ? lime : activo ? navy : C.surfaceAlt,
+                color: completado || activo ? "#fff" : inkMuted,
+                border: activo && !completado ? `2px solid ${navy}` : "none",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                fontSize: 13, fontWeight: 800,
                 fontFamily: FONT.ui,
-                transition: "all 0.2s",
+                transition: "all 0.3s",
+                boxShadow: activo ? `0 8px 18px -8px ${navy}77`
+                  : completado ? `0 8px 18px -8px ${lime}66` : 'none',
+                fontVariantNumeric: 'tabular-nums',
               }}>
-                {completado ? "✓" : i + 1}
+                {completado ? <FontAwesomeIcon icon={faCheck} style={{ fontSize: 12 }}/> : i + 1}
               </div>
-              <span style={{
-                fontSize: 13, fontWeight: activo || completado ? 700 : 500,
-                color: activo || completado ? C.ink : C.ink3,
-                fontFamily: FONT.ui,
-              }}>
-                {label}
-              </span>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 800,
+                  letterSpacing: "0.16em", textTransform: "uppercase",
+                  color: activo || completado ? (completado ? limeDeep : navy) : inkMuted,
+                }}>
+                  Paso {i + 1}
+                </span>
+                <span style={{
+                  fontSize: 14,
+                  fontWeight: activo || completado ? 700 : 500,
+                  color: activo || completado ? C.ink : inkMuted,
+                  fontFamily: FONT.ui,
+                  lineHeight: 1.1,
+                }}>
+                  {label}
+                </span>
+              </div>
             </div>
             {i < PASOS.length - 1 && (
               <div style={{
-                width: 50, height: 1,
-                background: completado ? C.brand : C.lineStrong,
-                margin: "0 14px",
-                transition: "background 0.2s",
+                width: 64, height: 2,
+                background: completado ? lime : C.border,
+                margin: "0 18px",
+                borderRadius: 999,
+                transition: "background 0.3s",
               }}/>
             )}
           </div>

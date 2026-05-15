@@ -1,9 +1,23 @@
-// src/components/CarritoPanel.jsx
+// src/components/CarritoPanel.jsx — drawer lateral premium navy + lime
 import { useNavigate, Link } from "react-router-dom";
 import { useCarrito } from "../context/CarritoContext";
 import { useTheme } from "../styles/ThemeProvider.jsx";
+import { FONT } from "../styles/admin.tokens";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faXmark, faCartShopping, faPaw, faPlus, faMinus, faTrash,
+  faArrowRight, faTruckFast, faTriangleExclamation, faGift,
+} from "@fortawesome/free-solid-svg-icons";
+
+const STATIC = "http://localhost:3000";
 
 const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+
+const imgSrc = (item) => {
+  const url = item.imagen_url || item.imagen;
+  if (!url) return null;
+  return url.startsWith("http") ? url : `${STATIC}${url}`;
+};
 
 export default function CarritoPanel() {
   const { C } = useTheme();
@@ -13,6 +27,14 @@ export default function CarritoPanel() {
     totalItems, totalPrecio, hayNoDisponibles, validando,
   } = useCarrito();
   const navigate = useNavigate();
+
+  const navy     = C.navy     || '#1E3A8A';
+  const navyDeep = C.navyDeep || '#0F2563';
+  const lime     = C.lime     || '#7BC142';
+  const limeDeep = C.limeDeep || '#5DA328';
+  const red      = C.red      || '#E63946';
+  const inkSoft  = C.inkSoft  || C.ink2;
+  const inkMuted = C.inkMuted || C.ink3;
 
   const handleCheckout = () => {
     setAbierto(false);
@@ -31,71 +53,87 @@ export default function CarritoPanel() {
         <div
           onClick={() => setAbierto(false)}
           style={{
-            position:"fixed", inset:0, zIndex:998,
-            background:"rgba(12,24,12,0.5)",
-            backdropFilter:"blur(3px)",
-            transition:"opacity 0.3s",
+            position: "fixed", inset: 0, zIndex: 998,
+            background: "rgba(10,20,38,0.55)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            transition: "opacity 0.3s",
           }}
         />
       )}
 
       {/* Panel */}
       <aside style={{
-        position:"fixed", top:0, right:0, bottom:0,
-        width:"100%", maxWidth:400, zIndex:999,
-        display:"flex", flexDirection:"column",
-        background:C.surface,
-        boxShadow:"-8px 0 40px rgba(12,24,12,0.18)",
+        position: "fixed", top: 0, right: 0, bottom: 0,
+        width: "100%", maxWidth: 440, zIndex: 999,
+        display: "flex", flexDirection: "column",
+        background: C.surface,
+        fontFamily: FONT.ui,
+        boxShadow: "-24px 0 60px -20px rgba(10,20,38,0.35)",
         transform: abierto ? "translateX(0)" : "translateX(100%)",
-        transition:"transform 0.35s cubic-bezier(0.4,0,0.2,1)",
+        transition: "transform 0.4s cubic-bezier(0.16,1,0.3,1)",
       }}>
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div style={{
-          display:"flex", alignItems:"center", justifyContent:"space-between",
-          padding:"18px 20px",
-          borderBottom:`1px solid ${C.border}`,
-          background:C.surface,
-          flexShrink:0,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "20px 24px",
+          borderBottom: `1px solid ${C.border}`,
+          background: C.surface,
+          flexShrink: 0,
         }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
             <div style={{
-              width:36, height:36, borderRadius:10,
-              background:C.brandLight,
-              display:"flex", alignItems:"center", justifyContent:"center",
-              fontSize:18,
-            }}>🛒</div>
-            <div>
-              <h2 style={{ margin:0, fontSize:15, fontWeight:700, color:C.text }}>Tu carrito</h2>
+              width: 40, height: 40, borderRadius: 12,
+              background: `linear-gradient(135deg, ${lime} 0%, ${navy} 100%)`,
+              color: '#fff',
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}>
+              <FontAwesomeIcon icon={faCartShopping} style={{ fontSize: 16 }} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{
+                margin: 0, fontSize: 16, fontWeight: 700, color: C.ink,
+                fontFamily: FONT.display, fontStyle: 'italic',
+              }}>
+                Tu carrito
+              </h2>
               {validando ? (
-                <span style={{ fontSize:11, color:C.textMuted }}>Verificando stock...</span>
+                <span style={{ fontSize: 11, color: inkMuted }}>Verificando stock…</span>
               ) : (
-                <span style={{ fontSize:11, color:C.textMuted }}>
-                  {totalItems > 0 ? `${totalItems} producto${totalItems!==1?"s":""} disponible${totalItems!==1?"s":""}` : "Vacío"}
+                <span style={{ fontSize: 11, color: inkMuted }}>
+                  {totalItems > 0
+                    ? `${totalItems} producto${totalItems !== 1 ? "s" : ""}`
+                    : "Vacío por ahora"}
                 </span>
               )}
             </div>
             {totalItems > 0 && (
               <div style={{
-                background:C.brand, color:"#fff",
-                fontSize:11, fontWeight:800,
-                width:20, height:20, borderRadius:"50%",
-                display:"flex", alignItems:"center", justifyContent:"center",
+                background: navy, color: "#fff",
+                fontSize: 11, fontWeight: 800,
+                minWidth: 22, height: 22, borderRadius: 999,
+                padding: '0 7px',
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                fontVariantNumeric: 'tabular-nums', marginLeft: 4,
               }}>
                 {totalItems}
               </div>
             )}
           </div>
 
-          <div style={{ display:"flex", gap:6 }}>
+          <div style={{ display: "flex", gap: 8 }}>
             {items.length > 0 && (
               <button
                 onClick={vaciar}
+                title="Vaciar carrito"
                 style={{
-                  fontSize:12, color:C.danger, background:C.dangerBg,
-                  border:`1px solid ${C.dangerBorder}`,
-                  borderRadius:8, padding:"5px 10px",
-                  cursor:"pointer", fontWeight:600, transition:"all 0.15s",
+                  fontSize: 11, color: red, background: `${red}10`,
+                  border: `1px solid ${red}33`,
+                  borderRadius: 999, padding: "6px 12px",
+                  cursor: "pointer", fontWeight: 700, fontFamily: 'inherit',
+                  transition: "all 0.15s",
                 }}
               >
                 Vaciar
@@ -103,40 +141,53 @@ export default function CarritoPanel() {
             )}
             <button
               onClick={() => setAbierto(false)}
+              aria-label="Cerrar"
               style={{
-                width:32, height:32, borderRadius:9,
-                border:`1px solid ${C.border}`,
-                background:C.surfaceAlt, cursor:"pointer",
-                fontSize:18, color:C.textTer, display:"flex",
-                alignItems:"center", justifyContent:"center",
-                transition:"all 0.15s",
+                width: 36, height: 36, borderRadius: 999,
+                border: `1px solid ${C.border}`,
+                background: C.surfaceAlt, cursor: "pointer",
+                color: C.ink,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.15s",
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = C.brandLight; e.currentTarget.style.color = C.brand; }}
-              onMouseLeave={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.textTer; }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = navy;
+                e.currentTarget.style.color = '#fff';
+                e.currentTarget.style.transform = 'rotate(90deg)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = C.surfaceAlt;
+                e.currentTarget.style.color = C.ink;
+                e.currentTarget.style.transform = 'rotate(0)';
+              }}
             >
-              ×
+              <FontAwesomeIcon icon={faXmark} style={{ fontSize: 14 }} />
             </button>
           </div>
         </div>
 
-        {/* ── Alerta no disponibles ── */}
+        {/* Alerta no disponibles */}
         {hayNoDisponibles && (
           <div style={{
-            margin:"12px 16px 0",
-            padding:"10px 14px",
-            background:C.dangerBg, border:`1px solid ${C.dangerBorder}`,
-            borderRadius:10, display:"flex", alignItems:"center",
-            justifyContent:"space-between", gap:8, flexShrink:0,
+            margin: "14px 20px 0",
+            padding: "12px 16px",
+            background: `${red}10`, border: `1px solid ${red}33`,
+            borderRadius: 14, display: "flex", alignItems: "center",
+            justifyContent: "space-between", gap: 10, flexShrink: 0,
           }}>
-            <p style={{ margin:0, fontSize:12, color:C.danger, fontWeight:500 }}>
-              ⚠️ Hay productos sin stock o no disponibles
-            </p>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <FontAwesomeIcon icon={faTriangleExclamation} style={{ color: red, fontSize: 13 }} />
+              <p style={{ margin: 0, fontSize: 12, color: red, fontWeight: 600 }}>
+                Hay productos sin stock
+              </p>
+            </div>
             <button
               onClick={quitarNoDisponibles}
               style={{
-                fontSize:12, color:C.danger, background:"none",
-                border:"none", cursor:"pointer", fontWeight:700,
-                textDecoration:"underline", flexShrink:0, padding:0,
+                fontSize: 11, color: red, background: "transparent",
+                border: 'none', cursor: "pointer", fontWeight: 700,
+                textDecoration: "underline", flexShrink: 0, padding: 0,
+                fontFamily: 'inherit',
               }}
             >
               Quitar
@@ -144,27 +195,29 @@ export default function CarritoPanel() {
           </div>
         )}
 
-        {/* ── Items ── */}
-        <div style={{ flex:1, overflowY:"auto", padding:"8px 0" }}>
+        {/* Items */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "12px 0" }}>
           {items.length === 0 ? (
             <div style={{
-              display:"flex", flexDirection:"column",
-              alignItems:"center", justifyContent:"center",
-              height:"100%", gap:12, padding:32, textAlign:"center",
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              height: "100%", gap: 16, padding: 32, textAlign: "center",
             }}>
               <div style={{
-                width:80, height:80, borderRadius:20,
-                background:C.brandLight,
-                display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:40,
+                width: 80, height: 80, borderRadius: 22,
+                background: `${navy}10`, color: navy,
+                display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                🛒
+                <FontAwesomeIcon icon={faCartShopping} style={{ fontSize: 30 }} />
               </div>
               <div>
-                <p style={{ margin:"0 0 4px", fontWeight:700, color:C.text, fontSize:15 }}>
+                <p style={{
+                  margin: "0 0 6px", fontWeight: 500, color: C.ink, fontSize: 18,
+                  fontFamily: FONT.display, fontStyle: 'italic',
+                }}>
                   Tu carrito está vacío
                 </p>
-                <p style={{ margin:0, fontSize:13, color:C.textMuted }}>
+                <p style={{ margin: 0, fontSize: 13, color: inkMuted }}>
                   Agrega productos para comenzar
                 </p>
               </div>
@@ -172,172 +225,199 @@ export default function CarritoPanel() {
                 to="/tienda"
                 onClick={() => setAbierto(false)}
                 style={{
-                  display:"inline-block", marginTop:4, padding:"10px 24px", borderRadius:12,
-                  background:C.brand, color:"#fff",
-                  textDecoration:"none", fontSize:13, fontWeight:700,
+                  display: "inline-flex", alignItems: 'center', gap: 8,
+                  marginTop: 4, padding: "12px 24px", borderRadius: 999,
+                  background: navy, color: "#fff",
+                  textDecoration: "none", fontSize: 13, fontWeight: 700,
+                  boxShadow: `0 12px 24px -10px ${navy}66`,
+                  transition: 'all 200ms ease',
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = navyDeep)}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = navy)}
               >
-                Explorar tienda
+                Explorar tienda <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 11 }} />
               </Link>
             </div>
           ) : (
-            <div style={{ padding:"8px 16px", display:"flex", flexDirection:"column", gap:8 }}>
+            <div style={{ padding: "8px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
               {items.map(item => {
-                const noDisp  = item.activo === false || item.stock === 0;
+                const noDisp = item.activo === false || item.stock === 0;
                 const subtotal = item.precio * item.cantidad;
+                const img = imgSrc(item);
 
                 return (
                   <div
                     key={item.id}
                     style={{
-                      display:"flex", gap:12, padding:"12px 14px",
-                      borderRadius:14,
-                      border:`1px solid ${noDisp ? C.dangerBorder : C.border}`,
-                      background: noDisp ? C.dangerBg : C.surfaceAlt,
-                      transition:"all 0.2s",
+                      display: "flex", gap: 12, padding: 12,
+                      borderRadius: 16,
+                      border: `1px solid ${noDisp ? `${red}33` : C.border}`,
+                      background: noDisp ? `${red}08` : C.surface,
+                      transition: "all 0.2s",
                     }}
                   >
                     {/* Imagen */}
                     <div
                       onClick={() => irAProducto(item.slug)}
                       style={{
-                        width:60, height:60, borderRadius:10,
-                        background: noDisp ? "#fef2f2" : C.brandLight,
-                        border:`1px solid ${noDisp ? C.dangerBorder : C.brandBorder}`,
-                        display:"flex", alignItems:"center", justifyContent:"center",
-                        flexShrink:0, overflow:"hidden", cursor:"pointer",
+                        width: 72, height: 72, borderRadius: 12,
+                        background: C.surfaceAlt,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        flexShrink: 0, overflow: "hidden", cursor: "pointer",
                       }}
                     >
-                      {item.imagen_url ? (
+                      {img ? (
                         <img
-                          src={item.imagen_url} alt={item.nombre}
-                          style={{ width:"100%", height:"100%", objectFit:"contain", padding:4 }}
-                          onError={e => { e.target.style.display="none"; }}
+                          src={img} alt={item.nombre}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          onError={(e) => { e.target.style.display = "none"; }}
                         />
                       ) : (
-                        <span style={{ fontSize:22 }}>🐾</span>
+                        <FontAwesomeIcon icon={faPaw} style={{ fontSize: 22, color: inkMuted, opacity: 0.5 }} />
                       )}
                     </div>
 
                     {/* Info */}
-                    <div style={{ flex:1, minWidth:0 }}>
-                      {/* Badges estado */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       {noDisp && (
                         <span style={{
-                          display:"inline-block", marginBottom:4,
-                          fontSize:10, fontWeight:700, color:C.danger,
-                          background:"#fecaca", padding:"2px 7px",
-                          borderRadius:6, letterSpacing:0.3,
+                          display: "inline-block", marginBottom: 4,
+                          fontSize: 9, fontWeight: 800, color: red,
+                          background: `${red}1F`, padding: "2px 8px",
+                          borderRadius: 999, letterSpacing: "0.08em",
+                          textTransform: 'uppercase',
                         }}>
-                          {item.stock === 0 ? "SIN STOCK" : "NO DISPONIBLE"}
+                          {item.stock === 0 ? "Sin stock" : "No disponible"}
                         </span>
                       )}
 
                       <p
                         onClick={() => irAProducto(item.slug)}
                         style={{
-                          margin:"0 0 4px", fontSize:12, fontWeight:600,
-                          color: noDisp ? C.textMuted : C.text,
-                          cursor:"pointer", lineHeight:1.35,
-                          display:"-webkit-box", WebkitLineClamp:2,
-                          WebkitBoxOrient:"vertical", overflow:"hidden",
-                          transition:"color 0.15s",
+                          margin: "0 0 6px", fontSize: 13, fontWeight: 600,
+                          color: noDisp ? inkMuted : C.ink,
+                          cursor: "pointer", lineHeight: 1.35,
+                          display: "-webkit-box", WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical", overflow: "hidden",
+                          transition: "color 0.15s",
                         }}
-                        onMouseEnter={e => { if (!noDisp) e.target.style.color = C.brand; }}
-                        onMouseLeave={e => { e.target.style.color = noDisp ? C.textMuted : C.text; }}
+                        onMouseEnter={(e) => { if (!noDisp) e.target.style.color = navy; }}
+                        onMouseLeave={(e) => { e.target.style.color = noDisp ? inkMuted : C.ink; }}
                       >
                         {item.nombre}
                       </p>
 
-                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                        {/* Precio */}
+                      <div style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                      }}>
                         <span style={{
-                          fontSize:14, fontWeight:800,
-                          color: noDisp ? C.textMuted : C.brand,
-                          fontFamily:"'JetBrains Mono',monospace",
+                          fontSize: 15, fontWeight: 700,
+                          color: noDisp ? inkMuted : C.ink,
+                          fontFamily: FONT.display,
+                          fontVariantNumeric: 'tabular-nums',
                         }}>
                           {fmt(item.precio)}
                         </span>
-
-                        {/* Subtotal */}
                         {!noDisp && item.cantidad > 1 && (
-                          <span style={{ fontSize:11, color:C.textMuted }}>
-                            = {fmt(subtotal)}
+                          <span style={{
+                            fontSize: 11, color: inkMuted,
+                            fontVariantNumeric: 'tabular-nums',
+                          }}>
+                            ={" "}{fmt(subtotal)}
                           </span>
                         )}
                       </div>
 
-                      {/* Controles de cantidad */}
-                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:8 }}>
+                      {/* Controles */}
+                      <div style={{
+                        display: "flex", alignItems: "center",
+                        justifyContent: "space-between", marginTop: 10,
+                      }}>
                         <div style={{
-                          display:"flex", alignItems:"center", gap:4,
-                          background: noDisp ? "transparent" : C.surface,
-                          border:`1px solid ${noDisp ? "transparent" : C.border}`,
-                          borderRadius:9, padding:"2px",
+                          display: "flex", alignItems: "center", gap: 2,
+                          background: noDisp ? "transparent" : C.surfaceAlt,
+                          border: `1px solid ${noDisp ? "transparent" : C.border}`,
+                          borderRadius: 999, padding: 2,
                           opacity: noDisp ? 0.4 : 1,
                           pointerEvents: noDisp ? "none" : "auto",
                         }}>
                           <button
                             onClick={() => cambiarCantidad(item.id, -1)}
+                            aria-label="Disminuir"
                             style={{
-                              width:26, height:26, borderRadius:7, border:"none",
-                              background:"transparent", cursor:"pointer",
-                              color:C.brand, fontSize:16, fontWeight:700,
-                              display:"flex", alignItems:"center", justifyContent:"center",
-                              transition:"all 0.15s",
+                              width: 28, height: 28, borderRadius: 999, border: "none",
+                              background: "transparent", cursor: "pointer",
+                              color: C.ink, fontSize: 11,
+                              display: "inline-flex", alignItems: "center", justifyContent: "center",
+                              transition: "all 0.15s",
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.background = C.brandLight; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = C.surface)}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                           >
-                            −
+                            <FontAwesomeIcon icon={faMinus} />
                           </button>
                           <span style={{
-                            fontSize:13, fontWeight:700, color:C.text,
-                            minWidth:20, textAlign:"center",
-                            fontFamily:"monospace",
+                            fontSize: 13, fontWeight: 700, color: C.ink,
+                            minWidth: 22, textAlign: "center",
+                            fontVariantNumeric: 'tabular-nums',
                           }}>
                             {item.cantidad}
                           </span>
                           <button
                             onClick={() => cambiarCantidad(item.id, +1)}
                             disabled={item.cantidad >= item.stock}
+                            aria-label="Aumentar"
                             style={{
-                              width:26, height:26, borderRadius:7, border:"none",
-                              background:"transparent", cursor:"pointer",
-                              color:C.brand, fontSize:16, fontWeight:700,
-                              display:"flex", alignItems:"center", justifyContent:"center",
+                              width: 28, height: 28, borderRadius: 999, border: "none",
+                              background: "transparent",
+                              cursor: item.cantidad >= item.stock ? "not-allowed" : "pointer",
+                              color: C.ink, fontSize: 11,
+                              display: "inline-flex", alignItems: "center", justifyContent: "center",
                               opacity: item.cantidad >= item.stock ? 0.3 : 1,
-                              transition:"all 0.15s",
+                              transition: "all 0.15s",
                             }}
-                            onMouseEnter={e => { if (item.cantidad < item.stock) e.currentTarget.style.background = C.brandLight; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                            onMouseEnter={(e) => {
+                              if (item.cantidad < item.stock) e.currentTarget.style.backgroundColor = C.surface;
+                            }}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                           >
-                            +
+                            <FontAwesomeIcon icon={faPlus} />
                           </button>
                         </div>
 
-                        {/* Stock restante */}
                         {!noDisp && item.stock <= 5 && (
-                          <span style={{ fontSize:10, color:"#d97706", fontWeight:600 }}>
-                            {item.stock} en stock
+                          <span style={{
+                            fontSize: 10, color: red, fontWeight: 700,
+                            letterSpacing: '0.04em',
+                          }}>
+                            ¡Solo {item.stock}!
                           </span>
                         )}
 
-                        {/* Eliminar */}
                         <button
                           onClick={() => quitar(item.id)}
+                          aria-label="Quitar"
                           style={{
-                            width:28, height:28, borderRadius:8, border:`1px solid ${C.border}`,
-                            background:C.surface, cursor:"pointer",
-                            color:C.textMuted, fontSize:14,
-                            display:"flex", alignItems:"center", justifyContent:"center",
-                            transition:"all 0.15s",
+                            width: 32, height: 32, borderRadius: 999,
+                            border: `1px solid ${C.border}`,
+                            background: C.surface, cursor: "pointer",
+                            color: inkMuted, fontSize: 12,
+                            display: "inline-flex", alignItems: "center", justifyContent: "center",
+                            transition: "all 0.15s",
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.background = C.dangerBg; e.currentTarget.style.color = C.danger; e.currentTarget.style.borderColor = C.dangerBorder; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = C.surface; e.currentTarget.style.color = C.textMuted; e.currentTarget.style.borderColor = C.border; }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = red;
+                            e.currentTarget.style.color = "#fff";
+                            e.currentTarget.style.borderColor = red;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = C.surface;
+                            e.currentTarget.style.color = inkMuted;
+                            e.currentTarget.style.borderColor = C.border;
+                          }}
                           title="Quitar producto"
                         >
-                          🗑
+                          <FontAwesomeIcon icon={faTrash} />
                         </button>
                       </div>
                     </div>
@@ -348,28 +428,41 @@ export default function CarritoPanel() {
           )}
         </div>
 
-        {/* ── Footer con totales ── */}
+        {/* Footer */}
         {items.length > 0 && (
           <div style={{
-            padding:"16px 20px 20px",
-            borderTop:`1px solid ${C.border}`,
-            background:C.surface,
-            flexShrink:0,
+            padding: "20px 24px 24px",
+            borderTop: `1px solid ${C.border}`,
+            background: C.surface,
+            flexShrink: 0,
           }}>
             {/* Resumen */}
-            <div style={{ marginBottom:14, display:"flex", flexDirection:"column", gap:8 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:C.textTer }}>
-                <span>Subtotal ({totalItems} {totalItems===1?"producto":"productos"})</span>
-                <span style={{fontFamily:"monospace"}}>{fmt(totalPrecio)}</span>
+            <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{
+                display: "flex", justifyContent: "space-between",
+                fontSize: 12, color: inkSoft,
+              }}>
+                <span>Subtotal ({totalItems} {totalItems === 1 ? "producto" : "productos"})</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(totalPrecio)}</span>
               </div>
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:C.textTer }}>
+              <div style={{
+                display: "flex", justifyContent: "space-between",
+                fontSize: 12, color: inkSoft,
+              }}>
                 <span>IVA (19%)</span>
-                <span style={{fontFamily:"monospace"}}>{fmt(totalPrecio * 0.19)}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(totalPrecio * 0.19)}</span>
               </div>
-              <div style={{ height:1, background:C.border, margin:"2px 0" }}/>
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:16, fontWeight:800, color:C.text }}>
-                <span>Total</span>
-                <span style={{ color:C.brand, fontFamily:"monospace" }}>
+              <div style={{ height: 1, background: C.border, margin: "4px 0" }} />
+              <div style={{
+                display: "flex", justifyContent: "space-between",
+                alignItems: 'baseline',
+              }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>Total</span>
+                <span style={{
+                  fontSize: 22, fontWeight: 500, color: C.ink,
+                  fontFamily: FONT.display,
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
                   {fmt(totalPrecio * 1.19)}
                 </span>
               </div>
@@ -378,19 +471,29 @@ export default function CarritoPanel() {
             {/* Envío gratis */}
             {totalPrecio >= 80000 ? (
               <div style={{
-                marginBottom:12, padding:"8px 12px", borderRadius:9,
-                background:C.brandLight, border:`1px solid ${C.brandBorder}`,
-                fontSize:12, color:C.brand, fontWeight:600, textAlign:"center",
+                marginBottom: 14, padding: "10px 14px", borderRadius: 12,
+                background: `${lime}15`, border: `1px solid ${lime}55`,
+                fontSize: 12, color: limeDeep, fontWeight: 700, textAlign: "center",
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                gap: 8, width: '100%',
               }}>
-                🎉 ¡Envío gratis aplicado!
+                <FontAwesomeIcon icon={faGift} />
+                ¡Envío gratis aplicado!
               </div>
             ) : (
               <div style={{
-                marginBottom:12, padding:"8px 12px", borderRadius:9,
-                background:C.surfaceAlt,
-                fontSize:12, color:C.textTer, textAlign:"center",
+                marginBottom: 14, padding: "10px 14px", borderRadius: 12,
+                background: C.surfaceAlt,
+                fontSize: 12, color: inkSoft, textAlign: "center",
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                gap: 8, width: '100%',
               }}>
-                Te faltan <strong style={{color:C.brand}}>{fmt(80000 - totalPrecio)}</strong> para envío gratis
+                <FontAwesomeIcon icon={faTruckFast} style={{ color: navy }} />
+                Te faltan{' '}
+                <strong style={{ color: navy, fontVariantNumeric: 'tabular-nums' }}>
+                  {fmt(80000 - totalPrecio)}
+                </strong>
+                {' '}para envío gratis
               </div>
             )}
 
@@ -399,31 +502,40 @@ export default function CarritoPanel() {
               onClick={handleCheckout}
               disabled={hayNoDisponibles || totalItems === 0}
               style={{
-                width:"100%", padding:"13px 0", borderRadius:12, border:"none",
-                background: hayNoDisponibles || totalItems===0 ? C.surfaceAlt : C.brand,
-                color: hayNoDisponibles || totalItems===0 ? C.textMuted : "#fff",
-                fontSize:14, fontWeight:800,
-                cursor: hayNoDisponibles || totalItems===0 ? "default" : "pointer",
-                transition:"all 0.2s", letterSpacing:0.2,
+                width: "100%", padding: "14px 0", borderRadius: 999, border: "none",
+                background: hayNoDisponibles || totalItems === 0 ? C.surfaceAlt : navy,
+                color: hayNoDisponibles || totalItems === 0 ? inkMuted : "#fff",
+                fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
+                cursor: hayNoDisponibles || totalItems === 0 ? "not-allowed" : "pointer",
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                transition: "all 0.2s",
+                boxShadow: hayNoDisponibles || totalItems === 0 ? 'none' : `0 12px 24px -10px ${navy}66`,
               }}
-              onMouseEnter={e => { if (!(hayNoDisponibles || totalItems===0)) e.currentTarget.style.background = C.brandMid; }}
-              onMouseLeave={e => { if (!(hayNoDisponibles || totalItems===0)) e.currentTarget.style.background = C.brand; }}
+              onMouseEnter={(e) => {
+                if (!(hayNoDisponibles || totalItems === 0)) e.currentTarget.style.backgroundColor = navyDeep;
+              }}
+              onMouseLeave={(e) => {
+                if (!(hayNoDisponibles || totalItems === 0)) e.currentTarget.style.backgroundColor = navy;
+              }}
             >
-              {hayNoDisponibles
-                ? "⚠ Retira productos no disponibles"
-                : "Ir al carrito →"}
+              {hayNoDisponibles ? (
+                <><FontAwesomeIcon icon={faTriangleExclamation} /> Retira productos no disponibles</>
+              ) : (
+                <>Ir al checkout <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 11 }} /></>
+              )}
             </button>
 
             <button
               onClick={() => setAbierto(false)}
               style={{
-                width:"100%", padding:"9px 0", marginTop:8,
-                background:"none", border:"none",
-                fontSize:12, color:C.textMuted, cursor:"pointer",
-                transition:"color 0.15s",
+                width: "100%", padding: "10px 0", marginTop: 8,
+                background: "transparent", border: "none",
+                fontSize: 12, color: inkMuted, cursor: "pointer",
+                fontFamily: 'inherit',
+                transition: "color 0.15s",
               }}
-              onMouseEnter={e => { e.currentTarget.style.color = C.text; }}
-              onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = C.ink)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = inkMuted)}
             >
               Seguir comprando
             </button>

@@ -1,6 +1,6 @@
 // src/pages/AgendarCita.jsx
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../styles/ThemeProvider.jsx";
@@ -380,6 +380,8 @@ export default function AgendarCita() {
   const { usuario } = useAuth();
   const navigate    = useNavigate();
 
+  const [searchParams] = useSearchParams();
+
   const [paso,    setPaso]    = useState(1);
   const [vet,     setVet]     = useState(null);
   const [fecha,   setFecha]   = useState("");
@@ -388,6 +390,47 @@ export default function AgendarCita() {
   const [enviando,setEnviando]= useState(false);
   const [error,   setError]   = useState("");
   const [exito,   setExito]   = useState(null); // { codigo }
+
+  // ── Pre-relleno desde query params (?vet=ID&fecha=&hora=&motivo=&mascota=) ──
+  // Al venir desde el landing (HeroLanding, PlanLanding, CTAReservaLanding,
+  // VeterinariosLanding, Equipo) los campos vienen pre-cargados y se intenta
+  // saltar pasos cuando hay datos suficientes.
+  useEffect(() => {
+    if (!usuario) return; // espera a que el usuario esté logueado
+    const vetId    = searchParams.get('vet');
+    const qFecha   = searchParams.get('fecha');
+    const qHora    = searchParams.get('hora');
+    const qMotivo  = searchParams.get('motivo');
+    const qMascota = searchParams.get('mascota');
+
+    let next = 1;
+    if (qFecha)   setFecha(qFecha);
+    if (qHora)    setHora(qHora);
+    if (qMotivo || qMascota) {
+      setForm(s => ({
+        ...s,
+        nombre_mascota: qMascota || s.nombre_mascota,
+        motivo:         qMotivo  || s.motivo,
+      }));
+    }
+
+    if (vetId) {
+      api.get('/citas/veterinarios')
+        .then(r => {
+          const lista = Array.isArray(r.data) ? r.data : [];
+          const found = lista.find(v => String(v.id) === String(vetId));
+          if (found) {
+            setVet(found);
+            // Avanza al paso más adecuado según los datos disponibles
+            if (qFecha && qHora) next = 3;
+            else next = 2;
+            setPaso(next);
+          }
+        })
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario]);
 
   if (!usuario) {
     return (

@@ -1,13 +1,21 @@
-// src/pages/Producto.jsx — Victoria Pets · diseño PDF
+// src/pages/Producto.jsx — Página de detalle de producto · rediseño navy + lime
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useCarrito } from "../context/CarritoContext";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../styles/ThemeProvider.jsx";
-import { FONT, RADIUS } from "../styles/admin.tokens";
+import { FONT } from "../styles/admin.tokens";
+import ProductCard from "../components/ProductCard";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faStar, faPaw, faPlus, faMinus, faHeart, faCheck, faCartShopping,
+  faTruckFast, faShieldHalved, faStethoscope, faLocationDot,
+  faChevronRight, faTriangleExclamation, faBolt,
+} from "@fortawesome/free-solid-svg-icons";
 
 const IVA_PCT = 19;
+const STATIC = "http://localhost:3000";
 
 const fmt = (n) =>
   new Intl.NumberFormat("es-CO", {
@@ -19,27 +27,28 @@ const descPct = (precio, antes) =>
     ? Math.round(((Number(antes) - Number(precio)) / Number(antes)) * 100)
     : null;
 
+const fullUrl = (u) => {
+  if (!u) return null;
+  return u.startsWith("http") ? u : `${STATIC}${u}`;
+};
+
 /* ─── Skeleton ───────────────────────────────────────────────────────────── */
 function Skeleton() {
   const { C } = useTheme();
   const shimmer = `linear-gradient(90deg, ${C.surfaceAlt} 25%, ${C.surface} 50%, ${C.surfaceAlt} 75%)`;
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px" }}>
-      <div style={{
-        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 56,
-      }}>
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "48px 24px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64 }}>
         <div style={{
-          aspectRatio: "1 / 1",
-          borderRadius: RADIUS.lg,
+          aspectRatio: "1 / 1", borderRadius: 24,
           background: shimmer, backgroundSize: "200% 100%",
           animation: "vp-shimmer 1.5s infinite",
         }}/>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           {[60, 88, 40, 100, 70, 50].map((w, i) => (
             <div key={i} style={{
-              height: i === 1 ? 32 : 14,
-              width: `${w}%`,
-              borderRadius: 4,
+              height: i === 1 ? 36 : 14, width: `${w}%`,
+              borderRadius: 6,
               background: shimmer, backgroundSize: "200% 100%",
               animation: "vp-shimmer 1.5s infinite",
             }}/>
@@ -50,106 +59,123 @@ function Skeleton() {
   );
 }
 
-/* ─── Galería (1 grande + 4 thumbs estilo PDF) ───────────────────────────── */
+/* ─── Galería ────────────────────────────────────────────────────────────── */
 function Galeria({ imagenPrincipal, imagenesExtra, nombre }) {
   const { C } = useTheme();
-  const todas = [imagenPrincipal, ...(imagenesExtra || [])].filter(Boolean);
+  const todas = [imagenPrincipal, ...(imagenesExtra || [])].filter(Boolean).map(fullUrl);
   const [activa, setActiva] = useState(0);
+  const [zoom, setZoom] = useState(false);
 
-  const placeholder = `repeating-linear-gradient(135deg, ${C.brandSoft} 0 18px, ${C.surfaceAlt} 18px 36px)`;
+  const navy = C.navy || '#1E3A8A';
+  const lime = C.lime || '#7BC142';
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Imagen principal */}
-      <div style={{
-        position: "relative",
-        aspectRatio: "1 / 1",
-        borderRadius: RADIUS.lg,
-        background: placeholder,
-        overflow: "hidden",
-        border: `1px solid ${C.line}`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}>
+      <div
+        onMouseEnter={() => setZoom(true)}
+        onMouseLeave={() => setZoom(false)}
+        style={{
+          position: "relative",
+          aspectRatio: "1 / 1", borderRadius: 24,
+          backgroundColor: C.surfaceAlt,
+          overflow: "hidden",
+          border: `1px solid ${C.border}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: todas[activa] ? 'zoom-in' : 'default',
+        }}
+      >
         {todas[activa] ? (
           <img
             src={todas[activa]}
             alt={nombre}
             style={{
               width: "100%", height: "100%",
-              objectFit: "contain",
+              objectFit: "cover",
               userSelect: "none",
+              transition: "transform 600ms cubic-bezier(0.16,1,0.3,1)",
+              transform: zoom ? 'scale(1.08)' : 'scale(1)',
             }}
             draggable={false}
           />
         ) : (
-          <span style={{
-            fontFamily: FONT.mono,
-            fontSize: 12, textTransform: "uppercase",
-            letterSpacing: 0.5, padding: "6px 16px",
-            background: "rgba(255,255,255,0.8)",
-            borderRadius: RADIUS.pill,
-            border: `1px dashed ${C.lineStrong}`,
-            color: C.ink3,
+          <div style={{
+            display: "flex", flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            color: C.inkMuted || C.ink3, gap: 12,
           }}>
-            foto principal · {nombre.slice(0, 12)}
-          </span>
+            <FontAwesomeIcon icon={faPaw} style={{ fontSize: 48, opacity: 0.3 }} />
+            <span style={{
+              fontSize: 11, letterSpacing: '0.16em',
+              textTransform: 'uppercase', fontWeight: 700,
+            }}>
+              Sin imagen disponible
+            </span>
+          </div>
         )}
+
+        {/* Decorative blob */}
+        <div aria-hidden="true" style={{
+          position: 'absolute', top: -40, right: -40,
+          width: 160, height: 160, borderRadius: 999,
+          background: `radial-gradient(circle, ${lime}22 0%, transparent 70%)`,
+          pointerEvents: 'none',
+        }}/>
       </div>
 
-      {/* Thumbnails fila 4 columnas */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gap: 10,
-      }}>
-        {[0, 1, 2, 3].map(i => {
-          const img = todas[i + 1] || todas[i] || null;
-          const idx = todas[i + 1] ? i + 1 : i;
-          return (
-            <button key={i}
-              onClick={() => setActiva(idx)}
-              style={{
-                aspectRatio: "1 / 1",
-                borderRadius: RADIUS.md,
-                background: placeholder,
-                overflow: "hidden",
-                border: `1.5px solid ${activa === idx ? C.brand : C.line}`,
-                cursor: "pointer",
-                padding: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "border-color 0.15s",
-              }}>
-              {img ? (
-                <img src={img} alt={`V${i+1}`}
-                  style={{ width: "100%", height: "100%", objectFit: "contain", padding: 4 }}
-                  onError={e => { e.target.style.display = "none"; }}/>
-              ) : (
-                <span style={{
-                  fontFamily: FONT.mono, fontSize: 10,
-                  color: C.muted, letterSpacing: 0.5,
+      {/* Thumbnails fila */}
+      {todas.length > 1 && (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${Math.min(todas.length, 5)}, 1fr)`,
+          gap: 10,
+        }}>
+          {todas.slice(0, 5).map((src, i) => {
+            const activo = i === activa;
+            return (
+              <button key={i} onClick={() => setActiva(i)}
+                style={{
+                  aspectRatio: "1 / 1", borderRadius: 14,
+                  background: C.surfaceAlt,
+                  border: `2px solid ${activo ? navy : C.border}`,
+                  overflow: "hidden", padding: 0,
+                  cursor: "pointer",
+                  transition: "all 200ms ease",
+                  boxShadow: activo ? `0 8px 18px -10px ${navy}55` : 'none',
                 }}>
-                  V{i + 1}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+                {src ? (
+                  <img src={src} alt={`thumb ${i + 1}`}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}/>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
-/* ─── Panel de compra (derecha) ──────────────────────────────────────────── */
+/* ─── Panel de compra ────────────────────────────────────────────────────── */
 function PanelCompra({ producto, variantes }) {
   const { C } = useTheme();
+  const navigate = useNavigate();
   const { agregar } = useCarrito();
   const { usuario } = useAuth();
-  const navigate = useNavigate();
+
   const [varIdx, setVarIdx] = useState(0);
   const [cantidad, setCantidad] = useState(1);
   const [agregado, setAgregado] = useState(false);
   const [favorito, setFavorito] = useState(false);
   const [error, setError] = useState("");
+
+  const navy     = C.navy     || '#1E3A8A';
+  const navyDeep = C.navyDeep || '#0F2563';
+  const lime     = C.lime     || '#7BC142';
+  const red      = C.red      || '#E63946';
+  const purple   = C.purple   || '#9B5DE5';
+  const inkSoft  = C.inkSoft  || C.ink2;
+  const inkMuted = C.inkMuted || C.ink3;
 
   const tieneVariantes = variantes && variantes.length > 0;
   const varActiva = tieneVariantes ? variantes[varIdx] : null;
@@ -189,114 +215,137 @@ function PanelCompra({ producto, variantes }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-
-      {/* Marca eyebrow */}
-      {producto.marca && (
-        <span style={{
-          fontFamily: FONT.mono,
-          fontSize: 11, fontWeight: 700,
-          textTransform: "uppercase", letterSpacing: 2,
-          color: C.brand,
-        }}>
-          {producto.marca}
-        </span>
-      )}
+      {/* Badges row */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {producto.marca && (
+          <span style={{
+            fontSize: 11, fontWeight: 800,
+            textTransform: "uppercase", letterSpacing: "0.18em",
+            color: navy,
+          }}>
+            {producto.marca}
+          </span>
+        )}
+        {dc != null && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '3px 10px', borderRadius: 999,
+            backgroundColor: red, color: '#fff',
+            fontSize: 10, fontWeight: 800,
+          }}>
+            <FontAwesomeIcon icon={faBolt} style={{ fontSize: 9 }} />
+            -{dc}% OFF
+          </span>
+        )}
+        {producto.destacado && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '3px 10px', borderRadius: 999,
+            backgroundColor: lime, color: '#fff',
+            fontSize: 10, fontWeight: 800,
+          }}>
+            <FontAwesomeIcon icon={faStar} style={{ fontSize: 9 }} />
+            DESTACADO
+          </span>
+        )}
+        {producto.uso_clinico && (
+          <span style={{
+            padding: '3px 10px', borderRadius: 999,
+            backgroundColor: purple, color: '#fff',
+            fontSize: 10, fontWeight: 800, letterSpacing: '0.04em',
+          }}>
+            USO CLÍNICO
+          </span>
+        )}
+      </div>
 
       {/* Nombre Playfair */}
       <h1 style={{
-        margin: "-12px 0 0",
+        margin: 0,
         fontFamily: FONT.display,
-        fontWeight: 700,
-        fontSize: "clamp(28px, 4vw, 40px)",
-        lineHeight: 1.05,
-        letterSpacing: -0.6,
+        fontWeight: 500,
+        fontSize: "clamp(28px, 4vw, 44px)",
+        lineHeight: 1.05, letterSpacing: -0.6,
         color: C.ink,
       }}>
         {producto.nombre}
       </h1>
 
-      {/* Stars + reseñas + estado stock */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      {/* Reseñas (decorativas) + stock */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
           {[1,2,3,4,5].map(s => (
-            <span key={s} style={{
-              color: s <= 4 ? "#F59E0B" : C.muted,
-              fontSize: 14,
-            }}>★</span>
+            <FontAwesomeIcon key={s} icon={faStar} style={{
+              color: s <= 4 ? lime : C.border, fontSize: 13,
+            }}/>
           ))}
-          <span style={{ marginLeft: 6, fontSize: 13, color: C.ink2, fontWeight: 500 }}>
-            4.7 · 124 reseñas
+          <span style={{ marginLeft: 6, fontSize: 13, color: C.ink, fontWeight: 600 }}>
+            4.7
+          </span>
+          <span style={{ fontSize: 12, color: inkMuted }}>
+            (124 reseñas)
           </span>
         </div>
-        <span style={{ color: C.line }}>|</span>
+        <span style={{ width: 1, height: 14, backgroundColor: C.border }} />
         <span style={{
           display: "inline-flex", alignItems: "center", gap: 6,
-          padding: "3px 10px", borderRadius: RADIUS.pill,
-          background: hayStock ? C.successBg : C.dangerBg,
-          color: hayStock ? C.success : C.danger,
+          padding: "4px 12px", borderRadius: 999,
+          backgroundColor: hayStock ? `${lime}1F` : `${red}1F`,
+          color: hayStock ? (C.limeDeep || lime) : red,
           fontSize: 11, fontWeight: 700,
         }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }}/>
-          {hayStock ? (stock <= (stockMin || 5) ? `Últimas ${stock}` : "En stock") : "Sin stock"}
+          {hayStock ? (stock <= (stockMin || 5) ? `Últimas ${stock} unidades` : "En stock") : "Sin stock"}
         </span>
       </div>
 
       {/* Precio */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
-        <span style={{
-          fontFamily: FONT.display,
-          fontWeight: 700,
-          fontSize: "clamp(32px, 5vw, 48px)",
-          color: C.ink,
-          letterSpacing: -1,
-          lineHeight: 1,
-        }}>
-          {fmt(precio)}
-        </span>
-        {precAntes > 0 && (
+      <div style={{
+        padding: '20px 0',
+        borderTop: `1px solid ${C.border}`,
+        borderBottom: `1px solid ${C.border}`,
+      }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
           <span style={{
-            fontSize: 16, color: C.muted,
-            textDecoration: "line-through",
-            fontFamily: FONT.mono,
+            fontFamily: FONT.display, fontWeight: 500,
+            fontSize: "clamp(36px, 5vw, 56px)",
+            color: C.ink, letterSpacing: -1, lineHeight: 1,
+            fontVariantNumeric: "tabular-nums",
           }}>
-            {fmt(precAntes)}
+            {fmt(precio)}
           </span>
-        )}
-        {dc && (
-          <span style={{
-            padding: "4px 10px",
-            borderRadius: RADIUS.sm,
-            background: C.coralSoft,
-            color: C.coral,
-            fontSize: 12, fontWeight: 800,
-            fontFamily: FONT.mono,
-          }}>
-            -{dc}%
-          </span>
-        )}
+          {precAntes > 0 && (
+            <span style={{
+              fontSize: 18, color: inkMuted,
+              textDecoration: "line-through",
+              fontVariantNumeric: "tabular-nums",
+            }}>
+              {fmt(precAntes)}
+            </span>
+          )}
+        </div>
+        <p style={{ margin: '6px 0 0', fontSize: 11, color: inkMuted }}>
+          IVA 19% incluido · Total con IVA: <strong style={{ color: C.ink }}>{fmt(total)}</strong>
+        </p>
       </div>
 
       {/* Descripción corta */}
       {producto.descripcion_corta && (
-        <p style={{
-          margin: 0,
-          fontSize: 14, color: C.ink3,
-          lineHeight: 1.6,
-        }}>
+        <p style={{ margin: 0, fontSize: 14, color: inkSoft, lineHeight: 1.6 }}>
           {producto.descripcion_corta}
         </p>
       )}
 
-      {/* Variantes — chips estilo PDF */}
+      {/* Variantes — chips premium */}
       {tieneVariantes && (
         <div>
           <p style={{
-            margin: "0 0 10px",
-            fontSize: 10, fontWeight: 700,
-            textTransform: "uppercase", letterSpacing: 1.5,
-            color: C.ink3,
+            margin: "0 0 12px",
+            fontSize: 10, fontWeight: 800,
+            textTransform: "uppercase", letterSpacing: "0.16em",
+            color: inkMuted,
           }}>
-            Presentación
+            Presentación · <span style={{ color: C.ink }}>{varActiva.nombre}</span>
           </p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {variantes.map((v, i) => {
@@ -307,16 +356,15 @@ function PanelCompra({ producto, variantes }) {
                   onClick={() => { if (!sinStock) { setVarIdx(i); setCantidad(1); setError(""); } }}
                   disabled={sinStock}
                   style={{
-                    padding: "10px 16px",
-                    borderRadius: RADIUS.sm,
-                    border: `1.5px solid ${activo ? C.brand : C.lineStrong}`,
-                    background: activo ? C.brandSoft : sinStock ? C.surfaceAlt : C.surface,
-                    color: sinStock ? C.muted : activo ? C.brand : C.ink,
-                    fontSize: 13, fontWeight: activo ? 700 : 500,
+                    padding: "10px 18px", borderRadius: 999,
+                    border: `1.5px solid ${activo ? navy : C.border}`,
+                    background: activo ? `${navy}10` : sinStock ? C.surfaceAlt : C.surface,
+                    color: sinStock ? inkMuted : activo ? navy : C.ink,
+                    fontSize: 13, fontWeight: activo ? 700 : 600,
                     cursor: sinStock ? "not-allowed" : "pointer",
                     opacity: sinStock ? 0.55 : 1,
-                    transition: "all 0.15s",
-                    fontFamily: FONT.ui,
+                    fontFamily: 'inherit',
+                    transition: 'all 200ms ease',
                   }}>
                   {v.nombre}
                 </button>
@@ -330,136 +378,152 @@ function PanelCompra({ producto, variantes }) {
       <div style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
         <div style={{
           display: "inline-flex", alignItems: "center",
-          border: `1.5px solid ${C.lineStrong}`,
-          borderRadius: RADIUS.sm,
-          background: C.surface,
-          overflow: "hidden",
-          height: 50,
+          border: `1.5px solid ${C.border}`,
+          borderRadius: 999, background: C.surface,
+          overflow: "hidden", height: 56,
         }}>
           <button
             onClick={() => setCantidad(c => Math.max(1, c - 1))}
             disabled={cantidad <= 1}
+            aria-label="Disminuir"
             style={{
-              width: 42, height: "100%",
+              width: 48, height: "100%",
               border: "none", background: "transparent",
-              color: cantidad > 1 ? C.ink : C.muted,
-              fontSize: 18, cursor: cantidad > 1 ? "pointer" : "default",
-              fontFamily: FONT.ui,
-            }}>−</button>
+              color: cantidad > 1 ? C.ink : inkMuted,
+              fontSize: 14, cursor: cantidad > 1 ? "pointer" : "default",
+              fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+            <FontAwesomeIcon icon={faMinus} />
+          </button>
           <span style={{
-            minWidth: 44, padding: "0 6px",
+            minWidth: 44, padding: "0 8px",
             fontSize: 16, fontWeight: 700,
             color: C.ink, textAlign: "center",
-            fontFamily: FONT.mono,
+            fontVariantNumeric: "tabular-nums",
           }}>
             {cantidad}
           </span>
           <button
             onClick={() => setCantidad(c => Math.min(stock, c + 1))}
             disabled={cantidad >= stock}
+            aria-label="Aumentar"
             style={{
-              width: 42, height: "100%",
+              width: 48, height: "100%",
               border: "none", background: "transparent",
-              color: cantidad < stock ? C.ink : C.muted,
-              fontSize: 18, cursor: cantidad < stock ? "pointer" : "default",
-              fontFamily: FONT.ui,
-            }}>+</button>
+              color: cantidad < stock ? C.ink : inkMuted,
+              fontSize: 14, cursor: cantidad < stock ? "pointer" : "default",
+              fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+            <FontAwesomeIcon icon={faPlus} />
+          </button>
         </div>
 
         <button
           onClick={handleAgregar}
           disabled={!hayStock}
           style={{
-            flex: 1, height: 50,
-            borderRadius: RADIUS.sm,
-            border: "none",
-            background: agregado ? C.success : hayStock ? C.brand : C.surfaceAlt,
-            color: agregado || hayStock ? "#fff" : C.muted,
+            flex: 1, height: 56,
+            borderRadius: 999, border: "none",
+            background: agregado ? lime : hayStock ? navy : C.surfaceAlt,
+            color: agregado || hayStock ? "#fff" : inkMuted,
             fontSize: 14, fontWeight: 700,
-            fontFamily: FONT.ui,
+            fontFamily: 'inherit',
             cursor: hayStock ? "pointer" : "not-allowed",
             display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
-            transition: "background 0.15s",
+            transition: "all 250ms ease",
+            boxShadow: hayStock ? `0 12px 28px -12px ${agregado ? lime : navy}77` : 'none',
           }}
-          onMouseEnter={e => { if (hayStock && !agregado) e.currentTarget.style.background = C.brandMid; }}
-          onMouseLeave={e => { if (hayStock && !agregado) e.currentTarget.style.background = C.brand; }}
+          onMouseEnter={(e) => { if (hayStock && !agregado) e.currentTarget.style.backgroundColor = navyDeep; }}
+          onMouseLeave={(e) => { if (hayStock && !agregado) e.currentTarget.style.backgroundColor = navy; }}
         >
-          {agregado ? "✓ Agregado" : hayStock ? `🛒 Añadir al carrito · ${fmt(total)}` : "Sin stock"}
+          {agregado ? (
+            <><FontAwesomeIcon icon={faCheck} /> Agregado · {fmt(total)}</>
+          ) : hayStock ? (
+            <><FontAwesomeIcon icon={faCartShopping} /> Añadir al carrito · {fmt(total)}</>
+          ) : (
+            "Sin stock"
+          )}
         </button>
 
         <button
           onClick={() => setFavorito(f => !f)}
           aria-label="Favorito"
           style={{
-            width: 50, height: 50,
-            borderRadius: RADIUS.sm,
-            border: `1.5px solid ${favorito ? C.coral : C.lineStrong}`,
-            background: favorito ? C.coralSoft : C.surface,
-            color: favorito ? C.coral : C.ink3,
-            fontSize: 18, cursor: "pointer",
-            transition: "all 0.15s",
+            width: 56, height: 56,
+            borderRadius: 999,
+            border: `1.5px solid ${favorito ? red : C.border}`,
+            background: favorito ? `${red}10` : C.surface,
+            color: favorito ? red : C.ink,
+            fontSize: 16, cursor: "pointer",
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            transition: "all 200ms ease",
+          }}
+          onMouseEnter={(e) => {
+            if (!favorito) {
+              e.currentTarget.style.borderColor = red;
+              e.currentTarget.style.color = red;
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!favorito) {
+              e.currentTarget.style.borderColor = C.border;
+              e.currentTarget.style.color = C.ink;
+            }
           }}>
-          {favorito ? "♥" : "♡"}
+          <FontAwesomeIcon icon={faHeart} />
         </button>
       </div>
 
       {error && (
         <div style={{
-          padding: "10px 14px", borderRadius: RADIUS.sm,
-          background: C.dangerBg, border: `1px solid ${C.dangerBorder}`,
-          color: C.danger, fontSize: 13,
+          padding: "12px 16px", borderRadius: 14,
+          background: `${red}10`,
+          border: `1px solid ${red}33`,
+          color: red, fontSize: 13,
+          display: 'inline-flex', alignItems: 'center', gap: 10,
         }}>
+          <FontAwesomeIcon icon={faTriangleExclamation} />
           {error}
         </div>
       )}
 
-      {/* Garantías 2x2 estilo PDF */}
+      {/* Garantías 2x2 */}
       <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 10,
+        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10,
+        marginTop: 8,
       }}>
         {[
-          { icon: "🚚", titulo: "Envío gratis",         sub: "En Ibagué desde $80.000" },
-          { icon: "✓",  titulo: "Garantía oficial",     sub: "Producto verificado" },
-          { icon: "🩺", titulo: "Recomendado por vets", sub: "Aprobado por nuestra clínica" },
-          { icon: "📍", titulo: "Recoge en tienda",     sub: "Cra. 5 #34-12" },
+          { icon: faTruckFast,    titulo: "Envío gratis",         sub: "En Ibagué desde $80.000", color: navy },
+          { icon: faShieldHalved, titulo: "Garantía oficial",     sub: "Producto verificado",     color: lime },
+          { icon: faStethoscope,  titulo: "Recomendado por vets", sub: "Aprobado por la clínica", color: purple },
+          { icon: faLocationDot,  titulo: "Recoge en tienda",     sub: "Cra. 5 #34-12",           color: red },
         ].map(g => (
           <div key={g.titulo} style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "12px 14px",
-            borderRadius: RADIUS.sm,
-            border: `1px solid ${C.line}`,
-            background: C.surface,
+            display: "flex", alignItems: "center", gap: 12,
+            padding: "14px 16px", borderRadius: 16,
+            border: `1px solid ${C.border}`, background: C.surface,
           }}>
             <span style={{
-              width: 32, height: 32, borderRadius: RADIUS.sm,
-              background: C.brandSoft, color: C.brand,
-              display: "flex", alignItems: "center", justifyContent: "center",
+              width: 36, height: 36, borderRadius: 12,
+              background: `${g.color}15`, color: g.color,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
               fontSize: 14, flexShrink: 0,
-            }}>{g.icon}</span>
+            }}>
+              <FontAwesomeIcon icon={g.icon} />
+            </span>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: C.ink, lineHeight: 1.2 }}>
                 {g.titulo}
               </div>
-              <div style={{ fontSize: 10, color: C.ink3, marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: inkMuted, marginTop: 2 }}>
                 {g.sub}
               </div>
             </div>
           </div>
         ))}
       </div>
-
-      {/* IVA info */}
-      <p style={{
-        margin: 0, fontSize: 11, color: C.muted,
-        textAlign: "center",
-        padding: "8px 12px",
-        borderRadius: RADIUS.sm,
-        background: C.surfaceAlt,
-      }}>
-        IVA 19% incluido · Subtotal {fmt(subtotal)} · IVA {fmt(iva)} · Total <strong style={{ color: C.ink }}>{fmt(total)}</strong>
-      </p>
     </div>
   );
 }
@@ -468,6 +532,12 @@ function PanelCompra({ producto, variantes }) {
 function TabsInfo({ producto, variantes }) {
   const { C } = useTheme();
   const [tab, setTab] = useState("descripcion");
+
+  const navy     = C.navy     || '#1E3A8A';
+  const lime     = C.lime     || '#7BC142';
+  const red      = C.red      || '#E63946';
+  const inkSoft  = C.inkSoft  || C.ink2;
+  const inkMuted = C.inkMuted || C.ink3;
 
   const TABS = [
     { id: "descripcion", label: "Descripción" },
@@ -487,30 +557,26 @@ function TabsInfo({ producto, variantes }) {
 
   return (
     <div style={{
-      marginTop: 64, paddingTop: 40,
-      borderTop: `1px solid ${C.line}`,
+      marginTop: 72, paddingTop: 48,
+      borderTop: `1px solid ${C.border}`,
     }}>
       {/* Tabs */}
       <div style={{
-        display: "flex", gap: 4,
-        borderBottom: `1px solid ${C.line}`,
-        marginBottom: 28,
+        display: "flex", gap: 8, flexWrap: 'wrap',
+        marginBottom: 32,
       }}>
         {TABS.map(t => {
           const activo = tab === t.id;
           return (
             <button key={t.id} onClick={() => setTab(t.id)}
               style={{
-                padding: "12px 20px",
-                background: "transparent", border: "none",
-                borderBottom: `2px solid ${activo ? C.brand : "transparent"}`,
-                marginBottom: -1,
-                fontSize: 14,
-                fontWeight: activo ? 700 : 500,
-                color: activo ? C.ink : C.ink3,
-                cursor: "pointer",
-                transition: "all 0.15s",
-                fontFamily: FONT.ui,
+                padding: "10px 20px", borderRadius: 999,
+                background: activo ? navy : 'transparent',
+                color: activo ? '#fff' : C.ink,
+                border: `1.5px solid ${activo ? navy : C.border}`,
+                fontSize: 13, fontWeight: 700,
+                cursor: "pointer", fontFamily: 'inherit',
+                transition: 'all 200ms ease',
               }}>
               {t.label}
             </button>
@@ -518,12 +584,12 @@ function TabsInfo({ producto, variantes }) {
         })}
       </div>
 
-      {/* Contenido tab */}
+      {/* Contenido */}
       {tab === "descripcion" && (
         <div style={{ maxWidth: 780 }}>
           <p style={{
             margin: 0, fontSize: 15, lineHeight: 1.7,
-            color: C.ink2,
+            color: inkSoft, whiteSpace: 'pre-line',
           }}>
             {producto.descripcion || "Sin descripción disponible para este producto."}
           </p>
@@ -536,21 +602,21 @@ function TabsInfo({ producto, variantes }) {
           gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
           gap: 0,
           background: C.surface,
-          border: `1px solid ${C.line}`,
-          borderRadius: RADIUS.lg,
+          border: `1px solid ${C.border}`,
+          borderRadius: 20,
           overflow: "hidden",
         }}>
           {specs.map((s, i) => (
             <div key={i} style={{
-              padding: "14px 18px",
-              borderBottom: `1px solid ${C.line}`,
-              borderRight: `1px solid ${C.line}`,
+              padding: "16px 20px",
+              borderBottom: `1px solid ${C.border}`,
+              borderRight: `1px solid ${C.border}`,
             }}>
               <p style={{
                 margin: "0 0 4px",
-                fontSize: 10, fontWeight: 700,
-                textTransform: "uppercase", letterSpacing: 1.2,
-                color: C.muted,
+                fontSize: 10, fontWeight: 800,
+                textTransform: "uppercase", letterSpacing: "0.16em",
+                color: inkMuted,
               }}>{s.k}</p>
               <p style={{ margin: 0, fontSize: 14, color: C.ink, fontWeight: 500 }}>
                 {s.v}
@@ -563,20 +629,20 @@ function TabsInfo({ producto, variantes }) {
       {tab === "variantes" && (
         <div style={{
           background: C.surface,
-          border: `1px solid ${C.line}`,
-          borderRadius: RADIUS.lg,
+          border: `1px solid ${C.border}`,
+          borderRadius: 20,
           overflow: "hidden",
         }}>
           <div style={{
             display: "grid",
-            gridTemplateColumns: "1fr 120px 120px 100px",
+            gridTemplateColumns: "1fr 130px 130px 110px",
             gap: 14,
-            padding: "12px 18px",
-            background: C.canvas,
-            borderBottom: `1px solid ${C.line}`,
-            fontSize: 10, fontWeight: 700,
-            textTransform: "uppercase", letterSpacing: 1.5,
-            color: C.ink3,
+            padding: "14px 20px",
+            background: C.surfaceAlt,
+            borderBottom: `1px solid ${C.border}`,
+            fontSize: 10, fontWeight: 800,
+            textTransform: "uppercase", letterSpacing: "0.16em",
+            color: inkMuted,
           }}>
             <span>Presentación</span>
             <span style={{ textAlign: "right" }}>Precio</span>
@@ -586,22 +652,27 @@ function TabsInfo({ producto, variantes }) {
           {variantes.map((v, i) => (
             <div key={v.id} style={{
               display: "grid",
-              gridTemplateColumns: "1fr 120px 120px 100px",
-              gap: 14,
-              padding: "14px 18px",
+              gridTemplateColumns: "1fr 130px 130px 110px",
+              gap: 14, padding: "14px 20px",
               fontSize: 13,
-              borderBottom: i < variantes.length - 1 ? `1px solid ${C.line}` : "none",
+              borderBottom: i < variantes.length - 1 ? `1px solid ${C.border}` : "none",
             }}>
               <span style={{ color: C.ink, fontWeight: 600 }}>{v.nombre}</span>
-              <span style={{ textAlign: "right", color: C.ink, fontFamily: FONT.mono }}>{fmt(v.precio)}</span>
+              <span style={{
+                textAlign: "right", color: C.ink,
+                fontVariantNumeric: 'tabular-nums', fontWeight: 600,
+              }}>{fmt(v.precio)}</span>
               <span style={{
                 textAlign: "right",
-                color: v.stock === 0 ? C.danger : v.stock <= (v.stock_minimo || 5) ? C.warning : C.success,
+                color: v.stock === 0 ? red : v.stock <= (v.stock_minimo || 5) ? '#D97706' : (C.limeDeep || lime),
                 fontWeight: 600,
               }}>
                 {v.stock === 0 ? "Agotado" : `${v.stock} unidades`}
               </span>
-              <span style={{ textAlign: "right", color: C.muted, fontFamily: FONT.mono, fontSize: 11 }}>
+              <span style={{
+                textAlign: "right", color: inkMuted,
+                fontVariantNumeric: 'tabular-nums', fontSize: 11,
+              }}>
                 {v.sku || "—"}
               </span>
             </div>
@@ -612,108 +683,59 @@ function TabsInfo({ producto, variantes }) {
   );
 }
 
-/* ─── También te puede gustar ────────────────────────────────────────────── */
+/* ─── Relacionados (usa ProductCard nuevo) ───────────────────────────────── */
 function Relacionados({ productos }) {
   const { C } = useTheme();
   if (!productos || productos.length === 0) return null;
+  const navy = C.navy || '#1E3A8A';
 
   return (
-    <div style={{ marginTop: 64, paddingTop: 40, borderTop: `1px solid ${C.line}` }}>
-      <h2 style={{
-        margin: "0 0 24px",
-        fontFamily: FONT.display,
-        fontWeight: 700,
-        fontSize: 32,
-        color: C.ink,
-        letterSpacing: -0.3,
+    <div style={{ marginTop: 72, paddingTop: 48, borderTop: `1px solid ${C.border}` }}>
+      <div style={{
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+        gap: 16, marginBottom: 28, flexWrap: 'wrap',
       }}>
-        También te puede gustar
-      </h2>
+        <div>
+          <div style={{
+            fontSize: 11, fontWeight: 800, letterSpacing: '0.18em',
+            textTransform: 'uppercase', color: C.lime || '#7BC142',
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{ width: 22, height: 1, backgroundColor: C.lime || '#7BC142' }} />
+            También te puede gustar
+          </div>
+          <h2 style={{
+            margin: "12px 0 0",
+            fontFamily: FONT.display, fontWeight: 500,
+            fontSize: 'clamp(28px, 4vw, 40px)',
+            color: C.ink, letterSpacing: -0.3, lineHeight: 1.05,
+          }}>
+            Otros productos para tu mascota
+          </h2>
+        </div>
+        <Link to="/tienda" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '10px 20px', borderRadius: 999,
+          backgroundColor: 'transparent', color: C.ink,
+          border: `1.5px solid ${C.border}`,
+          fontSize: 13, fontWeight: 700, textDecoration: 'none',
+          transition: 'all 200ms ease',
+        }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = navy; e.currentTarget.style.color = navy; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.ink; }}
+        >
+          Ver tienda <FontAwesomeIcon icon={faChevronRight} style={{ fontSize: 11 }} />
+        </Link>
+      </div>
 
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-        gap: 18,
+        gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+        gap: 20,
       }}>
-        {productos.slice(0, 4).map(p => {
-          const dc = descPct(p.precio, p.precio_antes);
-          return (
-            <Link key={p.id} to={`/producto/${p.slug}`}
-              style={{
-                background: C.surface,
-                border: `1px solid ${C.line}`,
-                borderRadius: RADIUS.lg,
-                overflow: "hidden",
-                textDecoration: "none",
-                transition: "all 0.2s",
-                display: "flex", flexDirection: "column",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.borderColor = C.brandBorder; e.currentTarget.style.boxShadow = C.shadowMd; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = C.line; e.currentTarget.style.boxShadow = "none"; }}
-            >
-              <div style={{
-                position: "relative",
-                aspectRatio: "1 / 1",
-                background: `repeating-linear-gradient(135deg, ${C.brandSoft} 0 14px, ${C.surfaceAlt} 14px 28px)`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                overflow: "hidden",
-              }}>
-                {p.imagen_url && (
-                  <img src={p.imagen_url} alt={p.nombre}
-                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                    onError={e => { e.target.style.display = "none"; }}/>
-                )}
-                {dc && (
-                  <span style={{
-                    position: "absolute", top: 10, left: 10,
-                    padding: "3px 9px", borderRadius: RADIUS.sm,
-                    background: C.coral, color: "#fff",
-                    fontSize: 11, fontWeight: 800,
-                    fontFamily: FONT.mono,
-                  }}>
-                    -{dc}%
-                  </span>
-                )}
-              </div>
-              <div style={{ padding: 16, flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
-                {p.marca && (
-                  <span style={{
-                    fontFamily: FONT.mono,
-                    fontSize: 10, fontWeight: 700,
-                    textTransform: "uppercase", letterSpacing: 1.2,
-                    color: C.muted,
-                  }}>{p.marca}</span>
-                )}
-                <h3 style={{
-                  margin: 0,
-                  fontSize: 13, fontWeight: 600,
-                  color: C.ink, lineHeight: 1.4,
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                  flex: 1,
-                }}>
-                  {p.nombre}
-                </h3>
-                <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 4 }}>
-                  {[1,2,3,4,5].map(s => (
-                    <span key={s} style={{ color: s <= 4 ? "#F59E0B" : C.muted, fontSize: 10 }}>★</span>
-                  ))}
-                  <span style={{ marginLeft: 4, fontSize: 10, color: C.ink3 }}>(124)</span>
-                </div>
-                <div style={{
-                  marginTop: 6,
-                  fontFamily: FONT.display,
-                  fontSize: 18, fontWeight: 700,
-                  color: C.ink,
-                }}>
-                  {fmt(p.precio)}
-                </div>
-              </div>
-            </Link>
-          );
-        })}
+        {productos.slice(0, 4).map(p => (
+          <ProductCard key={p.id} producto={p} />
+        ))}
       </div>
     </div>
   );
@@ -727,6 +749,9 @@ export default function Producto() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
 
+  const navy = C.navy || '#1E3A8A';
+  const red  = C.red  || '#E63946';
+
   useEffect(() => {
     setCargando(true); setError(null);
     api.get(`/productos/${slug}`)
@@ -738,42 +763,44 @@ export default function Producto() {
   return (
     <>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap');
         @keyframes vp-shimmer { to { background-position: -200% 0; } }
-        * { box-sizing: border-box; }
         @media (max-width: 900px) {
           .vp-prod-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
         }
       `}</style>
 
-      <div style={{ minHeight: "100vh", background: C.canvas, fontFamily: FONT.ui }}>
+      <div style={{ minHeight: "100vh", background: C.canvas, fontFamily: FONT.ui, color: C.ink }}>
 
         {cargando && <Skeleton/>}
 
         {error && (
           <div style={{
-            textAlign: "center", padding: "80px 24px",
+            textAlign: "center", padding: "96px 24px",
             maxWidth: 480, margin: "0 auto",
           }}>
             <div style={{
-              width: 72, height: 72, borderRadius: 20,
-              background: C.dangerBg,
+              width: 80, height: 80, borderRadius: 22,
+              background: `${red}15`, color: red,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 32, margin: "0 auto 18px",
-            }}>⚠</div>
+              fontSize: 32, margin: "0 auto 20px",
+            }}>
+              <FontAwesomeIcon icon={faTriangleExclamation} />
+            </div>
             <h2 style={{
-              margin: "0 0 8px",
+              margin: "0 0 10px",
               fontFamily: FONT.display, fontStyle: "italic",
-              fontWeight: 600, fontSize: 24,
-              color: C.ink,
+              fontWeight: 500, fontSize: 28, color: C.ink,
             }}>
               Producto no encontrado
             </h2>
-            <p style={{ margin: "0 0 24px", fontSize: 14, color: C.ink3 }}>{error}</p>
+            <p style={{ margin: "0 0 28px", fontSize: 14, color: C.inkSoft || C.ink3 }}>{error}</p>
             <Link to="/tienda" style={{
               display: "inline-block",
-              padding: "12px 28px", borderRadius: RADIUS.sm,
-              background: C.brand, color: "#fff",
+              padding: "13px 28px", borderRadius: 999,
+              background: navy, color: "#fff",
               textDecoration: "none", fontSize: 14, fontWeight: 700,
+              boxShadow: `0 12px 24px -10px ${navy}66`,
             }}>
               Volver a la tienda
             </Link>
@@ -783,34 +810,35 @@ export default function Producto() {
         {data && (() => {
           const { producto, variantes, relacionados } = data;
           return (
-            <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px 80px" }}>
+            <div style={{ maxWidth: 1280, margin: "0 auto", padding: "48px 24px 96px" }}>
 
               {/* Breadcrumb */}
               <nav style={{
                 display: "flex", alignItems: "center", gap: 8,
-                fontSize: 12, color: C.ink3,
-                marginBottom: 28, flexWrap: "wrap",
+                fontSize: 12, color: C.inkSoft || C.ink3,
+                marginBottom: 32, flexWrap: "wrap",
               }}>
-                <Link to="/tienda" style={{ color: C.ink3, textDecoration: "none" }}>Tienda</Link>
-                <span>·</span>
+                <Link to="/tienda" style={{ color: 'inherit', textDecoration: "none" }}>
+                  Tienda
+                </Link>
+                <FontAwesomeIcon icon={faChevronRight} style={{ fontSize: 9 }} />
                 {producto.categoria && (
                   <>
                     <Link to={`/tienda?categoria=${producto.categoria_slug || ""}`}
-                      style={{ color: C.ink3, textDecoration: "none" }}>
+                      style={{ color: 'inherit', textDecoration: "none" }}>
                       {producto.categoria}
                     </Link>
-                    <span>·</span>
+                    <FontAwesomeIcon icon={faChevronRight} style={{ fontSize: 9 }} />
                   </>
                 )}
-                <span style={{ color: C.ink2 }}>{producto.nombre}</span>
+                <span style={{ color: C.ink, fontWeight: 600 }}>{producto.nombre}</span>
               </nav>
 
               {/* Grid principal */}
               <div className="vp-prod-grid" style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1.05fr",
-                gap: 56,
-                alignItems: "start",
+                gap: 64, alignItems: "start",
               }}>
                 <Galeria
                   imagenPrincipal={producto.imagen_url}
@@ -820,10 +848,7 @@ export default function Producto() {
                 <PanelCompra producto={producto} variantes={variantes}/>
               </div>
 
-              {/* Tabs */}
               <TabsInfo producto={producto} variantes={variantes}/>
-
-              {/* Relacionados */}
               <Relacionados productos={relacionados}/>
             </div>
           );

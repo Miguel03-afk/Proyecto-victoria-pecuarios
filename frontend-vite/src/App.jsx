@@ -16,13 +16,18 @@ import PanelCajero      from "./pages/PanelCajero";
 // Páginas
 import Landing    from "./pages/Landing";
 import Home       from "./pages/Home";
-import { Login, Registro } from "./pages/Auth";
+import Login        from "./pages/auth/Login";
+import Registro     from "./pages/auth/Registro";
+import VerificarOTP from "./pages/auth/VerificarOTP";
 import Admin      from "./pages/Admin";
 import Carrito    from "./pages/Carrito";
 import Producto   from "./pages/Producto";
 import Perfil     from "./pages/Perfil";
 import MisOrdenes     from "./pages/MisOrdenes";
 import PagoRespuesta  from "./pages/PagoRespuesta";
+import Equipo     from "./pages/Equipo";
+import Contacto   from "./pages/Contacto";
+import Galeria    from "./pages/Galeria";
 
 const NoEncontrado = () => {
   const { C } = useTheme();
@@ -110,12 +115,18 @@ export default function App() {
 
           <PageFade>
           <Routes>
-            {/* Landing — sin Navbar */}
+            {/* Landing — sin Navbar (lo integra él mismo) */}
             <Route path="/"         element={<Landing />} />
 
-            {/* Auth — sin Navbar */}
-            <Route path="/login"    element={<Login />} />
-            <Route path="/registro" element={<Registro />} />
+            {/* Páginas públicas con Navbar+Footer integrados */}
+            <Route path="/equipo"   element={<Equipo />} />
+            <Route path="/contacto" element={<Contacto />} />
+            <Route path="/galeria"  element={<Galeria />} />
+
+            {/* Auth — sin Navbar (layout fullscreen propio) */}
+            <Route path="/login"           element={<Login />} />
+            <Route path="/registro"        element={<Registro />} />
+            <Route path="/verificar-email" element={<VerificarOTP />} />
 
             {/* Admin — ruta protegida por rol */}
             <Route path="/admin/*"  element={<RutaAdmin><Admin /></RutaAdmin>} />

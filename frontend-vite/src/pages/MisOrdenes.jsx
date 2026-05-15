@@ -239,37 +239,84 @@ export default function MisOrdenes() {
         @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
 
-      {/* Header de página */}
-      <div style={{ background: C.brandDark, padding: "28px 24px 24px" }}>
-        <div style={{ maxWidth: 760, margin: "0 auto" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+      {/* Header de página — gradient navy + lime accent */}
+      <div style={{
+        background: `linear-gradient(135deg, ${C.navyDeep || '#0F2563'} 0%, ${C.navy || '#1E3A8A'} 100%)`,
+        padding: "48px 24px 40px",
+        position: 'relative', overflow: 'hidden',
+      }}>
+        {/* Decorative blob */}
+        <div aria-hidden="true" style={{
+          position: 'absolute', top: -80, right: -60,
+          width: 300, height: 300, borderRadius: 999,
+          background: `radial-gradient(circle, ${C.lime || '#7BC142'}33 0%, transparent 65%)`,
+          filter: 'blur(40px)', pointerEvents: 'none',
+        }}/>
+
+        <div style={{
+          maxWidth: 920, margin: "0 auto",
+          position: 'relative', zIndex: 1,
+        }}>
+          <div style={{
+            display: "flex", alignItems: "flex-end", justifyContent: "space-between",
+            flexWrap: "wrap", gap: 20,
+          }}>
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                <FontAwesomeIcon icon={faShoppingBag} style={{ color: C.lime, fontSize: 18 }} />
-                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#fff", fontFamily: "'Playfair Display', Georgia, serif", fontStyle: "italic" }}>
-                  Mis órdenes
-                </h1>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 10,
+                fontSize: 11, fontWeight: 800,
+                color: C.lime || '#7BC142', letterSpacing: "0.18em",
+                textTransform: "uppercase", marginBottom: 12,
+              }}>
+                <span style={{ width: 22, height: 1, backgroundColor: C.lime || '#7BC142' }} />
+                <FontAwesomeIcon icon={faShoppingBag} style={{ fontSize: 12 }} />
+                Tu historial de compras
               </div>
-              <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
-                Historial completo de tus compras
+              <h1 style={{
+                margin: 0,
+                fontFamily: "'Playfair Display', Georgia, serif",
+                fontStyle: "italic", fontWeight: 500,
+                fontSize: 'clamp(32px, 4vw, 44px)',
+                color: "#fff", letterSpacing: -0.4, lineHeight: 1.05,
+              }}>
+                Mis órdenes
+              </h1>
+              <p style={{
+                margin: '10px 0 0', fontSize: 14,
+                color: "rgba(255,255,255,0.75)", lineHeight: 1.5,
+                maxWidth: 480,
+              }}>
+                Todas tus compras en un solo lugar. Verifica pagos, revisa detalles y sigue tus envíos.
               </p>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: 'wrap' }}>
               <Link to="/perfil" style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "8px 14px", borderRadius: 10, textDecoration: "none",
-                background: "rgba(255,255,255,0.1)", color: "#fff",
-                fontSize: 12, fontWeight: 600, border: "1px solid rgba(255,255,255,0.2)",
-              }}>
-                <FontAwesomeIcon icon={faUser} /> Mi perfil
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "12px 20px", borderRadius: 999, textDecoration: "none",
+                background: "rgba(255,255,255,0.10)", color: "#fff",
+                fontSize: 13, fontWeight: 700,
+                border: "1px solid rgba(255,255,255,0.18)",
+                backdropFilter: 'blur(8px)',
+                transition: 'all 200ms ease',
+              }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.18)')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.10)')}
+              >
+                <FontAwesomeIcon icon={faUser} style={{ fontSize: 12 }} /> Mi perfil
               </Link>
               <Link to="/tienda" style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "8px 14px", borderRadius: 10, textDecoration: "none",
-                background: C.lime, color: C.brandDark,
-                fontSize: 12, fontWeight: 700,
-              }}>
-                <FontAwesomeIcon icon={faStore} /> Ver tienda
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "12px 20px", borderRadius: 999, textDecoration: "none",
+                background: C.lime || '#7BC142',
+                color: C.navyDeep || '#0F2563',
+                fontSize: 13, fontWeight: 800,
+                boxShadow: `0 12px 24px -8px ${C.lime || '#7BC142'}88`,
+                transition: 'transform 200ms ease',
+              }}
+                onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+              >
+                <FontAwesomeIcon icon={faStore} style={{ fontSize: 12 }} /> Ver tienda
               </Link>
             </div>
           </div>
@@ -277,7 +324,7 @@ export default function MisOrdenes() {
       </div>
 
       {/* Contenido */}
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 16px 48px" }}>
+      <div style={{ maxWidth: 920, margin: "0 auto", padding: "40px 24px 64px" }}>
         {cargando ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {[1, 2, 3].map(i => <Skeleton key={i} />)}

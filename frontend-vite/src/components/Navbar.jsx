@@ -19,8 +19,9 @@ const NAV_LINKS = [
   { to: "/",             label: "Inicio"     },
   { to: "/tienda",       label: "Tienda"     },
   { to: "/#servicios",   label: "Servicios"  },
+  { to: "/equipo",       label: "Equipo"     },
   { to: "/agendar-cita", label: "Citas"      },
-  { to: "/#nosotros",    label: "Nosotros"   },
+  { to: "/contacto",     label: "Contacto"   },
 ];
 
 /* ─── Toggle modo claro/oscuro ───────────────────────────────────────────── */

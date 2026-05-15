@@ -2461,35 +2461,48 @@ export default function PanelVeterinario() {
         }}>
           {/* Logo */}
           <Link to="/" style={{
-            padding: "18px 18px 14px",
-            display: "flex", alignItems: "center", gap: 10,
+            padding: "22px 18px 18px",
+            display: "flex", alignItems: "center", gap: 12,
             textDecoration: "none",
             borderBottom: `1px solid ${C.sidebarBorder}`,
           }}>
             <div style={{
-              width: 30, height: 30, borderRadius: RADIUS.sm,
-              background: C.lime, color: C.brandDark,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 13, fontWeight: 900,
-            }}>✦</div>
-            <div>
-              <div style={{
+              width: 38, height: 38, borderRadius: 12,
+              background: `linear-gradient(135deg, ${C.lime || '#7BC142'} 0%, ${C.navy || '#1E3A8A'} 100%)`,
+              color: '#fff',
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              fontSize: 14, fontWeight: 800,
+              fontFamily: FONT.display, fontStyle: 'italic',
+              boxShadow: `0 6px 14px -6px ${C.lime || '#7BC142'}55`,
+            }}>
+              VP
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+              <span style={{
                 fontFamily: FONT.display, fontStyle: "italic",
-                fontWeight: 600, fontSize: 15, color: C.sidebarTextHi,
+                fontWeight: 600, fontSize: 17, color: C.sidebarTextHi,
+                letterSpacing: '-0.02em',
               }}>
-                Victoria·Pets
-              </div>
+                Victoria
+              </span>
+              <span style={{
+                fontSize: 9, fontWeight: 800, letterSpacing: '0.22em',
+                color: C.lime || '#7BC142', textTransform: 'uppercase',
+                marginTop: 5,
+              }}>
+                Veterinario
+              </span>
             </div>
           </Link>
 
           {/* Eyebrow */}
           <p style={{
-            margin: 0, padding: "16px 18px 8px",
-            fontSize: 9, fontWeight: 700, letterSpacing: 1.5,
+            margin: 0, padding: "20px 18px 8px",
+            fontSize: 9, fontWeight: 800, letterSpacing: "0.18em",
             textTransform: "uppercase",
             color: "rgba(255,255,255,0.4)",
           }}>
-            Veterinario
+            Secciones
           </p>
 
           <nav style={{ flex: 1, padding: "0 10px", display: "flex", flexDirection: "column", gap: 2 }}>
@@ -2591,14 +2604,21 @@ export default function PanelVeterinario() {
             display: "flex", alignItems: "center", gap: 14,
           }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 11, color: C.ink3, textTransform: "capitalize" }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                fontSize: 9, fontWeight: 800, letterSpacing: "0.18em",
+                textTransform: "uppercase", color: C.lime || '#7BC142',
+                marginBottom: 2,
+              }}>
+                <span style={{ width: 14, height: 1, backgroundColor: C.lime || '#7BC142' }} />
                 Dr(a). {usuario?.nombre} {usuario?.apellido} · {vetPerfil?.especialidad || "Vet. general"}
-              </p>
+              </div>
               <h2 style={{
-                margin: "2px 0 0",
+                margin: 0,
                 fontFamily: FONT.display, fontStyle: "italic",
-                fontWeight: 600, fontSize: 22, color: C.ink,
-                textTransform: "capitalize", letterSpacing: -0.2,
+                fontWeight: 500, fontSize: 24, color: C.ink,
+                textTransform: "capitalize", letterSpacing: -0.3,
+                lineHeight: 1.1,
               }}>
                 {seccion === "agenda" ? `Agenda · ${hoy}` :
                  seccion === "consultas" ? "Consultas en curso" :

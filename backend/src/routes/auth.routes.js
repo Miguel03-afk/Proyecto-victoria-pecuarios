@@ -3,27 +3,21 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import db from "../db.js";
 import { verificarToken } from "../middlewares/auth.middleware.js";
+import { validateBody } from "../middlewares/validate.middleware.js";
 import { enviarCodigoVerificacion } from "../services/email.js";
+import {
+  registroSchema, loginSchema, verificarEmailSchema, reenviarCodigoSchema,
+  actualizarPerfilSchema, cambiarPasswordSchema, cambiarEmailSchema,
+} from "../validators/auth.validators.js";
 
 const genCodigo = () => String(Math.floor(100000 + Math.random() * 900000));
 
 const router = Router();
 
-const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 // ─── REGISTRO ────────────────────────────────────────────────────────────────
 // POST /api/auth/registro
-router.post("/registro", async (req, res) => {
+router.post("/registro", validateBody(registroSchema), async (req, res) => {
   const { nombre, apellido, email, password } = req.body;
-
-  if (!nombre || !apellido || !email || !password)
-    return res.status(400).json({ error: "Nombre, apellido, correo y contraseña son obligatorios." });
-  if (!RE_EMAIL.test(email))
-    return res.status(400).json({ error: "El correo ingresado no es válido." });
-  if (password.length < 8)
-    return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres." });
-  if (!/[0-9]/.test(password))
-    return res.status(400).json({ error: "La contraseña debe incluir al menos 1 número." });
 
   try {
     const [existe] = await db.query("SELECT id FROM usuarios WHERE email = ?", [email]);
@@ -57,10 +51,8 @@ router.post("/registro", async (req, res) => {
 
 // ─── VERIFICAR EMAIL ──────────────────────────────────────────────────────────
 // POST /api/auth/verificar-email
-router.post("/verificar-email", async (req, res) => {
+router.post("/verificar-email", validateBody(verificarEmailSchema), async (req, res) => {
   const { email, codigo } = req.body;
-  if (!email || !codigo)
-    return res.status(400).json({ error: "Correo y código son requeridos." });
 
   try {
     const [rows] = await db.query(
@@ -104,9 +96,8 @@ router.post("/verificar-email", async (req, res) => {
 
 // ─── REENVIAR CÓDIGO ──────────────────────────────────────────────────────────
 // POST /api/auth/reenviar-codigo
-router.post("/reenviar-codigo", async (req, res) => {
+router.post("/reenviar-codigo", validateBody(reenviarCodigoSchema), async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ error: "El correo es requerido." });
 
   try {
     const [rows] = await db.query(
@@ -141,12 +132,8 @@ router.post("/reenviar-codigo", async (req, res) => {
 
 // ─── LOGIN ───────────────────────────────────────────────────────────────────
 // POST /api/auth/login
-router.post("/login", async (req, res) => {
+router.post("/login", validateBody(loginSchema), async (req, res) => {
   const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: "Correo y contraseña son obligatorios." });
-  }
 
   try {
     const [rows] = await db.query(
@@ -227,7 +214,7 @@ router.get("/me", verificarToken, async (req, res) => {
 // PUT /api/auth/perfil
 // Acepta: nombre, apellido, telefono, facturacion (JSON)
 // NO acepta: email, password (tienen sus propios endpoints)
-router.put("/perfil", verificarToken, async (req, res) => {
+router.put("/perfil", verificarToken, validateBody(actualizarPerfilSchema), async (req, res) => {
   const { nombre, apellido, telefono, facturacion } = req.body;
 
   const updates = [];
@@ -254,15 +241,8 @@ router.put("/perfil", verificarToken, async (req, res) => {
 
 // ─── CAMBIAR EMAIL ────────────────────────────────────────────────────────────
 // PUT /api/auth/cambiar-email
-router.put("/cambiar-email", verificarToken, async (req, res) => {
+router.put("/cambiar-email", verificarToken, validateBody(cambiarEmailSchema), async (req, res) => {
   const { nuevo_email, password_actual } = req.body;
-
-  if (!nuevo_email || !password_actual) {
-    return res.status(400).json({ error: "El nuevo correo y la contraseña actual son requeridos." });
-  }
-  if (!RE_EMAIL.test(nuevo_email)) {
-    return res.status(400).json({ error: "El correo ingresado no es válido." });
-  }
 
   try {
     const [rows] = await db.query(
@@ -291,18 +271,8 @@ router.put("/cambiar-email", verificarToken, async (req, res) => {
 
 // ─── CAMBIAR CONTRASEÑA ───────────────────────────────────────────────────────
 // PATCH /api/auth/cambiar-password
-router.patch("/cambiar-password", verificarToken, async (req, res) => {
+router.patch("/cambiar-password", verificarToken, validateBody(cambiarPasswordSchema), async (req, res) => {
   const { password_actual, nueva_password } = req.body;
-
-  if (!password_actual || !nueva_password) {
-    return res.status(400).json({ error: "Se requieren ambas contraseñas." });
-  }
-  if (nueva_password.length < 8) {
-    return res.status(400).json({ error: "La nueva contraseña debe tener al menos 8 caracteres." });
-  }
-  if (!/[0-9]/.test(nueva_password)) {
-    return res.status(400).json({ error: "La contraseña debe incluir al menos 1 número." });
-  }
 
   try {
     const [rows] = await db.query(

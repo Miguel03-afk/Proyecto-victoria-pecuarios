@@ -260,18 +260,21 @@ function NuevaVenta({ usuario }) {
       <div style={{ padding: "24px 28px", overflowY: "auto" }}>
 
         {/* Header */}
-        <div style={{ marginBottom: 20 }}>
-          <span style={{
-            fontSize: 11, fontWeight: 600, color: C.ink3,
-            letterSpacing: 0.3,
+        <div style={{ marginBottom: 24 }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            fontSize: 10, fontWeight: 800, letterSpacing: '0.18em',
+            textTransform: 'uppercase', color: C.lime || '#7BC142',
+            marginBottom: 6,
           }}>
+            <span style={{ width: 16, height: 1, backgroundColor: C.lime || '#7BC142' }} />
             Punto de venta · Caja 1
-          </span>
+          </div>
           <h1 style={{
-            margin: "4px 0 0",
+            margin: 0,
             fontFamily: FONT.display, fontStyle: "italic",
-            fontWeight: 600, fontSize: 30,
-            color: C.ink, letterSpacing: -0.3,
+            fontWeight: 500, fontSize: 36,
+            color: C.ink, letterSpacing: -0.4, lineHeight: 1.05,
           }}>
             Nueva venta
           </h1>
@@ -679,14 +682,21 @@ function Historial() {
   );
 
   return (
-    <div style={{ padding: "24px 28px", maxWidth: 1100 }}>
-      <span style={{ fontSize: 11, fontWeight: 600, color: C.ink3 }}>
+    <div style={{ padding: "32px 28px", maxWidth: 1100 }}>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 8,
+        fontSize: 10, fontWeight: 800, letterSpacing: '0.18em',
+        textTransform: 'uppercase', color: C.lime || '#7BC142',
+        marginBottom: 6,
+      }}>
+        <span style={{ width: 16, height: 1, backgroundColor: C.lime || '#7BC142' }} />
         Operación · Historial
-      </span>
+      </div>
       <h1 style={{
-        margin: "4px 0 24px",
+        margin: "0 0 28px",
         fontFamily: FONT.display, fontStyle: "italic",
-        fontWeight: 600, fontSize: 30, color: C.ink,
+        fontWeight: 500, fontSize: 36,
+        color: C.ink, letterSpacing: -0.4, lineHeight: 1.05,
       }}>
         Mis ventas
       </h1>
@@ -695,27 +705,45 @@ function Historial() {
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(3, 1fr)",
-        gap: 14, marginBottom: 24,
+        gap: 16, marginBottom: 28,
       }}>
         {[
-          { label: "Ventas hoy", value: ventasHoy.length },
-          { label: "Facturado hoy", value: fmt(ventasHoy.reduce((a, v) => a + Number(v.total || 0), 0)) },
-          { label: "Total ventas", value: ventas.length },
+          { label: "Ventas hoy", value: ventasHoy.length, accent: C.navy || '#1E3A8A' },
+          { label: "Facturado hoy", value: fmt(ventasHoy.reduce((a, v) => a + Number(v.total || 0), 0)), accent: C.lime || '#7BC142' },
+          { label: "Total ventas", value: ventas.length, accent: C.purple || '#9B5DE5' },
         ].map(k => (
           <div key={k.label} style={{
-            padding: 20,
+            padding: 22, position: 'relative', overflow: 'hidden',
             background: C.surface,
             border: `1px solid ${C.line}`,
-            borderRadius: RADIUS.lg,
-          }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: C.ink3, textTransform: "uppercase", letterSpacing: 1 }}>
+            borderRadius: 18,
+            transition: 'transform 200ms ease, box-shadow 200ms ease',
+          }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-3px)';
+              e.currentTarget.style.boxShadow = `0 18px 36px -20px ${k.accent}55`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            <div aria-hidden="true" style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+              background: `linear-gradient(90deg, ${k.accent} 0%, ${k.accent}00 100%)`,
+            }}/>
+            <span style={{
+              fontSize: 10, fontWeight: 800,
+              color: k.accent, textTransform: "uppercase", letterSpacing: '0.16em',
+            }}>
               {k.label}
             </span>
             <div style={{
-              marginTop: 8,
-              fontFamily: FONT.display,
-              fontWeight: 700, fontSize: 26,
-              color: C.ink, letterSpacing: -0.3,
+              marginTop: 10,
+              fontFamily: FONT.display, fontStyle: 'italic',
+              fontWeight: 500, fontSize: 30,
+              color: C.ink, letterSpacing: -0.4,
+              fontVariantNumeric: 'tabular-nums',
             }}>
               {k.value}
             </div>
