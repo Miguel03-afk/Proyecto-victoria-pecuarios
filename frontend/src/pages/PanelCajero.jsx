@@ -230,7 +230,7 @@ function NuevaVenta({ usuario }) {
       }}>✓</div>
       <h2 style={{
         margin: "0 0 8px",
-        fontFamily: FONT.display, fontStyle: "italic",
+        fontFamily: FONT.display,
         fontWeight: 600, fontSize: 26, color: C.ink,
       }}>
         ¡Venta registrada!
@@ -272,7 +272,7 @@ function NuevaVenta({ usuario }) {
           </div>
           <h1 style={{
             margin: 0,
-            fontFamily: FONT.display, fontStyle: "italic",
+            fontFamily: FONT.display,
             fontWeight: 500, fontSize: 36,
             color: C.ink, letterSpacing: -0.4, lineHeight: 1.05,
           }}>
@@ -404,7 +404,7 @@ function NuevaVenta({ usuario }) {
           </div>
           <h3 style={{
             margin: "4px 0 0",
-            fontFamily: FONT.display, fontStyle: "italic",
+            fontFamily: FONT.display,
             fontWeight: 600, fontSize: 22, color: C.ink,
           }}>
             Venta actual
@@ -694,7 +694,7 @@ function Historial() {
       </div>
       <h1 style={{
         margin: "0 0 28px",
-        fontFamily: FONT.display, fontStyle: "italic",
+        fontFamily: FONT.display,
         fontWeight: 500, fontSize: 36,
         color: C.ink, letterSpacing: -0.4, lineHeight: 1.05,
       }}>
@@ -740,9 +740,9 @@ function Historial() {
             </span>
             <div style={{
               marginTop: 10,
-              fontFamily: FONT.display, fontStyle: 'italic',
-              fontWeight: 500, fontSize: 30,
-              color: C.ink, letterSpacing: -0.4,
+              fontFamily: FONT.display,
+              fontWeight: 700, fontSize: 32,
+              color: C.ink, letterSpacing: '-0.025em',
               fontVariantNumeric: 'tabular-nums',
             }}>
               {k.value}
@@ -863,7 +863,7 @@ function ConsultasPago() {
       <span style={{ fontSize: 11, fontWeight: 600, color: C.ink3 }}>Cajero · Consultas</span>
       <h1 style={{
         margin: "4px 0 24px",
-        fontFamily: FONT.display, fontStyle: "italic",
+        fontFamily: FONT.display,
         fontWeight: 600, fontSize: 30, color: C.ink,
       }}>
         Cobrar consultas veterinarias
@@ -975,7 +975,7 @@ function ConsultasPago() {
               </p>
               <h3 style={{
                 margin: "4px 0 0",
-                fontFamily: FONT.display, fontStyle: "italic",
+                fontFamily: FONT.display,
                 fontWeight: 600, fontSize: 18, color: C.purpleDeep,
               }}>
                 Consulta veterinaria
@@ -987,8 +987,8 @@ function ConsultasPago() {
 
             <div style={{ padding: "16px 18px", maxHeight: 320, overflowY: "auto" }}>
               {orden.motivo_consulta && (
-                <p style={{ margin: "0 0 12px", fontSize: 12, color: C.ink2, fontStyle: "italic" }}>
-                  "{orden.motivo_consulta}"
+                <p style={{ margin: "0 0 12px", fontSize: 12, color: C.ink2 }}>
+                  “{orden.motivo_consulta}”
                 </p>
               )}
 

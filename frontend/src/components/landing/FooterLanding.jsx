@@ -112,15 +112,14 @@ export default function FooterLanding() {
             <div>
               <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
                 <span className="vp-font-display" style={{
-                  fontSize: 44, fontWeight: 600,
-                  color: Cur.ink, letterSpacing: "-0.02em",
-                  fontStyle: 'italic',
+                  fontSize: 46, fontWeight: 700,
+                  color: Cur.ink, letterSpacing: "-0.03em",
                 }}>
                   Victoria
                 </span>
                 <span style={{
-                  fontSize: 13, fontWeight: 800, letterSpacing: "0.32em",
-                  color: Cur.lime, textTransform: "uppercase", marginTop: 8,
+                  fontSize: 14, fontWeight: 600,
+                  color: Cur.lime, marginTop: 6,
                 }}>
                   Pets
                 </span>
@@ -143,8 +142,8 @@ export default function FooterLanding() {
                 }}
               >
                 <label style={{
-                  display: 'block', fontSize: 10, letterSpacing: '0.18em',
-                  textTransform: 'uppercase', color: Cur.inkMuted, fontWeight: 700,
+                  display: 'block', fontSize: 13,
+                  color: Cur.ink, fontWeight: 600,
                   marginBottom: 10,
                 }}>
                   Mantente al día
@@ -178,7 +177,7 @@ export default function FooterLanding() {
                     type="submit"
                     style={{
                       padding: '10px 20px', borderRadius: 999,
-                      backgroundColor: Cur.navy, color: '#fff',
+                      backgroundColor: Cur.navy, color: Cur.canvas,
                       fontSize: 12, fontWeight: 700,
                       border: 'none', cursor: 'pointer',
                       fontFamily: 'inherit',
@@ -203,8 +202,7 @@ export default function FooterLanding() {
               {/* Redes sociales */}
               <div style={{ marginTop: 28 }}>
                 <div style={{
-                  fontSize: 10, letterSpacing: "0.18em",
-                  textTransform: "uppercase", color: Cur.inkMuted, fontWeight: 700,
+                  fontSize: 13, color: Cur.ink, fontWeight: 600,
                   marginBottom: 12,
                 }}>
                   Síguenos
@@ -227,7 +225,7 @@ export default function FooterLanding() {
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = s.color;
-                        e.currentTarget.style.color = '#fff';
+                        e.currentTarget.style.color = Cur.canvas;
                         e.currentTarget.style.transform = 'translateY(-2px)';
                       }}
                       onMouseLeave={(e) => {
@@ -252,9 +250,9 @@ export default function FooterLanding() {
               {COLS.map((c) => (
                 <div key={c.titulo}>
                   <h4 style={{
-                    fontSize: 11, fontWeight: 800, color: Cur.ink,
+                    fontSize: 14, fontWeight: 700, color: Cur.ink,
                     margin: '0 0 16px',
-                    textTransform: 'uppercase', letterSpacing: "0.16em",
+                    letterSpacing: "-0.01em",
                   }}>
                     {c.titulo}
                   </h4>
@@ -327,8 +325,7 @@ export default function FooterLanding() {
               display: 'flex', alignItems: 'center', gap: 12,
             }}>
               <span style={{
-                fontSize: 10, letterSpacing: '0.18em',
-                textTransform: 'uppercase', color: Cur.inkMuted, fontWeight: 700,
+                fontSize: 12, color: Cur.inkSoft, fontWeight: 500,
               }}>
                 Pagos
               </span>

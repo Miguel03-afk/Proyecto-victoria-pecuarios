@@ -231,7 +231,7 @@ function Agenda() {
           }}>
             <h3 style={{
               margin: "0 0 16px",
-              fontFamily: FONT.display, fontStyle: "italic",
+              fontFamily: FONT.display,
               fontWeight: 600, fontSize: 22, color: C.ink,
             }}>
               Reportar anomalía
@@ -324,7 +324,7 @@ function Agenda() {
           </p>
           <h3 style={{
             margin: "4px 0 8px",
-            fontFamily: FONT.display, fontStyle: "italic",
+            fontFamily: FONT.display,
             fontWeight: 600, fontSize: 20, color: C.ink,
           }}>
             {citas.length} citas hoy
@@ -562,7 +562,7 @@ function Agenda() {
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
                   <h2 style={{
                     margin: 0,
-                    fontFamily: FONT.display, fontStyle: "italic",
+                    fontFamily: FONT.display,
                     fontWeight: 600, fontSize: 28,
                     color: C.ink, letterSpacing: -0.3,
                   }}>
@@ -767,7 +767,7 @@ function Agenda() {
                   </div>
                   <h4 style={{
                     margin: "0 0 6px",
-                    fontFamily: FONT.display, fontStyle: "italic",
+                    fontFamily: FONT.display,
                     fontWeight: 600, fontSize: 16, color: C.ink,
                   }}>
                     {selected.motivo}
@@ -916,7 +916,7 @@ function Solicitudes({ onActualizar }) {
       </span>
       <h1 style={{
         margin: "6px 0 6px",
-        fontFamily: FONT.display, fontStyle: "italic",
+        fontFamily: FONT.display,
         fontWeight: 600, fontSize: 32, color: C.ink,
       }}>
         Solicitudes pendientes
@@ -938,7 +938,7 @@ function Solicitudes({ onActualizar }) {
           }}>
             <h3 style={{
               margin: "0 0 6px",
-              fontFamily: FONT.display, fontStyle: "italic",
+              fontFamily: FONT.display,
               fontWeight: 600, fontSize: 20, color: C.ink,
             }}>
               Rechazar solicitud
@@ -1027,7 +1027,7 @@ function Solicitudes({ onActualizar }) {
               <div style={{ flex: 1, minWidth: 220 }}>
                 <h4 style={{
                   margin: "0 0 4px",
-                  fontFamily: FONT.display, fontStyle: "italic",
+                  fontFamily: FONT.display,
                   fontWeight: 600, fontSize: 18, color: C.ink,
                 }}>
                   {s.nombre_mascota}
@@ -1159,7 +1159,7 @@ function Disponibilidad() {
       </span>
       <h1 style={{
         margin: "6px 0 6px",
-        fontFamily: FONT.display, fontStyle: "italic",
+        fontFamily: FONT.display,
         fontWeight: 600, fontSize: 32, color: C.ink,
       }}>
         Mi disponibilidad
@@ -1313,7 +1313,7 @@ function Anomalias() {
       </span>
       <h1 style={{
         margin: "6px 0 6px",
-        fontFamily: FONT.display, fontStyle: "italic",
+        fontFamily: FONT.display,
         fontWeight: 600, fontSize: 32, color: C.ink,
       }}>
         Anomalías reportadas
@@ -1567,7 +1567,7 @@ function ModalConsulta({ ordenId, onClose, onUpdate }) {
                 </div>
                 <h2 style={{
                   margin: 0,
-                  fontFamily: FONT.display, fontStyle: "italic",
+                  fontFamily: FONT.display,
                   fontWeight: 600, fontSize: 24, color: C.ink,
                 }}>
                   {orden.nombre_mascota || "Sin nombre"} <span style={{ fontSize: 14, color: C.ink3, fontStyle: "normal", fontWeight: 500 }}>· {orden.especie_mascota || "—"}</span>
@@ -1577,8 +1577,8 @@ function ModalConsulta({ ordenId, onClose, onUpdate }) {
                   {orden.cliente_tel && <> · 📱 {orden.cliente_tel}</>}
                 </p>
                 {orden.motivo_consulta && (
-                  <p style={{ margin: "6px 0 0", fontSize: 12, color: C.ink2, fontStyle: "italic" }}>
-                    "{orden.motivo_consulta}"
+                  <p style={{ margin: "6px 0 0", fontSize: 12, color: C.ink2 }}>
+                    “{orden.motivo_consulta}”
                   </p>
                 )}
               </div>
@@ -1937,7 +1937,7 @@ function Consultas() {
       </span>
       <h1 style={{
         margin: "6px 0 6px",
-        fontFamily: FONT.display, fontStyle: "italic",
+        fontFamily: FONT.display,
         fontWeight: 600, fontSize: 32, color: C.ink,
       }}>
         Consultas en curso
@@ -2164,7 +2164,7 @@ function Historial({ initialBusqueda = "" }) {
       </span>
       <h1 style={{
         margin: "6px 0 6px",
-        fontFamily: FONT.display, fontStyle: "italic",
+        fontFamily: FONT.display,
         fontWeight: 600, fontSize: 32, color: C.ink,
       }}>
         Historial de consultas
@@ -2296,7 +2296,7 @@ function Historial({ initialBusqueda = "" }) {
                 </button>
                 <span style={{ color: C.muted }}>/</span>
                 <h3 style={{
-                  margin: 0, fontFamily: FONT.display, fontStyle: "italic",
+                  margin: 0, fontFamily: FONT.display,
                   fontWeight: 600, fontSize: 22, color: C.ink,
                 }}>
                   {anoActivo}
@@ -2357,7 +2357,7 @@ function Historial({ initialBusqueda = "" }) {
                 </button>
                 <span style={{ color: C.muted }}>/</span>
                 <h3 style={{
-                  margin: 0, fontFamily: FONT.display, fontStyle: "italic",
+                  margin: 0, fontFamily: FONT.display,
                   fontWeight: 600, fontSize: 20, color: C.ink,
                 }}>
                   {MESES_NOMBRE[mesActivo]}
@@ -2564,18 +2564,18 @@ export default function PanelVeterinario() {
           }}>
             <div style={{
               width: 38, height: 38, borderRadius: 12,
-              background: `linear-gradient(135deg, ${C.lime || '#7BC142'} 0%, ${C.navy || '#1E3A8A'} 100%)`,
-              color: '#fff',
+              background: C.navy || '#1E3A8A',
+              color: '#FAF7F0',
               display: "inline-flex", alignItems: "center", justifyContent: "center",
-              fontSize: 14, fontWeight: 800,
-              fontFamily: FONT.display, fontStyle: 'italic',
-              boxShadow: `0 6px 14px -6px ${C.lime || '#7BC142'}55`,
+              fontSize: 14, fontWeight: 700,
+              fontFamily: FONT.display, letterSpacing: '-0.02em',
+              boxShadow: `0 4px 10px -6px ${C.navy || '#1E3A8A'}55`,
             }}>
               VP
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
               <span style={{
-                fontFamily: FONT.display, fontStyle: "italic",
+                fontFamily: FONT.display,
                 fontWeight: 600, fontSize: 17, color: C.sidebarTextHi,
                 letterSpacing: '-0.02em',
               }}>
@@ -2711,7 +2711,7 @@ export default function PanelVeterinario() {
               </div>
               <h2 style={{
                 margin: 0,
-                fontFamily: FONT.display, fontStyle: "italic",
+                fontFamily: FONT.display,
                 fontWeight: 500, fontSize: 24, color: C.ink,
                 textTransform: "capitalize", letterSpacing: -0.3,
                 lineHeight: 1.1,

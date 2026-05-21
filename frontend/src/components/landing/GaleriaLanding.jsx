@@ -142,12 +142,13 @@ function GaleriaCard({ Cur, item, onClick, aspectRatio, rotate = 0 }) {
             backgroundColor: Cur.surface, color: Cur.ink,
             fontSize: 13, fontWeight: 600,
           }}>
-            Ver —{' '}
-            <em className="vp-font-display" style={{
-              fontStyle: 'italic', color: Cur.navy, fontWeight: 600,
+            Ver,{' '}
+            <span className="vp-font-display" style={{
+              color: Cur.navy, fontWeight: 700,
+              letterSpacing: '-0.01em',
             }}>
               {item.titulo || 'Sin título'}
-            </em>
+            </span>
           </span>
         </div>
       </div>
@@ -261,12 +262,13 @@ export default function GaleriaLanding() {
               className="vp-font-display"
               style={{
                 marginTop: 14, marginBottom: 0,
-                fontSize: "clamp(32px, 4vw, 52px)", lineHeight: 1.05,
-                fontWeight: 500, color: Cur.ink,
+                fontSize: "clamp(34px, 4vw, 56px)", lineHeight: 1.0,
+                fontWeight: 700, color: Cur.ink,
+                letterSpacing: "-0.025em",
               }}
               segments={[
                 { text: "Momentos que " },
-                { text: "cuidamos.", italic: true, color: Cur.navy },
+                { text: "cuidamos.", color: Cur.navy },
               ]}
             />
             <Reveal delay={80}>
@@ -317,8 +319,8 @@ export default function GaleriaLanding() {
               <FontAwesomeIcon icon={faImages} style={{ fontSize: 24 }} />
             </div>
             <h3 className="vp-font-display" style={{
-              margin: 0, fontSize: 22, fontWeight: 500, color: Cur.ink,
-              fontStyle: 'italic',
+              margin: 0, fontSize: 24, fontWeight: 700, color: Cur.ink,
+              letterSpacing: '-0.02em', lineHeight: 1.15,
             }}>
               Aún no tenemos fotos para mostrar.
             </h3>
@@ -385,12 +387,13 @@ export default function GaleriaLanding() {
                     className="vp-font-display"
                     style={{
                       marginTop: 14, marginBottom: 0,
-                      fontSize: "clamp(28px, 3.5vw, 46px)", lineHeight: 1.05,
-                      fontWeight: 500, color: Cur.ink,
+                      fontSize: "clamp(30px, 3.5vw, 48px)", lineHeight: 1.0,
+                      fontWeight: 700, color: Cur.ink,
+                      letterSpacing: "-0.025em",
                     }}
                     segments={[
                       { text: "Detrás de " },
-                      { text: "la consulta.", italic: true, color: Cur.navy },
+                      { text: "la consulta.", color: Cur.navy },
                     ]}
                   />
                   <Reveal delay={80}>
@@ -409,7 +412,7 @@ export default function GaleriaLanding() {
                       style={{
                         marginTop: 24,
                         padding: '12px 24px', borderRadius: 999,
-                        backgroundColor: Cur.ink, color: '#fff',
+                        backgroundColor: Cur.ink, color: Cur.canvas,
                         fontSize: 13, fontWeight: 700, border: 'none',
                         cursor: 'pointer', fontFamily: 'inherit',
                         display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -473,7 +476,7 @@ export default function GaleriaLanding() {
                   onClick={() => navigate('/galeria')}
                   style={{
                     padding: '13px 26px', borderRadius: 999,
-                    backgroundColor: Cur.ink, color: '#fff',
+                    backgroundColor: Cur.ink, color: Cur.canvas,
                     fontSize: 13, fontWeight: 700, border: 'none',
                     cursor: 'pointer', fontFamily: 'inherit',
                     display: 'inline-flex', alignItems: 'center', gap: 8,

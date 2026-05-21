@@ -248,9 +248,9 @@ export default function GaleriaLightbox({ items, index, onClose, onIndexChange }
               {item.titulo && (
                 <h3 style={{
                   margin: 0,
-                  fontFamily: '"Playfair Display", Georgia, serif',
-                  fontStyle: 'italic', fontSize: 22, fontWeight: 500,
-                  letterSpacing: '-0.01em', lineHeight: 1.2,
+                  fontFamily: '"General Sans", system-ui, sans-serif',
+                  fontSize: 24, fontWeight: 700,
+                  letterSpacing: '-0.025em', lineHeight: 1.1,
                 }}>
                   {item.titulo}
                 </h3>

@@ -413,7 +413,6 @@ export default function Perfil() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,600&display=swap');
         @keyframes spin   { to { transform: rotate(360deg); } }
         @keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
         *, *::before, *::after { box-sizing: border-box; }
@@ -454,7 +453,7 @@ export default function Perfil() {
               {/* Info */}
               <div style={{ flex:1, minWidth:180 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:3 }}>
-                  <h1 className="vp-perfil-name" style={{ margin:0, fontSize:20, fontWeight:700, color:"#fff", fontFamily:"'Playfair Display',serif", fontStyle:"italic", lineHeight:1.2 }}>
+                  <h1 className="vp-perfil-name" style={{ margin:0, fontSize:22, fontWeight:700, color:"#FAF7F0", fontFamily:"'General Sans', system-ui, sans-serif", letterSpacing:'-0.02em', lineHeight:1.15 }}>
                     {perfil.nombre} {perfil.apellido}
                   </h1>
                   <span style={{ fontSize:9, fontWeight:700, padding:"2px 8px", borderRadius:999, background:"rgba(122,193,67,0.15)", border:"1px solid rgba(122,193,67,0.25)", color:T.lime, textTransform:"uppercase", letterSpacing:0.8 }}>
@@ -504,7 +503,7 @@ export default function Perfil() {
           {/* ── Contenido del tab ────────────────────────────────────────── */}
           <div className="vp-perfil-content" style={{ background:T.surface, border:`1px solid ${T.border}`, borderRadius:16, padding:"22px", animation:"fadeUp 0.25s ease" }}>
             <div style={{ marginBottom:18 }}>
-              <h2 style={{ margin:"0 0 3px", fontSize:15, fontWeight:700, color:T.text, fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>
+              <h2 style={{ margin:"0 0 3px", fontSize:16, fontWeight:700, color:T.text, fontFamily:"'General Sans', system-ui, sans-serif", letterSpacing:'-0.015em' }}>
                 {TAB_INFO[tab].titulo}
               </h2>
               <p style={{ margin:0, fontSize:11, color:T.textMuted }}>{TAB_INFO[tab].sub}</p>

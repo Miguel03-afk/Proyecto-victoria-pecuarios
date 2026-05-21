@@ -38,27 +38,27 @@ function TestimonioCard({ Cur, t }) {
             ))}
           </div>
 
-          <blockquote className="vp-font-display" style={{
-            fontStyle: "italic", fontSize: 18, lineHeight: 1.4,
-            color: Cur.ink, marginTop: 16, marginBottom: 0, marginLeft: 0, marginRight: 0,
-            position: "relative", paddingLeft: 18, flex: 1,
+          <blockquote style={{
+            fontSize: 16, lineHeight: 1.55,
+            color: Cur.ink, marginTop: 16, marginBottom: 0, marginInline: 0,
+            position: "relative", flex: 1, fontWeight: 400,
           }}>
             <span aria-hidden="true" className="vp-font-display" style={{
-              position: "absolute", left: -4, top: -10,
-              fontSize: 48, color: accent, lineHeight: 1,
-              fontStyle: "italic", opacity: 0.55,
+              position: "absolute", left: -8, top: -24,
+              fontSize: 64, color: accent, lineHeight: 1, fontWeight: 700,
+              opacity: 0.35,
             }}>
               “
             </span>
-            {t.body}
+            <span style={{ position: 'relative', zIndex: 1 }}>{t.body}</span>
           </blockquote>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18 }}>
             <div style={{
               width: 42, height: 42, borderRadius: 999,
-              background: `linear-gradient(135deg, ${Cur.lime} 0%, ${accent} 100%)`,
-              color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center",
-              fontWeight: 700, fontSize: 13, letterSpacing: "0.02em", flexShrink: 0,
+              background: accent,
+              color: Cur.canvas, display: "inline-flex", alignItems: "center", justifyContent: "center",
+              fontWeight: 700, fontSize: 13, flexShrink: 0,
             }}>
               {t.initials}
             </div>
@@ -97,25 +97,22 @@ export default function TestimoniosLanding() {
         <Reveal>
           <div style={{ textAlign: 'center' }}>
             <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 12,
-              fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase",
-              color: Cur.lime, fontWeight: 700,
+              fontSize: 14, color: Cur.lime, fontWeight: 600,
             }}>
-              <span style={{ width: 22, height: 1, backgroundColor: Cur.lime }} />
-              <span>Familias que confían</span>
-              <span style={{ width: 22, height: 1, backgroundColor: Cur.lime }} />
+              Familias que confían
             </div>
             <TypeReveal
               as="h2"
               className="vp-font-display"
               style={{
-                marginTop: 16, marginBottom: 0,
-                fontSize: "clamp(32px, 4vw, 52px)", lineHeight: 1.05,
-                fontWeight: 500, color: Cur.ink,
+                marginTop: 14, marginBottom: 0,
+                fontSize: "clamp(34px, 4vw, 56px)", lineHeight: 1.0,
+                fontWeight: 700, color: Cur.ink,
+                letterSpacing: "-0.025em",
               }}
               segments={[
                 { text: "Lo que cuentan " },
-                { text: "nuestros clientes.", italic: true, color: Cur.navy },
+                { text: "nuestros clientes.", color: Cur.navy },
               ]}
             />
           </div>

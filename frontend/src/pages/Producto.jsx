@@ -285,13 +285,12 @@ function PanelCompra({ producto, variantes }) {
         )}
       </div>
 
-      {/* Nombre Playfair */}
       <h1 style={{
         margin: 0,
         fontFamily: FONT.display,
-        fontWeight: 500,
+        fontWeight: 700,
         fontSize: "clamp(28px, 4vw, 44px)",
-        lineHeight: 1.05, letterSpacing: -0.6,
+        lineHeight: 1.05, letterSpacing: '-0.025em',
         color: C.ink,
       }}>
         {producto.nombre}
@@ -832,7 +831,6 @@ export default function Producto() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap');
         @keyframes vp-shimmer { to { background-position: -200% 0; } }
         @media (max-width: 900px) {
           .vp-prod-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
@@ -875,8 +873,9 @@ export default function Producto() {
             </div>
             <h2 style={{
               margin: "0 0 10px",
-              fontFamily: FONT.display, fontStyle: "italic",
-              fontWeight: 500, fontSize: 28, color: C.ink,
+              fontFamily: FONT.display,
+              fontWeight: 700, fontSize: 30, color: C.ink,
+              letterSpacing: '-0.025em', lineHeight: 1.05,
             }}>
               Producto no encontrado
             </h2>

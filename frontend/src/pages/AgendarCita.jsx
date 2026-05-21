@@ -548,7 +548,7 @@ export default function AgendarCita() {
           <div style={{ width:72, height:72, borderRadius:20, background:C.successBg, border:`2px solid ${C.successBorder}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:36, margin:"0 auto 20px" }}>
             ✅
           </div>
-          <h2 style={{ margin:"0 0 8px", fontSize:22, fontWeight:800, color:C.text, fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>
+          <h2 style={{ margin:"0 0 8px", fontSize:26, fontWeight:700, color:C.text, fontFamily:"'General Sans', system-ui, sans-serif", letterSpacing:'-0.025em', lineHeight:1.1 }}>
             ¡Cita agendada!
           </h2>
           <p style={{ margin:"0 0 20px", color:C.textMuted, fontSize:14, lineHeight:1.6 }}>
@@ -577,7 +577,6 @@ export default function AgendarCita() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&display=swap');
         @keyframes shimmer { to { background-position:-200% 0; } }
         @keyframes fadeUp  { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         * { box-sizing:border-box; }
@@ -596,14 +595,14 @@ export default function AgendarCita() {
         <div style={{ maxWidth:800, margin:"0 auto", padding:"32px 16px 64px" }}>
           {/* Header */}
           <div style={{ marginBottom:32 }}>
-            <p style={{ margin:"0 0 4px", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:1.2, color:C.brand }}>
+            <p style={{ margin:"0 0 6px", fontSize:13, fontWeight:500, color:C.brand }}>
               Agendar cita
             </p>
-            <h1 style={{ margin:"0 0 6px", fontSize:"clamp(22px,4vw,32px)", fontWeight:800, color:C.text, fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>
+            <h1 style={{ margin:"0 0 8px", fontSize:"clamp(28px,4vw,38px)", fontWeight:700, color:C.text, fontFamily:"'General Sans', system-ui, sans-serif", letterSpacing:'-0.025em', lineHeight:1.05 }}>
               Consulta veterinaria
             </h1>
-            <p style={{ margin:0, fontSize:14, color:C.textMuted }}>
-              Selecciona tu veterinario, fecha y hora disponible
+            <p style={{ margin:0, fontSize:14, color:C.textMuted, lineHeight:1.5 }}>
+              Selecciona tu veterinario, fecha y hora disponible.
             </p>
           </div>
 

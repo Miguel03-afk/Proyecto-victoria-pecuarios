@@ -148,9 +148,9 @@ export default function RestablecerPassword() {
 
             <h1 style={{
               margin: "0 0 10px",
-              fontFamily: '"Playfair Display", serif', fontStyle: "italic",
-              fontWeight: 500, fontSize: 26, color: AUTH_C.fg,
-              letterSpacing: "-0.01em",
+              fontFamily: '"General Sans", system-ui, sans-serif',
+              fontWeight: 700, fontSize: 28, color: AUTH_C.fg,
+              letterSpacing: "-0.025em", lineHeight: 1.05,
             }}>
               Enlace inválido o expirado
             </h1>
@@ -198,8 +198,9 @@ export default function RestablecerPassword() {
 
             <h1 style={{
               margin: "0 0 10px",
-              fontFamily: '"Playfair Display", serif', fontStyle: "italic",
-              fontWeight: 500, fontSize: 26, color: AUTH_C.fg,
+              fontFamily: '"General Sans", system-ui, sans-serif',
+              fontWeight: 700, fontSize: 28, color: AUTH_C.fg,
+              letterSpacing: "-0.025em", lineHeight: 1.05,
             }}>
               Contraseña actualizada
             </h1>
@@ -236,9 +237,9 @@ export default function RestablecerPassword() {
         <div style={{ marginBottom: 24 }}>
           <h1 style={{
             margin: "0 0 8px",
-            fontFamily: '"Playfair Display", serif', fontStyle: "italic",
-            fontWeight: 500, fontSize: 28, color: AUTH_C.fg,
-            letterSpacing: "-0.01em",
+            fontFamily: '"General Sans", system-ui, sans-serif',
+            fontWeight: 700, fontSize: 30, color: AUTH_C.fg,
+            letterSpacing: "-0.025em", lineHeight: 1.05,
           }}>
             Crear nueva contraseña
           </h1>

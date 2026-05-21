@@ -95,8 +95,8 @@ export default function CarritoPanel() {
             </div>
             <div style={{ minWidth: 0 }}>
               <h2 style={{
-                margin: 0, fontSize: 16, fontWeight: 700, color: C.ink,
-                fontFamily: FONT.display, fontStyle: 'italic',
+                margin: 0, fontSize: 17, fontWeight: 700, color: C.ink,
+                fontFamily: FONT.display, letterSpacing: '-0.015em',
               }}>
                 Tu carrito
               </h2>
@@ -213,8 +213,8 @@ export default function CarritoPanel() {
               </div>
               <div>
                 <p style={{
-                  margin: "0 0 6px", fontWeight: 500, color: C.ink, fontSize: 18,
-                  fontFamily: FONT.display, fontStyle: 'italic',
+                  margin: "0 0 6px", fontWeight: 700, color: C.ink, fontSize: 19,
+                  fontFamily: FONT.display, letterSpacing: '-0.02em',
                 }}>
                   Tu carrito está vacío
                 </p>

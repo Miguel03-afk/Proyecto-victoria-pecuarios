@@ -13,8 +13,13 @@ import imgHigiene      from "../../assets/landing/p5-sleep.png";
 
 const FALLBACK_IMGS = [imgAlimento, imgMedicamento, imgAccesorios, imgHigiene];
 
-function CategoryCard({ Cur, cat, accent, img, delay }) {
+/* Aspect ratios alternados por índice para romper la monotonía visual:
+   índices pares (0, 2) son más altos, impares (1, 3) más cortos.
+   El skill veta "identical card grids" — variar la silueta crea ritmo
+   sin perder la grilla regular. */
+function CategoryCard({ Cur, cat, accent, img, delay, index = 0 }) {
   const navigate = useNavigate();
+  const aspectRatio = index % 2 === 0 ? "4 / 5.5" : "4 / 4.2";
   return (
     <Reveal variant="vp-reveal-card" delay={delay}>
       <button
@@ -23,37 +28,42 @@ function CategoryCard({ Cur, cat, accent, img, delay }) {
         className="vp-category-card"
         style={{
           display: 'block', position: 'relative', overflow: 'hidden',
-          aspectRatio: "1 / 1.15", borderRadius: 24,
-          backgroundImage: `linear-gradient(0deg, rgba(10,20,38,0.85) 0%, rgba(10,20,38,0.10) 60%, rgba(10,20,38,0) 100%), url('${img}')`,
+          aspectRatio, borderRadius: 22,
+          backgroundImage: `linear-gradient(0deg, rgba(10,20,38,0.78) 0%, rgba(10,20,38,0.15) 50%, rgba(10,20,38,0) 90%), url('${img}')`,
           backgroundSize: "cover", backgroundPosition: "center",
-          textDecoration: "none", color: "#fff",
+          textDecoration: "none", color: "#FAF7F0",
           border: 'none', cursor: 'pointer', width: '100%',
           fontFamily: 'inherit', textAlign: 'left',
+          transition: "box-shadow 320ms cubic-bezier(0.16, 1, 0.3, 1), transform 320ms cubic-bezier(0.16, 1, 0.3, 1)",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 24px 40px -20px rgba(10,20,38,0.45)")}
-        onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "none")}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.boxShadow = "0 22px 40px -18px rgba(10,20,38,0.40)";
+          e.currentTarget.style.transform = "translateY(-3px)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow = "none";
+          e.currentTarget.style.transform = "translateY(0)";
+        }}
       >
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20 }}>
-          <span style={{
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: "20px 22px" }}>
+          <span aria-hidden="true" style={{
             display: "inline-block",
-            fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase",
-            fontWeight: 700,
-            backgroundColor: "rgba(255,255,255,0.14)",
-            backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
+            fontSize: 13, fontWeight: 600,
             color: accent,
-            padding: "5px 10px", borderRadius: 999,
-            marginBottom: 12,
+            marginBottom: 8,
+            letterSpacing: "-0.01em",
           }}>
-            CATEGORÍA
+            {String(index + 1).padStart(2, "0")}
           </span>
           <h3 className="vp-font-display" style={{
-            fontSize: 24, fontWeight: 500, lineHeight: 1.1, margin: 0,
+            fontSize: 26, fontWeight: 700, lineHeight: 1.1, margin: 0,
             textTransform: 'capitalize',
+            letterSpacing: "-0.025em",
           }}>
             {cat.nombre || cat.slug}
           </h3>
           {cat.descripcion && (
-            <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>
+            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 6, lineHeight: 1.4 }}>
               {cat.descripcion}
             </div>
           )}
@@ -110,8 +120,9 @@ export default function CategoriasLanding() {
                 className="vp-font-display"
                 style={{
                   marginTop: 14, marginBottom: 0,
-                  fontSize: "clamp(32px, 4vw, 52px)", lineHeight: 1.05,
-                  fontWeight: 500, color: Cur.ink,
+                  fontSize: "clamp(34px, 4vw, 56px)", lineHeight: 1.0,
+                  fontWeight: 700, color: Cur.ink,
+                  letterSpacing: "-0.025em",
                 }}
                 text="Lo que necesitas, organizado."
               />
@@ -133,7 +144,8 @@ export default function CategoriasLanding() {
         </Reveal>
 
         <div className="vp-cat-grid" style={{
-          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16,
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 18,
+          alignItems: 'end',
         }}>
           {cats.map((c, i) => (
             <CategoryCard
@@ -143,6 +155,7 @@ export default function CategoriasLanding() {
               accent={accents[i % accents.length]}
               img={FALLBACK_IMGS[i % FALLBACK_IMGS.length]}
               delay={i * 80}
+              index={i}
             />
           ))}
         </div>

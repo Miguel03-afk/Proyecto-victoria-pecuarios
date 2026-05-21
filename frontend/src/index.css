@@ -29,21 +29,66 @@
   --vp-space-xl:  clamp(20px,  5vw,   32px);
 }
 
-/* ─── Global button press feedback ────────────────────────────────────────── */
-/* Subtle scale-down on press tells the user the UI heard them.
+/* ─── Global button press feedback (Emil Kowalski) ────────────────────────── */
+/* "Buttons must feel responsive. Add transform: scale(0.97) on :active.
+   This gives instant feedback, making the UI feel like it is truly listening."
    Excludes :disabled. Uses transform (GPU-accelerated). */
 button:not(:disabled):active {
   transform: scale(0.97);
 }
 
-/* If a button has no inline transition, this gives it a baseline.
-   Inline transitions override this when present. */
+/* Baseline transition para que :active se sienta inmediato (160ms es el sweet
+   spot de Emil para button press: rápido sin sentirse abrupto).
+   Inline transitions overridean este baseline cuando están presentes. */
 button {
-  transition: transform 120ms var(--vp-ease-out);
+  transition: transform 160ms var(--vp-ease-out);
 }
 
 button:disabled {
   transform: none;
+}
+
+/* ─── Focus visible ring (a11y + craft) ────────────────────────────────────
+   Por defecto los focus rings del navegador son feos. Custom focus-visible
+   con tinte navy + transparencia. Solo se muestra con keyboard navigation
+   (focus-visible), no con mouse (no molesta a usuarios de mouse). */
+:focus-visible {
+  outline: 2px solid rgba(30, 58, 138, 0.55);
+  outline-offset: 2px;
+  border-radius: inherit;
+  transition: outline-offset 120ms var(--vp-ease-out);
+}
+
+/* Inputs y botones con border-radius — el outline-offset se acomoda. */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline-offset: 3px;
+}
+
+/* ─── Utility: lift card on hover (Emil principle: feedback) ────────────────
+   Eleva sutilmente la card 2px cuando el usuario pasa el mouse. Indica
+   "afordancia" sin necesidad de cambiar más. */
+.vp-hover-lift {
+  transition: transform 220ms var(--vp-ease-out), box-shadow 220ms var(--vp-ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .vp-hover-lift:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* ─── Utility: smooth image hover scale ────────────────────────────────────
+   Imágenes dentro de cards que crecen 1.04× al hover. Easing más largo
+   (700ms) porque es transformación visual decorativa, no feedback. */
+.vp-img-scale {
+  transition: transform 700ms var(--vp-ease-out);
+}
+.vp-hover-lift:hover .vp-img-scale,
+.vp-img-scale-trigger:hover .vp-img-scale {
+  transform: scale(1.04);
 }
 
 /* ─── Shared keyframes for modals, toasts, etc. ───────────────────────────── */

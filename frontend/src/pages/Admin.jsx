@@ -481,10 +481,10 @@ function Dashboard() {
                 )}
               </div>
               <div style={{
-                fontFamily: font.display, fontStyle: 'italic',
-                fontWeight: 500, fontSize: 34,
-                color: T.text, letterSpacing: -0.6,
-                marginBottom: 8, lineHeight: 1.05,
+                fontFamily: font.display,
+                fontWeight: 700, fontSize: 36,
+                color: T.text, letterSpacing: '-0.025em',
+                marginBottom: 8, lineHeight: 1.0,
                 fontVariantNumeric: 'tabular-nums',
                 position: 'relative', zIndex: 1,
               }}>
@@ -670,8 +670,8 @@ function Dashboard() {
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
             <h3 style={{
               margin: 0,
-              fontFamily: font.display, fontStyle: "italic",
-              fontWeight: 600, fontSize: 18, color: T.text,
+              fontFamily: font.display,
+              fontWeight: 700, fontSize: 18, color: T.text, letterSpacing: '-0.015em',
             }}>
               Pedidos recientes
             </h3>
@@ -757,8 +757,8 @@ function Dashboard() {
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
             <h3 style={{
               margin: 0,
-              fontFamily: font.display, fontStyle: "italic",
-              fontWeight: 600, fontSize: 18, color: T.text,
+              fontFamily: font.display,
+              fontWeight: 700, fontSize: 18, color: T.text, letterSpacing: '-0.015em',
             }}>
               Stock bajo
             </h3>
@@ -3062,9 +3062,9 @@ function Veterinarios() {
                 </div>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <h3 style={{
-                    margin: 0, fontSize: 19, fontWeight: 700, color: "#fff",
-                    fontFamily: '"Playfair Display", serif', fontStyle: "italic",
-                    letterSpacing: -0.3,
+                    margin: 0, fontSize: 20, fontWeight: 700, color: "#FAF7F0",
+                    fontFamily: '"General Sans", system-ui, sans-serif',
+                    letterSpacing: '-0.02em',
                   }}>
                     Dr. {modalDetalleVet.nombre} {modalDetalleVet.apellido}
                   </h3>
@@ -3260,17 +3260,17 @@ export default function Admin() {
                   width: 40, height: 40, borderRadius: 12, flexShrink: 0,
                   background: `linear-gradient(135deg, ${T.lime || '#7BC142'} 0%, ${T.navy || '#1E3A8A'} 100%)`,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#fff', fontWeight: 800, fontSize: 15,
-                  fontFamily: font.display, fontStyle: 'italic',
-                  boxShadow: `0 6px 14px -6px ${T.lime || '#7BC142'}66`,
+                  color: '#FAF7F0', fontWeight: 700, fontSize: 14,
+                  fontFamily: font.display, letterSpacing: '-0.02em',
+                  boxShadow: `0 4px 10px -6px ${T.lime || '#7BC142'}50`,
                 }}>
                   VP
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
                   <span style={{
-                    fontFamily: font.display, fontStyle: 'italic',
-                    fontSize: 18, fontWeight: 600,
-                    color: T.sidebarTextHi, letterSpacing: '-0.02em',
+                    fontFamily: font.display,
+                    fontSize: 19, fontWeight: 700,
+                    color: T.sidebarTextHi, letterSpacing: '-0.025em',
                   }}>
                     Victoria
                   </span>
@@ -3288,8 +3288,8 @@ export default function Admin() {
                   width: 36, height: 36, borderRadius: 10,
                   background: `linear-gradient(135deg, ${T.lime || '#7BC142'} 0%, ${T.navy || '#1E3A8A'} 100%)`,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#fff', fontWeight: 800, fontSize: 13,
-                  fontFamily: font.display, fontStyle: 'italic',
+                  color: '#FAF7F0', fontWeight: 700, fontSize: 13,
+                  fontFamily: font.display, letterSpacing: '-0.02em',
                 }}>
                   VP
                 </div>
@@ -3377,9 +3377,9 @@ export default function Admin() {
             </div>
             <h1 style={{
               margin: 0,
-              fontFamily: font.display, fontStyle: 'italic',
-              fontWeight: 500, fontSize: 22,
-              color: T.text, letterSpacing: -0.3, lineHeight: 1.1,
+              fontFamily: font.display,
+              fontWeight: 700, fontSize: 24,
+              color: T.text, letterSpacing: '-0.02em', lineHeight: 1.1,
             }}>
               {TITULOS[seccion]}
             </h1>

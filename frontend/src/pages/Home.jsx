@@ -140,7 +140,6 @@ export default function Home() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap');
         @keyframes vp-shimmer { to { background-position: -200% 0; } }
         @keyframes vp-fadeUp  { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
         .vp-tienda-pill {
@@ -170,23 +169,19 @@ export default function Home() {
 
           <div style={{ maxWidth: 1280, margin: "0 auto", position: 'relative', zIndex: 1 }}>
             <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              fontSize: 11, fontWeight: 800,
-              color: lime, letterSpacing: 1.6,
-              textTransform: "uppercase",
+              fontSize: 14, fontWeight: 600, color: lime,
             }}>
-              <span style={{ width: 22, height: 1, backgroundColor: lime }} />
-              Catálogo · Tienda
+              Catálogo, Tienda
             </div>
             <h1 style={{
               margin: "12px 0 14px",
               fontFamily: FONT.display,
-              fontWeight: 500, fontSize: "clamp(36px, 5vw, 56px)",
-              color: C.ink, letterSpacing: -0.4, lineHeight: 1.05,
+              fontWeight: 700, fontSize: "clamp(36px, 5vw, 60px)",
+              color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.0,
             }}>
               Todo lo que tu mascota necesita,
               <br />
-              <span style={{ fontStyle: 'italic', color: navy }}>en un solo lugar.</span>
+              <span style={{ color: navy }}>en un solo lugar.</span>
             </h1>
             <p style={{ margin: 0, fontSize: 15, color: inkSoft, maxWidth: 580, lineHeight: 1.6 }}>
               Alimento, medicamentos, accesorios e higiene · Envíos gratis en Ibagué desde $80.000
@@ -292,8 +287,9 @@ export default function Home() {
               {numFiltros > 0 && (
                 <span style={{
                   padding: "0 7px", borderRadius: 999,
-                  background: navy, color: "#fff",
-                  fontSize: 10, fontWeight: 800,
+                  background: navy, color: C.canvas,
+                  fontSize: 11, fontWeight: 700,
+                  fontVariantNumeric: 'tabular-nums',
                 }}>
                   {numFiltros}
                 </span>
@@ -341,8 +337,8 @@ export default function Home() {
               marginBottom: 20,
             }}>
               <h3 style={{
-                margin: 0, fontSize: 18, fontWeight: 500, color: C.ink,
-                fontFamily: FONT.display, fontStyle: "italic",
+                margin: 0, fontSize: 17, fontWeight: 700, color: C.ink,
+                fontFamily: FONT.display, letterSpacing: '-0.015em',
               }}>
                 Filtros
               </h3>
@@ -364,9 +360,8 @@ export default function Home() {
             {categorias.length > 0 && (
               <div style={{ marginBottom: 24 }}>
                 <p style={{
-                  margin: "0 0 12px", fontSize: 10, fontWeight: 800,
-                  textTransform: "uppercase", letterSpacing: "0.16em",
-                  color: inkMuted,
+                  margin: "0 0 12px", fontSize: 13, fontWeight: 600,
+                  color: C.ink,
                 }}>
                   Categoría
                 </p>
@@ -403,9 +398,8 @@ export default function Home() {
             {/* Rango precio */}
             <div style={{ marginBottom: 24 }}>
               <p style={{
-                margin: "0 0 12px", fontSize: 10, fontWeight: 800,
-                textTransform: "uppercase", letterSpacing: "0.16em",
-                color: inkMuted,
+                margin: "0 0 12px", fontSize: 13, fontWeight: 600,
+                color: C.ink,
               }}>
                 Rango de precio
               </p>
@@ -442,11 +436,9 @@ export default function Home() {
             {marcasDisponibles.length > 0 && (
               <div>
                 <p style={{
-                  margin: "0 0 12px", fontSize: 10, fontWeight: 800,
-                  textTransform: "uppercase", letterSpacing: "0.16em",
-                  color: inkMuted,
+                  margin: "0 0 12px", fontSize: 13, fontWeight: 600, color: C.ink,
                 }}>
-                  Marca {marcasSel.length > 0 && <span style={{ color: navy }}>({marcasSel.length})</span>}
+                  Marca {marcasSel.length > 0 && <span style={{ color: navy, fontWeight: 500 }}>({marcasSel.length})</span>}
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6,
                   maxHeight: 240, overflowY: "auto" }}>
@@ -459,7 +451,7 @@ export default function Home() {
                         style={{
                           padding: "5px 12px", borderRadius: 999,
                           background: activo ? navy : "transparent",
-                          color: activo ? "#fff" : C.ink,
+                          color: activo ? C.canvas : C.ink,
                           border: `1px solid ${activo ? navy : C.border}`,
                           fontSize: 11, fontWeight: activo ? 700 : 500,
                           cursor: "pointer", fontFamily: FONT.ui,
@@ -479,8 +471,8 @@ export default function Home() {
                 display: "none",
                 width: "100%", marginTop: 20, padding: "12px",
                 borderRadius: 999,
-                border: "none", background: navy, color: "#fff",
-                fontSize: 13, fontWeight: 700, cursor: "pointer",
+                border: "none", background: navy, color: C.canvas,
+                fontSize: 13, fontWeight: 600, cursor: "pointer",
                 fontFamily: FONT.ui,
               }}>
               Ver resultados
@@ -544,8 +536,9 @@ export default function Home() {
                 }}/>
                 <h3 style={{
                   margin: "0 0 8px",
-                  fontFamily: FONT.display, fontStyle: "italic",
-                  fontWeight: 500, fontSize: 26, color: C.ink,
+                  fontFamily: FONT.display,
+                  fontWeight: 700, fontSize: 26, color: C.ink,
+                  letterSpacing: '-0.02em',
                 }}>
                   Sin resultados
                 </h3>
@@ -555,7 +548,7 @@ export default function Home() {
                 {hayFiltros && (
                   <button onClick={limpiarFiltros} style={{
                     padding: "12px 28px", borderRadius: 999,
-                    background: navy, color: "#fff",
+                    background: navy, color: C.canvas,
                     border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer",
                     fontFamily: FONT.ui,
                     boxShadow: `0 12px 24px -10px ${navy}66`,
@@ -603,11 +596,11 @@ export default function Home() {
                           borderRadius: 999,
                           border: `1px solid ${activo ? navy : C.border}`,
                           background: activo ? navy : C.surface,
-                          color: activo ? "#fff" : C.ink,
-                          fontSize: 13, fontWeight: 700, cursor: "pointer",
+                          color: activo ? C.canvas : C.ink,
+                          fontSize: 13, fontWeight: 600, cursor: "pointer",
                           fontFamily: FONT.ui,
                           fontVariantNumeric: 'tabular-nums',
-                          boxShadow: activo ? `0 6px 16px -8px ${navy}77` : 'none',
+                          boxShadow: activo ? `0 4px 12px -8px ${navy}50` : 'none',
                         }}>{n}</button>
                       );
                     })}

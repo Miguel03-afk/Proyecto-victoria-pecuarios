@@ -109,7 +109,6 @@ export default function PagoRespuesta() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700;1,800&display=swap');
         @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         @keyframes spin    { to{transform:rotate(360deg)} }
         @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:.5} }
@@ -156,8 +155,9 @@ export default function PagoRespuesta() {
 
             <h1 style={{
               margin: "0 0 10px",
-              fontFamily: "'Playfair Display',serif", fontStyle: "italic",
-              fontSize: "clamp(22px,4vw,28px)", fontWeight: 800, color: C.text,
+              fontFamily: "'General Sans', system-ui, sans-serif",
+              fontSize: "clamp(24px,4vw,30px)", fontWeight: 700, color: C.text,
+              letterSpacing: '-0.025em', lineHeight: 1.1,
             }}>
               {cfg.titulo}
             </h1>

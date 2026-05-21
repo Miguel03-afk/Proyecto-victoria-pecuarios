@@ -65,36 +65,37 @@ function ProductCardLanding({ Cur, p, onAgregar }) {
           : "0 1px 0 rgba(10,20,38,0.02)",
       }}
     >
-      {/* Badges top-left */}
+      {/* Badges top-left — sin uppercase tracked (era AI scaffolding repetido) */}
       <div style={{
         position: 'absolute', top: 24, left: 24, zIndex: 2,
         display: 'flex', flexDirection: 'column', gap: 6,
       }}>
         {dc != null && (
           <span style={{
-            backgroundColor: Cur.red, color: "#fff",
-            fontSize: 10, fontWeight: 800, letterSpacing: "0.04em",
+            backgroundColor: Cur.red, color: Cur.canvas,
+            fontSize: 12, fontWeight: 600,
             padding: "4px 10px", borderRadius: 999,
+            fontVariantNumeric: "tabular-nums",
           }}>
-            -{dc}%
+            −{dc}%
           </span>
         )}
         {p.destacado ? (
           <span style={{
-            backgroundColor: Cur.lime, color: "#fff",
-            fontSize: 10, fontWeight: 800, letterSpacing: "0.04em",
+            backgroundColor: Cur.lime, color: Cur.canvas,
+            fontSize: 11, fontWeight: 600,
             padding: "4px 10px", borderRadius: 999,
           }}>
-            DESTACADO
+            Destacado
           </span>
         ) : null}
         {p.uso_clinico ? (
           <span style={{
-            backgroundColor: Cur.purple, color: "#fff",
-            fontSize: 10, fontWeight: 800, letterSpacing: "0.04em",
+            backgroundColor: Cur.purple, color: Cur.canvas,
+            fontSize: 11, fontWeight: 600,
             padding: "4px 10px", borderRadius: 999,
           }}>
-            USO CLÍNICO
+            Uso clínico
           </span>
         ) : null}
       </div>
@@ -164,8 +165,8 @@ function ProductCardLanding({ Cur, p, onAgregar }) {
       <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', flex: 1 }}>
         {(p.categoria_nombre || p.categoria) && (
           <div style={{
-            fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase",
-            color: Cur.inkMuted, fontWeight: 700,
+            fontSize: 12, color: Cur.inkMuted, fontWeight: 500,
+            textTransform: 'capitalize',
           }}>
             {p.categoria_nombre || p.categoria}
           </div>
@@ -185,9 +186,10 @@ function ProductCardLanding({ Cur, p, onAgregar }) {
         )}
 
         {/* Precio */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 14 }}>
           <span className="vp-font-display vp-tabular" style={{
-            fontSize: 22, fontWeight: 500, color: Cur.ink,
+            fontSize: 22, fontWeight: 700, color: Cur.ink,
+            letterSpacing: '-0.02em',
           }}>
             {money(p.precio)}
           </span>
@@ -225,7 +227,7 @@ function ProductCardLanding({ Cur, p, onAgregar }) {
             backgroundColor: out
               ? Cur.surfaceAlt
               : (agregado ? Cur.lime : Cur.navy),
-            color: out ? Cur.inkMuted : "#fff",
+            color: out ? Cur.inkMuted : Cur.canvas,
             display: "inline-flex", alignItems: "center", justifyContent: "center",
             gap: 6, fontFamily: 'inherit',
             transition: "background-color 200ms ease",
@@ -303,8 +305,9 @@ export default function ProductosLanding() {
               className="vp-font-display"
               style={{
                 marginTop: 14, marginBottom: 0,
-                fontSize: "clamp(32px, 4vw, 52px)", lineHeight: 1.05,
-                fontWeight: 500, color: Cur.ink,
+                fontSize: "clamp(34px, 4vw, 56px)", lineHeight: 1.0,
+                fontWeight: 700, color: Cur.ink,
+                letterSpacing: "-0.025em",
               }}
               text="Productos destacados."
             />
@@ -346,52 +349,52 @@ export default function ProductosLanding() {
           </div>
         )}
 
-        {/* CTA card "Explora toda nuestra tienda" */}
+        {/* CTA banner — limpio, sin uppercase tracked, sin sombra excesiva. */}
         <Reveal delay={120}>
           <button
             type="button"
             onClick={() => navigate('/tienda')}
             className="vp-cta-primary"
             style={{
-              marginTop: 64, width: '100%',
-              padding: '32px 40px', borderRadius: 28,
-              backgroundColor: Cur.navy, color: '#fff',
+              marginTop: 80, width: '100%',
+              padding: '36px 44px', borderRadius: 24,
+              backgroundColor: Cur.navy, color: Cur.canvas,
               border: 'none', cursor: 'pointer',
               fontFamily: 'inherit', textAlign: 'left',
               display: 'grid', gridTemplateColumns: '1fr auto',
-              gap: 24, alignItems: 'center',
-              boxShadow: `0 24px 48px -20px ${Cur.navy}77`,
+              gap: 28, alignItems: 'center',
+              boxShadow: `0 12px 32px -16px ${Cur.navy}40`,
               position: 'relative', overflow: 'hidden',
+              transition: 'background-color 220ms cubic-bezier(0.16,1,0.3,1)',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = Cur.navyDeep)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = Cur.navy)}
           >
-            {/* Decorative blob */}
             <div aria-hidden="true" style={{
-              position: 'absolute', top: -80, right: -60,
-              width: 280, height: 280, borderRadius: 999,
-              background: `radial-gradient(circle, ${Cur.lime}33 0%, transparent 70%)`,
+              position: 'absolute', top: -100, right: -80,
+              width: 320, height: 320, borderRadius: 999,
+              background: `radial-gradient(circle, ${Cur.lime}1F 0%, transparent 65%)`,
               pointerEvents: 'none',
             }}/>
 
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div style={{
-                fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase',
-                color: Cur.lime, fontWeight: 700, marginBottom: 10,
+                fontSize: 13, color: Cur.lime, fontWeight: 600, marginBottom: 12,
                 display: 'inline-flex', alignItems: 'center', gap: 8,
               }}>
-                <FontAwesomeIcon icon={faTruckFast} /> +500 productos · envío gratis sobre $80.000
+                <FontAwesomeIcon icon={faTruckFast} style={{ fontSize: 13 }} />
+                +500 productos, envío gratis sobre $80.000
               </div>
               <div className="vp-font-display" style={{
-                fontSize: 'clamp(22px, 3vw, 34px)', fontWeight: 500,
-                lineHeight: 1.15, letterSpacing: '-0.01em',
+                fontSize: 'clamp(24px, 3vw, 36px)', fontWeight: 700,
+                lineHeight: 1.05, letterSpacing: '-0.025em',
               }}>
                 Explora toda nuestra tienda
               </div>
               <div style={{
-                marginTop: 6, fontSize: 14, opacity: 0.8, lineHeight: 1.5,
+                marginTop: 8, fontSize: 14, opacity: 0.78, lineHeight: 1.5,
               }}>
-                Alimento, medicamentos, accesorios e higiene — todo lo que tu mascota necesita.
+                Alimento, medicamentos, accesorios e higiene.
               </div>
             </div>
 
@@ -401,7 +404,6 @@ export default function ProductosLanding() {
               padding: '14px 24px', borderRadius: 999,
               backgroundColor: Cur.lime, color: Cur.navyDeep,
               fontSize: 14, fontWeight: 700,
-              boxShadow: `0 12px 24px -8px ${Cur.lime}66`,
             }}>
               Ir a la tienda <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 12 }} />
             </div>

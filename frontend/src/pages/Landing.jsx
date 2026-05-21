@@ -34,9 +34,6 @@ export default function Landing() {
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap');
-      `}</style>
       <style>{LANDING_CSS}</style>
 
       <div style={{ minHeight: '100vh', background: Cur.bg, color: Cur.ink }}>

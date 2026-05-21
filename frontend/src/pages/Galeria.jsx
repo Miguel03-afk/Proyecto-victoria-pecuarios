@@ -192,9 +192,6 @@ export default function Galeria() {
   return (
     <>
       <style>{LANDING_CSS}</style>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap');
-      `}</style>
 
       <div style={{ minHeight: '100vh', background: Cur.bg, color: Cur.ink }}>
         <Navbar />
@@ -340,8 +337,8 @@ export default function Galeria() {
                   <FontAwesomeIcon icon={faImages} style={{ fontSize: 24 }} />
                 </div>
                 <h2 className="vp-font-display" style={{
-                  margin: 0, fontSize: 24, fontWeight: 500, color: Cur.ink,
-                  fontStyle: 'italic',
+                  margin: 0, fontSize: 26, fontWeight: 700, color: Cur.ink,
+                  letterSpacing: '-0.025em', lineHeight: 1.1,
                 }}>
                   Aún no hay fotos para mostrar.
                 </h2>
@@ -496,7 +493,7 @@ export default function Galeria() {
                   color: Cur.ink, lineHeight: 1.1, margin: 0,
                 }}>
                   ¿Quieres que tu mascota{' '}
-                  <span style={{ fontStyle: 'italic', color: Cur.navy }}>aparezca aquí</span>?
+                  <span style={{ color: Cur.navy }}>aparezca aquí</span>?
                 </h2>
                 <p style={{
                   marginTop: 14, fontSize: 15, color: Cur.inkSoft, lineHeight: 1.6,

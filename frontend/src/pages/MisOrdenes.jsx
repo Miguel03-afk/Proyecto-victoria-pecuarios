@@ -274,10 +274,10 @@ export default function MisOrdenes() {
               </div>
               <h1 style={{
                 margin: 0,
-                fontFamily: "'Playfair Display', Georgia, serif",
-                fontStyle: "italic", fontWeight: 500,
+                fontFamily: "'General Sans', system-ui, sans-serif",
+                fontWeight: 700,
                 fontSize: 'clamp(32px, 4vw, 44px)',
-                color: "#fff", letterSpacing: -0.4, lineHeight: 1.05,
+                color: "#FAF7F0", letterSpacing: '-0.025em', lineHeight: 1.05,
               }}>
                 Mis órdenes
               </h1>
@@ -530,8 +530,9 @@ export default function MisOrdenes() {
                           </div>
                           <h3 style={{
                             margin: "0 0 4px",
-                            fontFamily: "'Playfair Display', Georgia, serif", fontStyle: "italic",
-                            fontWeight: 600, fontSize: 22,
+                            fontFamily: "'General Sans', system-ui, sans-serif",
+                            fontWeight: 700, fontSize: 22,
+                            letterSpacing: '-0.02em',
                           }}>
                             ¡Gracias por preferirnos!
                           </h3>

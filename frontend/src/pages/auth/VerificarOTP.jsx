@@ -184,10 +184,11 @@ export default function VerificarOTP() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
           <div style={{
             width: 32, height: 32, borderRadius: 10,
-            background: `linear-gradient(135deg, ${AUTH_C.lime} 0%, ${AUTH_C.navy} 100%)`,
+            background: AUTH_C.navy,
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontWeight: 800, fontSize: 14,
-            fontFamily: '"Playfair Display", serif',
+            color: '#FAF7F0', fontWeight: 700, fontSize: 13,
+            fontFamily: '"General Sans", system-ui, sans-serif',
+            letterSpacing: '-0.02em',
           }}>
             VP
           </div>
@@ -197,11 +198,11 @@ export default function VerificarOTP() {
         </div>
 
         <h1 style={{
-          margin: 0, fontSize: 28, fontWeight: 700, color: AUTH_C.fg,
-          lineHeight: 1.1, letterSpacing: '-0.02em',
-          fontFamily: '"Playfair Display", Georgia, serif',
+          margin: 0, fontSize: 30, fontWeight: 700, color: AUTH_C.fg,
+          lineHeight: 1.05, letterSpacing: '-0.025em',
+          fontFamily: '"General Sans", system-ui, sans-serif',
         }}>
-          Confirma tu <span style={{ fontStyle: 'italic', color: AUTH_C.lime }}>email</span>
+          Confirma tu <span style={{ color: AUTH_C.lime }}>email</span>
         </h1>
         <p style={{
           margin: '10px 0 0', fontSize: 14, color: AUTH_C.fgSoft, lineHeight: 1.5,
@@ -241,7 +242,8 @@ export default function VerificarOTP() {
                   backgroundColor: AUTH_C.inputBg,
                   border: `1px solid ${d ? AUTH_C.lime : AUTH_C.inputBorder}`,
                   borderRadius: 12, color: AUTH_C.fg,
-                  fontFamily: '"Playfair Display", Georgia, serif',
+                  fontFamily: '"General Sans", system-ui, sans-serif',
+                  fontVariantNumeric: 'tabular-nums',
                   outline: 'none', padding: 0,
                 }}
               />

@@ -192,25 +192,19 @@ export function Tilt3D({ children, max = 8, perspective = 900, className = "", s
   );
 }
 
-/* ─── Eyebrow de sección (línea + texto small caps) ──────────────────────── */
+/* Eyebrow de sección — sin uppercase tracked ni dashes decorativos.
+   El patrón anterior repetido en cada sección caía en el ban de impeccable:
+   "Repeated tiny uppercase tracked labels above every section heading."
+   Ahora es un label limpio con peso 600 + color accent. */
 export function SectionEyebrow({ children, color, centered = false }) {
   const { Cur } = useLandingPalette();
   const c = color || Cur.lime;
-  if (centered) {
-    return (
-      <div className="vp-flex-row vp-gap-3" style={{ display: 'inline-flex', alignItems: 'center',
-        fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", color: c, fontWeight: 700 }}>
-        <span style={{ width: 22, height: 1, backgroundColor: c }} />
-        <span style={{ margin: '0 12px' }}>{children}</span>
-        <span style={{ width: 22, height: 1, backgroundColor: c }} />
-      </div>
-    );
-  }
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12,
-      fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", color: c, fontWeight: 700 }}>
-      <span style={{ width: 22, height: 1, backgroundColor: c }} />
-      <span>{children}</span>
+    <div style={{
+      fontSize: 14, fontWeight: 600, color: c,
+      textAlign: centered ? 'center' : 'left',
+    }}>
+      {children}
     </div>
   );
 }
@@ -223,7 +217,13 @@ export function money(n) {
 
 /* ─── CSS global del landing (inyectar en Landing.jsx vía <style>) ────────── */
 export const LANDING_CSS = `
-  .vp-font-display { font-family: 'Playfair Display', Georgia, serif; letter-spacing: -0.025em; }
+  /* General Sans en todo. Jerarquía por peso (700+) y tamaño, no por familia
+     diferente. Tracking ligeramente negativo solo en display sizes (≥40px). */
+  .vp-font-display {
+    font-family: 'General Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    letter-spacing: -0.02em;
+    font-feature-settings: "ss01", "ss02";
+  }
   .vp-tabular { font-variant-numeric: tabular-nums; }
 
   /* Reveal on scroll */
@@ -244,7 +244,8 @@ export const LANDING_CSS = `
 
   .vp-tr-word {
     display: inline-block;
-    transition: opacity 280ms ease-out, transform 280ms ease-out;
+    /* Emil: usar easing fuerte custom en lugar del ease-out CSS débil */
+    transition: opacity 280ms var(--vp-ease-out), transform 280ms var(--vp-ease-out);
   }
 
   .vp-bg-blob {

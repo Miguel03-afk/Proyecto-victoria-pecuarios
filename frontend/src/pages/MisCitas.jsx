@@ -542,7 +542,7 @@ export default function MisCitas() {
           {/* Header */}
           <div className="vp-citas-header" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:24, flexWrap:"wrap", gap:16 }}>
             <div>
-              <h1 className="vp-citas-titulo" style={{ margin:"0 0 4px", fontSize:22, fontWeight:800, color:C.text, fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>
+              <h1 className="vp-citas-titulo" style={{ margin:"0 0 4px", fontSize:26, fontWeight:700, color:C.text, fontFamily:"'General Sans', system-ui, sans-serif", letterSpacing:'-0.025em', lineHeight:1.1 }}>
                 Mis citas
               </h1>
               <p className="vp-citas-sub" style={{ margin:0, fontSize:13, color:C.textMuted }}>

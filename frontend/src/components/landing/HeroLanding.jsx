@@ -3,8 +3,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faPaw, faCheck, faArrowRight, faArrowRightLong, faUserDoctor,
+  faCheck, faArrowRight, faArrowRightLong, faUserDoctor,
   faTruckFast, faShieldHalved, faStethoscope, faRotateLeft,
+  faClock, faBoxOpen,
 } from "@fortawesome/free-solid-svg-icons";
 import api from "../../services/api";
 import { Reveal, useLandingPalette, money } from "./landing.utils.jsx";
@@ -21,19 +22,19 @@ import hero2 from "../../assets/landing/hero-2-bottle.png";
 import hero3 from "../../assets/landing/hero-3-cat.png";
 import hero4 from "../../assets/landing/hero-4-scale.png";
 
-function HeroBullet({ Cur, children }) {
+function HeroBullet({ Cur, icon, children }) {
   return (
-    <li style={{ display: 'flex', alignItems: 'flex-start', gap: 12,
-      fontSize: 14, fontWeight: 500, color: Cur.ink, marginBottom: 12 }}>
+    <li style={{ display: 'flex', alignItems: 'flex-start', gap: 14,
+      fontSize: 15, fontWeight: 400, color: Cur.ink, marginBottom: 14, lineHeight: 1.5 }}>
       <span style={{
-        width: 22, height: 22, borderRadius: 999,
-        backgroundColor: `${Cur.lime}22`, color: Cur.limeDeep,
+        width: 24, height: 24, borderRadius: 8,
+        backgroundColor: `${Cur.lime}1A`, color: Cur.limeDeep,
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        flexShrink: 0, marginTop: 1,
+        flexShrink: 0, marginTop: 2,
       }}>
-        <FontAwesomeIcon icon={faPaw} style={{ fontSize: 11 }} />
+        <FontAwesomeIcon icon={icon} style={{ fontSize: 11 }} />
       </span>
-      <span style={{ lineHeight: 1.45 }}>{children}</span>
+      <span>{children}</span>
     </li>
   );
 }
@@ -160,7 +161,7 @@ export default function HeroLanding() {
               }}>
                 <span style={{
                   width: 22, height: 22, borderRadius: 999,
-                  backgroundColor: Cur.lime, color: "#fff",
+                  backgroundColor: Cur.lime, color: Cur.canvas,
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                 }}>
                   <FontAwesomeIcon icon={faCheck} style={{ fontSize: 10 }} />
@@ -173,21 +174,27 @@ export default function HeroLanding() {
 
             <Reveal delay={80}>
               <h1 className="vp-font-display" style={{
-                marginTop: 28, fontSize: "clamp(40px, 7vw, 76px)",
-                lineHeight: 1.04, fontWeight: 500,
-                color: Cur.ink, maxWidth: 580,
+                marginTop: 28, fontSize: "clamp(42px, 7.5vw, 84px)",
+                lineHeight: 1.02, fontWeight: 700,
+                color: Cur.ink, maxWidth: 620,
               }}>
                 Tu mascota,
                 <br />
-                <span style={{ fontStyle: "italic", color: Cur.navy }}>nuestra familia.</span>
+                <span style={{ color: Cur.navy }}>nuestra familia.</span>
               </h1>
             </Reveal>
 
             <Reveal delay={160}>
-              <ul style={{ listStyle: "none", padding: 0, margin: "32px 0 0" }}>
-                <HeroBullet Cur={Cur}>Veterinarios titulados disponibles 7 días a la semana</HeroBullet>
-                <HeroBullet Cur={Cur}>Tienda con +500 productos y envío gratis sobre $80.000</HeroBullet>
-                <HeroBullet Cur={Cur}>Agenda tu cita desde el celular en menos de 60 segundos</HeroBullet>
+              <ul style={{ listStyle: "none", padding: 0, margin: "32px 0 0", maxWidth: 520 }}>
+                <HeroBullet Cur={Cur} icon={faStethoscope}>
+                  Veterinarios titulados disponibles 7 días a la semana
+                </HeroBullet>
+                <HeroBullet Cur={Cur} icon={faBoxOpen}>
+                  Tienda con +500 productos y envío gratis sobre $80.000
+                </HeroBullet>
+                <HeroBullet Cur={Cur} icon={faClock}>
+                  Agenda tu cita desde el celular en menos de 60 segundos
+                </HeroBullet>
               </ul>
             </Reveal>
 
@@ -197,18 +204,18 @@ export default function HeroLanding() {
                 alignItems: 'center', gap: 20,
               }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{
-                    fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
-                    color: Cur.inkMuted, fontWeight: 600,
-                  }}>
+                  <span style={{ fontSize: 13, color: Cur.inkSoft, fontWeight: 500 }}>
                     Desde
                   </span>
                   <span className="vp-font-display vp-tabular" style={{
-                    fontSize: 36, fontWeight: 500, color: Cur.ink, lineHeight: 1.05,
+                    fontSize: 38, fontWeight: 700, color: Cur.ink, lineHeight: 1.05,
+                    marginTop: 2,
                   }}>
                     {money(precioConsulta)}
                   </span>
-                  <span style={{ fontSize: 12, color: Cur.inkSoft }}>Consulta veterinaria · IVA incl.</span>
+                  <span style={{ fontSize: 12, color: Cur.inkMuted, marginTop: 2 }}>
+                    Consulta veterinaria, IVA incluido
+                  </span>
                 </div>
 
                 <div style={{ width: 1, height: 56, backgroundColor: Cur.border }} aria-hidden="true" />
@@ -217,11 +224,11 @@ export default function HeroLanding() {
                   className="vp-cta-primary"
                   onClick={() => navigate('/agendar-cita')}
                   style={{
-                    backgroundColor: Cur.navy, color: "#fff",
+                    backgroundColor: Cur.navy, color: Cur.canvas,
                     padding: "14px 24px", borderRadius: 999,
-                    fontSize: 14, fontWeight: 600,
+                    fontSize: 15, fontWeight: 600,
                     border: "none", cursor: "pointer",
-                    boxShadow: `0 12px 24px -8px ${Cur.navy}55`,
+                    boxShadow: `0 6px 16px -8px ${Cur.navy}30`,
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = Cur.navyDeep)}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = Cur.navy)}
@@ -271,8 +278,8 @@ export default function HeroLanding() {
               >
                 <div style={{
                   width: 44, height: 44, borderRadius: 999,
-                  background: `linear-gradient(135deg, ${Cur.lime} 0%, ${Cur.navy} 100%)`,
-                  color: "#fff",
+                  background: Cur.navy,
+                  color: Cur.canvas,
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0,
                 }}>

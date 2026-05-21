@@ -212,7 +212,7 @@ function ModalDetalle({ item, onCerrar }) {
                   </span>
                 )}
               </div>
-              <h3 style={{ margin:"0 0 6px", fontSize:18, fontWeight:700, color:TK.text, fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>
+              <h3 style={{ margin:"0 0 6px", fontSize:18, fontWeight:700, color:TK.text, fontFamily:"'General Sans', system-ui, sans-serif", letterSpacing:'-0.02em' }}>
                 {item.titulo || "Sin título"}
               </h3>
               {item.descripcion && (
@@ -627,7 +627,7 @@ export default function GaleriaAdmin({ T }) {
       {/* ── Header ── */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:24, flexWrap:"wrap", gap:16 }}>
         <div>
-          <h2 style={{ margin:"0 0 4px", fontSize:20, fontWeight:700, color:TK.text, fontFamily:"'Playfair Display',serif", fontStyle:"italic" }}>
+          <h2 style={{ margin:"0 0 4px", fontSize:22, fontWeight:700, color:TK.text, fontFamily:"'General Sans', system-ui, sans-serif", letterSpacing:'-0.02em', lineHeight:1.1 }}>
             Galería de medios
           </h2>
           <p style={{ margin:0, fontSize:13, color:TK.textTer }}>

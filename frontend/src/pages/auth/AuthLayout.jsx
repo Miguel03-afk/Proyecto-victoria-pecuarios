@@ -71,16 +71,13 @@ export default function AuthLayout({ breadcrumb = '', children }) {
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap');
-      `}</style>
       <style>{AUTH_CSS}</style>
 
       <div className="vp-auth" style={{
         minHeight: '100vh', width: '100%',
         position: 'relative', overflow: 'hidden',
         backgroundColor: AUTH_C.card,
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+        fontFamily: '"General Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
       }}>
         {/* Background image full-bleed */}
         <div aria-hidden="true" style={{
@@ -117,15 +114,15 @@ export default function AuthLayout({ breadcrumb = '', children }) {
               }}
             >
               <span style={{
-                fontFamily: '"Playfair Display", Georgia, serif',
-                fontSize: 18, fontWeight: 600, color: '#fff',
+                fontFamily: '"General Sans", system-ui, sans-serif',
+                fontSize: 19, fontWeight: 700, color: '#FAF7F0',
                 letterSpacing: '-0.02em',
               }}>
                 Victoria
               </span>
               <span style={{
-                fontSize: 9, fontWeight: 700, letterSpacing: '0.18em',
-                color: AUTH_C.lime, textTransform: 'uppercase',
+                fontSize: 11, fontWeight: 600,
+                color: AUTH_C.lime,
                 marginTop: 2,
               }}>
                 Pets

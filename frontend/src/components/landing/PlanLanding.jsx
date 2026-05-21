@@ -58,7 +58,7 @@ function VetRow({ Cur, vet, active, onClick }) {
           display: "inline-flex", alignItems: "center", justifyContent: "center",
           flexShrink: 0,
         }}>
-          {active && <FontAwesomeIcon icon={faCheck} style={{ fontSize: 9, color: "#fff" }} />}
+          {active && <FontAwesomeIcon icon={faCheck} style={{ fontSize: 9, color: Cur.canvas }} />}
         </span>
 
         {fotoUrl ? (
@@ -72,7 +72,7 @@ function VetRow({ Cur, vet, active, onClick }) {
           <div style={{
             width: 36, height: 36, borderRadius: 999,
             background: `linear-gradient(135deg, ${Cur.lime} 0%, ${Cur.navy} 100%)`,
-            color: "#fff", fontWeight: 700, fontSize: 12,
+            color: Cur.canvas, fontWeight: 700, fontSize: 12,
             display: "inline-flex", alignItems: "center", justifyContent: "center",
             flexShrink: 0, boxShadow: `0 0 0 2px ${active ? Cur.navy : Cur.surface}`,
           }}>
@@ -252,30 +252,27 @@ export default function PlanLanding() {
         maxWidth: 1480, margin: '0 auto',
         padding: '96px 16px', position: "relative", zIndex: 1,
       }}>
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
+        <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <Reveal>
             <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 12,
-              fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase",
-              color: Cur.lime, fontWeight: 700,
+              fontSize: 14, color: Cur.lime, fontWeight: 600,
             }}>
-              <span style={{ width: 22, height: 1, backgroundColor: Cur.lime }} />
-              <span>Agenda en 60 segundos</span>
-              <span style={{ width: 22, height: 1, backgroundColor: Cur.lime }} />
+              Agenda en 60 segundos
             </div>
           </Reveal>
           <TypeReveal
             as="h2"
             className="vp-font-display"
             style={{
-              marginTop: 18, marginBottom: 0,
-              fontSize: "clamp(36px, 5.5vw, 64px)", lineHeight: 1.0,
-              fontWeight: 500, color: Cur.ink, maxWidth: 760,
+              marginTop: 16, marginBottom: 0,
+              fontSize: "clamp(38px, 5.5vw, 68px)", lineHeight: 1.0,
+              fontWeight: 700, color: Cur.ink, maxWidth: 780,
               marginLeft: "auto", marginRight: "auto",
+              letterSpacing: "-0.025em",
             }}
             segments={[
               { text: "Elige a tu " },
-              { text: "veterinario", italic: true, color: Cur.navy },
+              { text: "veterinario", color: Cur.navy },
               { text: ", el resto lo hacemos nosotros." },
             ]}
           />
@@ -332,7 +329,7 @@ export default function PlanLanding() {
                     width: 40, height: 40, borderRadius: 999,
                     backgroundColor: "rgba(0,0,0,0.35)",
                     backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
-                    color: "#fff",
+                    color: Cur.canvas,
                     border: "1px solid rgba(255,255,255,0.18)",
                     cursor: "pointer",
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -351,24 +348,23 @@ export default function PlanLanding() {
                   <div style={{
                     width: 52, height: 52, borderRadius: 999,
                     background: `linear-gradient(135deg, ${Cur.lime} 0%, ${accent} 100%)`,
-                    color: "#fff", fontWeight: 700, fontSize: 17,
+                    color: Cur.canvas, fontWeight: 700, fontSize: 17,
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
                     flexShrink: 0, boxShadow: `0 0 0 3px ${accent}`,
                   }}>
                     {`${(activeVet?.nombre || '?')[0]}${(activeVet?.apellido || '')[0] || ''}`.toUpperCase()}
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 11, opacity: 0.8,
-                      letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700 }}>
+                    <div style={{ fontSize: 12, opacity: 0.78, fontWeight: 500 }}>
                       Tu veterinario
                     </div>
                     <div className="vp-font-display" style={{
-                      fontSize: 24, fontWeight: 500, lineHeight: 1.1,
-                      marginTop: 2, letterSpacing: "-0.01em",
+                      fontSize: 24, fontWeight: 700, lineHeight: 1.1,
+                      marginTop: 2, letterSpacing: "-0.02em",
                     }}>
                       {activeVet?.titulo || (activeVet?.genero === 'F' ? 'Dra.' : 'Dr.')} {activeVet?.nombre} {activeVet?.apellido}
                     </div>
-                    <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>
+                    <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
                       {activeVet?.especialidad || 'Veterinario'}
                     </div>
                   </div>
@@ -383,9 +379,9 @@ export default function PlanLanding() {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     marginBottom: 8,
                   }}>
-                    <div style={{ fontSize: 10, letterSpacing: "0.18em",
-                      textTransform: "uppercase", color: Cur.inkMuted, fontWeight: 700 }}>
-                      1 · Veterinario
+                    <div style={{ fontSize: 13, color: Cur.ink, fontWeight: 600 }}>
+                      <span style={{ color: Cur.navy, marginRight: 6 }}>1</span>
+                      Veterinario
                     </div>
                     <div style={{ fontSize: 11, color: Cur.inkSoft, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                       <FontAwesomeIcon icon={faCircle} style={{ fontSize: 7, color: Cur.lime }} />
@@ -407,9 +403,9 @@ export default function PlanLanding() {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     marginBottom: 8,
                   }}>
-                    <div style={{ fontSize: 10, letterSpacing: "0.18em",
-                      textTransform: "uppercase", color: Cur.inkMuted, fontWeight: 700 }}>
-                      2 · Fecha disponible
+                    <div style={{ fontSize: 13, color: Cur.ink, fontWeight: 600 }}>
+                      <span style={{ color: Cur.navy, marginRight: 6 }}>2</span>
+                      Fecha disponible
                     </div>
                     {fechasDisp.length > 0 && (
                       <div style={{ fontSize: 11, color: Cur.inkSoft }}>
@@ -481,9 +477,9 @@ export default function PlanLanding() {
 
                 {/* Motivo */}
                 <div style={{ marginTop: 18 }}>
-                  <div style={{ fontSize: 10, letterSpacing: "0.18em",
-                    textTransform: "uppercase", color: Cur.inkMuted, fontWeight: 700, marginBottom: 8 }}>
-                    3 · Motivo
+                  <div style={{ fontSize: 13, color: Cur.ink, fontWeight: 600, marginBottom: 8 }}>
+                    <span style={{ color: Cur.navy, marginRight: 6 }}>3</span>
+                    Motivo
                   </div>
                   <label style={{
                     display: 'flex', alignItems: 'center', gap: 8,
@@ -514,11 +510,11 @@ export default function PlanLanding() {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     marginBottom: 8,
                   }}>
-                    <div style={{ fontSize: 10, letterSpacing: "0.18em",
-                      textTransform: "uppercase", color: Cur.inkMuted, fontWeight: 700 }}>
-                      4 · Hora
+                    <div style={{ fontSize: 13, color: Cur.ink, fontWeight: 600 }}>
+                      <span style={{ color: Cur.navy, marginRight: 6 }}>4</span>
+                      Hora
                       {slotsCargando && (
-                        <span style={{ marginLeft: 8, fontSize: 9, color: Cur.inkMuted, textTransform: "none", letterSpacing: 0 }}>
+                        <span style={{ marginLeft: 8, fontSize: 12, color: Cur.inkMuted, fontWeight: 400 }}>
                           cargando…
                         </span>
                       )}
@@ -565,14 +561,15 @@ export default function PlanLanding() {
                     onClick={handleConfirm}
                     className="vp-cta-primary"
                     style={{
-                      flex: "1 1 280px", color: "#fff",
-                      padding: "17px 28px", borderRadius: 999,
+                      flex: "1 1 280px", color: Cur.canvas,
+                      padding: "16px 28px", borderRadius: 999,
                       fontSize: 15, fontWeight: 600,
                       border: "none", cursor: "pointer",
-                      boxShadow: `0 16px 32px -12px ${accent}77, 0 2px 6px -2px rgba(10,20,38,0.20)`,
+                      boxShadow: `0 8px 20px -10px ${accent}50`,
                       display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
-                      background: `linear-gradient(135deg, ${Cur.navy} 0%, ${Cur.navyDeep} 100%)`,
+                      background: Cur.navy,
                       letterSpacing: "-0.01em", fontFamily: 'inherit',
+                      transition: "background-color 200ms cubic-bezier(0.16,1,0.3,1)",
                     }}
                   >
                     Continuar agendamiento con {short}
@@ -590,12 +587,12 @@ export default function PlanLanding() {
 
         <Reveal delay={200}>
           <p style={{
-            marginTop: 28, fontSize: 11, color: Cur.inkMuted,
-            fontStyle: "italic", maxWidth: 640, lineHeight: 1.5,
+            marginTop: 28, fontSize: 12, color: Cur.inkMuted,
+            maxWidth: 640, lineHeight: 1.55,
             textAlign: "center", marginLeft: "auto", marginRight: "auto",
           }}>
-            *Familias que adoptaron un plan preventivo reportaron en promedio 2 visitas menos al año.
-            Datos internos Victoria Pets 2025.
+            Familias que adoptaron un plan preventivo reportaron en promedio
+            2 visitas menos al año. Datos internos Victoria Pets 2025.
           </p>
         </Reveal>
       </div>

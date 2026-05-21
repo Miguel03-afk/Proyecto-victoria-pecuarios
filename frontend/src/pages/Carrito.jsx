@@ -26,9 +26,8 @@ function Campo({ label, value, onChange, type = "text", placeholder, required, h
   return (
     <div>
       <label style={{
-        display: "block", fontSize: 10, fontWeight: 800,
-        textTransform: "uppercase", letterSpacing: "0.16em",
-        color: focused ? navy : (C.inkMuted || C.ink3),
+        display: "block", fontSize: 13, fontWeight: 600,
+        color: focused ? navy : C.ink,
         marginBottom: 8, transition: "color 0.15s",
       }}>
         {label}{required && <span style={{ color: C.red || C.danger, marginLeft: 4 }}>*</span>}
@@ -83,22 +82,21 @@ function Stepper({ paso }) {
               <div style={{
                 width: 36, height: 36, borderRadius: 999,
                 background: completado ? lime : activo ? navy : C.surfaceAlt,
-                color: completado || activo ? "#fff" : inkMuted,
+                color: completado || activo ? C.canvas : inkMuted,
                 border: activo && !completado ? `2px solid ${navy}` : "none",
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
-                fontSize: 13, fontWeight: 800,
+                fontSize: 13, fontWeight: 700,
                 fontFamily: FONT.ui,
-                transition: "all 0.3s",
-                boxShadow: activo ? `0 8px 18px -8px ${navy}77`
-                  : completado ? `0 8px 18px -8px ${lime}66` : 'none',
+                transition: "all 0.3s cubic-bezier(0.16,1,0.3,1)",
+                boxShadow: activo ? `0 6px 14px -8px ${navy}50`
+                  : completado ? `0 6px 14px -8px ${lime}50` : 'none',
                 fontVariantNumeric: 'tabular-nums',
               }}>
                 {completado ? <FontAwesomeIcon icon={faCheck} style={{ fontSize: 12 }}/> : i + 1}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{
-                  fontSize: 9, fontWeight: 800,
-                  letterSpacing: "0.16em", textTransform: "uppercase",
+                  fontSize: 11, fontWeight: 600,
                   color: activo || completado ? (completado ? limeDeep : navy) : inkMuted,
                 }}>
                   Paso {i + 1}
@@ -151,11 +149,10 @@ function ResumenPedido({ items, totalPrecio, accion, textoBtn, disabled, cargand
       <h3 style={{
         margin: "0 0 18px",
         fontFamily: FONT.display,
-        fontStyle: "italic",
-        fontWeight: 600,
+        fontWeight: 700,
         fontSize: 20,
         color: C.ink,
-        letterSpacing: -0.2,
+        letterSpacing: '-0.02em',
       }}>
         {mostrarItems ? "Tu pedido" : "Resumen del pedido"}
       </h3>
@@ -400,9 +397,9 @@ function PasoCarrito({ onContinuar }) {
       </div>
       <h2 style={{
         margin: "0 0 8px",
-        fontFamily: FONT.display, fontStyle: "italic",
-        fontWeight: 600, fontSize: 24,
-        color: C.ink,
+        fontFamily: FONT.display,
+        fontWeight: 700, fontSize: 26,
+        color: C.ink, letterSpacing: '-0.02em',
       }}>
         Tu carrito está vacío
       </h2>
@@ -413,7 +410,7 @@ function PasoCarrito({ onContinuar }) {
         display: "inline-block",
         padding: "12px 28px",
         borderRadius: RADIUS.sm,
-        background: C.brand, color: "#fff",
+        background: C.brand, color: C.canvas,
         textDecoration: "none",
         fontWeight: 700, fontSize: 14,
         fontFamily: FONT.ui,
@@ -674,13 +671,13 @@ function PasoEnvio({ onContinuar, onVolver, datosEnvio, setDatosEnvio }) {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
             <div style={{
               width: 24, height: 24, borderRadius: "50%",
-              background: C.brand, color: "#fff",
+              background: C.brand, color: C.canvas,
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 12, fontWeight: 700,
             }}>✓</div>
             <h3 style={{
-              margin: 0, fontFamily: FONT.display, fontStyle: "italic",
-              fontWeight: 600, fontSize: 18, color: C.ink,
+              margin: 0, fontFamily: FONT.display,
+              fontWeight: 700, fontSize: 18, color: C.ink, letterSpacing: '-0.015em',
             }}>
               Datos de contacto
             </h3>
@@ -711,13 +708,13 @@ function PasoEnvio({ onContinuar, onVolver, datosEnvio, setDatosEnvio }) {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
             <div style={{
               width: 24, height: 24, borderRadius: "50%",
-              background: C.brand, color: "#fff",
+              background: C.brand, color: C.canvas,
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 12, fontWeight: 700,
             }}>2</div>
             <h3 style={{
-              margin: 0, fontFamily: FONT.display, fontStyle: "italic",
-              fontWeight: 600, fontSize: 18, color: C.ink,
+              margin: 0, fontFamily: FONT.display,
+              fontWeight: 700, fontSize: 18, color: C.ink, letterSpacing: '-0.015em',
             }}>
               Dirección de envío
             </h3>
@@ -735,9 +732,8 @@ function PasoEnvio({ onContinuar, onVolver, datosEnvio, setDatosEnvio }) {
           {dirsGuardadas.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <label style={{
-                display: "block", fontSize: 10, fontWeight: 700,
-                textTransform: "uppercase", letterSpacing: 1,
-                color: C.ink3, marginBottom: 8,
+                display: "block", fontSize: 12, fontWeight: 600,
+                color: C.ink, marginBottom: 10,
               }}>
                 Direcciones guardadas
               </label>
@@ -1033,9 +1029,9 @@ function PasoPago({ onVolver, datosEnvio }) {
         }}>✓</div>
         <h2 style={{
           margin: "0 0 8px",
-          fontFamily: FONT.display, fontStyle: "italic",
-          fontWeight: 600, fontSize: 28,
-          color: C.ink, letterSpacing: -0.3,
+          fontFamily: FONT.display,
+          fontWeight: 700, fontSize: 30,
+          color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.05,
         }}>
           ¡Pedido registrado!
         </h2>
@@ -1046,7 +1042,7 @@ function PasoPago({ onVolver, datosEnvio }) {
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <Link to="/mis-ordenes" style={{
             padding: "12px 24px", borderRadius: RADIUS.sm,
-            background: C.brand, color: "#fff",
+            background: C.brand, color: C.canvas,
             textDecoration: "none", fontSize: 13, fontWeight: 700,
             fontFamily: FONT.ui,
           }}>
@@ -1079,13 +1075,13 @@ function PasoPago({ onVolver, datosEnvio }) {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
             <div style={{
               width: 24, height: 24, borderRadius: "50%",
-              background: C.brand, color: "#fff",
+              background: C.brand, color: C.canvas,
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 12, fontWeight: 700,
             }}>3</div>
             <h3 style={{
-              margin: 0, fontFamily: FONT.display, fontStyle: "italic",
-              fontWeight: 600, fontSize: 18, color: C.ink,
+              margin: 0, fontFamily: FONT.display,
+              fontWeight: 700, fontSize: 18, color: C.ink, letterSpacing: '-0.015em',
             }}>
               Método de pago
             </h3>
@@ -1195,18 +1191,17 @@ export default function Carrito() {
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "36px 20px 64px" }}>
           <div style={{ marginBottom: 8, textAlign: "center" }}>
             <span style={{
-              fontSize: 10, fontWeight: 700,
-              color: C.brand, letterSpacing: 1.5,
-              textTransform: "uppercase",
+              fontSize: 13, fontWeight: 500,
+              color: C.brand,
             }}>
-              Tienda · 3/4 · {paso === 0 ? "Carrito" : paso === 1 ? "Envío" : "Pago"}
+              {paso === 0 ? "Carrito" : paso === 1 ? "Envío" : "Pago"}
             </span>
             <h1 style={{
-              margin: "8px 0 4px",
-              fontFamily: FONT.display, fontStyle: "italic",
-              fontWeight: 600,
-              fontSize: "clamp(28px, 4vw, 40px)",
-              color: C.ink, letterSpacing: -0.4,
+              margin: "8px 0 6px",
+              fontFamily: FONT.display,
+              fontWeight: 700,
+              fontSize: "clamp(30px, 4vw, 44px)",
+              color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.05,
             }}>
               {paso === 0 ? "Tu carrito" : paso === 1 ? "Datos de envío" : "Confirmar pedido"}
             </h1>

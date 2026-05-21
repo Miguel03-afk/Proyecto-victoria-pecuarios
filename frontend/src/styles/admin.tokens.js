@@ -3,10 +3,14 @@
 // ThemeProvider y useTheme viven en ThemeProvider.jsx (necesitan JSX).
 // IMPORTANTE: NO re-exportarlos aquí — causa dependencia circular.
 
-/* ─── Identidad fija ─────────────────────────────────────────────────────── */
+/* ─── Identidad fija ───────────────────────────────────────────────────────
+   Tipografía única: General Sans (Indian Type Foundry vía Fontshare).
+   Humanist sans con calidez. Headings y body en la misma familia, jerarquía
+   por peso + tamaño en lugar de display serif + sans. Evita el cliché
+   "Playfair italic + tracked uppercase" que satura las landings veterinarias. */
 export const FONT = {
-  display: '"Playfair Display", Georgia, serif',
-  ui:      '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+  display: '"General Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+  ui:      '"General Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
   mono:    '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace',
 };
 

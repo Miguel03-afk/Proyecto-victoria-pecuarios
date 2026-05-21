@@ -65,10 +65,9 @@ function VetCard({ Cur, vet, accent, delay }) {
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               <span className="vp-font-display" style={{
-                fontStyle: "italic",
-                fontSize: "clamp(72px, 10vw, 130px)",
-                fontWeight: 500, color: accent,
-                lineHeight: 1, letterSpacing: "-0.04em",
+                fontSize: "clamp(80px, 11vw, 140px)",
+                fontWeight: 700, color: accent,
+                lineHeight: 1, letterSpacing: "-0.05em",
                 textShadow: "0 8px 32px rgba(0,0,0,0.4)",
               }}>
                 {initials}
@@ -95,17 +94,16 @@ function VetCard({ Cur, vet, accent, delay }) {
         {/* Body */}
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', flex: 1 }}>
           <div style={{
-            fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase",
-            color: accent, fontWeight: 700,
+            fontSize: 13, color: accent, fontWeight: 600,
           }}>
             {vet.especialidad || 'Veterinario'}
           </div>
           <h3 className="vp-font-display" style={{
             marginTop: 8, marginBottom: 0,
-            fontSize: 24, fontWeight: 500, color: Cur.ink,
-            lineHeight: 1.1, letterSpacing: "-0.015em",
+            fontSize: 24, fontWeight: 700, color: Cur.ink,
+            lineHeight: 1.1, letterSpacing: "-0.025em",
           }}>
-            <span style={{ fontStyle: 'italic' }}>{titulo} {vet.nombre} {vet.apellido}</span>
+            {titulo} {vet.nombre} {vet.apellido}
           </h3>
           <p style={{
             marginTop: 12, fontSize: 13, color: Cur.inkSoft,
@@ -195,9 +193,6 @@ export default function Equipo() {
   return (
     <>
       <style>{LANDING_CSS}</style>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap');
-      `}</style>
 
       <div style={{ minHeight: '100vh', background: Cur.bg, color: Cur.ink }}>
         <Navbar />

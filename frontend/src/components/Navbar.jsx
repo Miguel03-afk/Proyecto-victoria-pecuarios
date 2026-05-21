@@ -214,9 +214,9 @@ export default function Navbar() {
             </div>
             <span style={{
               fontFamily: FONT.display,
-              fontStyle: "italic", fontWeight: 600,
-              fontSize: 19, color: C.brand,
-              letterSpacing: -0.3,
+              fontWeight: 700,
+              fontSize: 20, color: C.brand,
+              letterSpacing: '-0.025em',
             }} className="vp-logo-text">
               Victoria·Pets
             </span>

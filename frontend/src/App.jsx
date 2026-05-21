@@ -46,8 +46,9 @@ const NoEncontrado = () => {
       <div style={{ fontSize: 72 }}>🐾</div>
       <h1 style={{
         margin: 0,
-        fontFamily: FONT.display, fontStyle: "italic",
-        fontWeight: 600, fontSize: 36, color: C.ink,
+        fontFamily: FONT.display,
+        fontWeight: 700, fontSize: 38, color: C.ink,
+        letterSpacing: '-0.025em', lineHeight: 1.05,
       }}>
         Página no encontrada
       </h1>
@@ -56,8 +57,8 @@ const NoEncontrado = () => {
       </p>
       <a href="/" style={{
         marginTop: 8, padding: "12px 26px", borderRadius: 12,
-        background: C.brand, color: "#fff", textDecoration: "none",
-        fontSize: 14, fontWeight: 700,
+        background: C.brand, color: C.canvas, textDecoration: "none",
+        fontSize: 14, fontWeight: 600,
       }}>
         Volver al inicio
       </a>

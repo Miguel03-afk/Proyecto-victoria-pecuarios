@@ -78,10 +78,9 @@ function VetPortrait({ vet, accent }) {
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
         <span className="vp-font-display" style={{
-          fontStyle: "italic",
-          fontSize: "clamp(110px, 14vw, 200px)",
-          fontWeight: 500, color: accent,
-          lineHeight: 1, letterSpacing: "-0.04em",
+          fontSize: "clamp(120px, 15vw, 220px)",
+          fontWeight: 700, color: accent,
+          lineHeight: 1, letterSpacing: "-0.05em",
           textShadow: "0 8px 32px rgba(0,0,0,0.4)",
         }}>
           {initials}
@@ -91,12 +90,13 @@ function VetPortrait({ vet, accent }) {
   );
 }
 
+/* CV label sin uppercase tracked (era patrón AI scaffolding repetido x4).
+   Sustituido por label con peso contrastante. */
 function CVField({ label, items }) {
   return (
     <div>
       <div style={{
-        fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase",
-        fontWeight: 700, color: DARK.inkMuted, marginBottom: 8,
+        fontSize: 13, fontWeight: 600, color: DARK.inkSoft, marginBottom: 10,
       }}>
         {label}
       </div>
@@ -105,7 +105,7 @@ function CVField({ label, items }) {
         display: "flex", flexDirection: "column", gap: 4,
       }}>
         {items.map((it, i) => (
-          <li key={i} style={{ fontSize: 13, color: DARK.ink, fontWeight: 500, lineHeight: 1.45 }}>
+          <li key={i} style={{ fontSize: 14, color: DARK.ink, fontWeight: 400, lineHeight: 1.5 }}>
             {it}
           </li>
         ))}
@@ -233,17 +233,13 @@ export default function VeterinariosLanding() {
         maxWidth: 1480, margin: '0 auto',
         padding: '0 16px 96px', position: "relative", zIndex: 1,
       }}>
-        {/* Header centered */}
-        <div style={{ textAlign: 'center', marginBottom: 56 }}>
+        {/* Header centered — sin dashes decorativos ni uppercase tracked. */}
+        <div style={{ textAlign: 'center', marginBottom: 64 }}>
           <Reveal>
             <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 12,
-              fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase",
-              color: Cur.lime, fontWeight: 700,
+              fontSize: 14, color: Cur.lime, fontWeight: 600,
             }}>
-              <span style={{ width: 22, height: 1, backgroundColor: Cur.lime }} />
-              <span>Nuestro equipo</span>
-              <span style={{ width: 22, height: 1, backgroundColor: Cur.lime }} />
+              Nuestro equipo
             </div>
           </Reveal>
           <TypeReveal
@@ -251,13 +247,14 @@ export default function VeterinariosLanding() {
             className="vp-font-display"
             style={{
               marginTop: 16, marginBottom: 0,
-              fontSize: "clamp(40px, 6vw, 72px)", lineHeight: 1.0,
-              fontWeight: 500, color: DARK.ink, maxWidth: 800,
+              fontSize: "clamp(42px, 6vw, 76px)", lineHeight: 1.0,
+              fontWeight: 700, color: DARK.ink, maxWidth: 820,
               marginLeft: "auto", marginRight: "auto",
+              letterSpacing: "-0.025em",
             }}
             segments={[
               { text: "Las manos que " },
-              { text: "cuidarán", italic: true, color: Cur.lime },
+              { text: "cuidarán", color: Cur.lime },
               { text: " a tu mascota." },
             ]}
           />
@@ -306,24 +303,25 @@ export default function VeterinariosLanding() {
               {/* RIGHT — CV */}
               <div>
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  fontSize: 11, color: DARK.inkMuted, fontWeight: 600,
-                  letterSpacing: "0.14em", textTransform: "uppercase",
+                  display: 'flex', alignItems: 'baseline', gap: 12,
+                  fontSize: 14, color: DARK.inkMuted, fontWeight: 500,
                 }}>
-                  <span className="vp-font-display vp-tabular" style={{ fontSize: 15, color: Cur.lime, fontStyle: "italic" }}>
-                    {String(idx + 1).padStart(2, "0")}
+                  <span className="vp-font-display vp-tabular" style={{
+                    fontSize: 16, color: Cur.lime, fontWeight: 700,
+                    letterSpacing: "-0.02em",
+                  }}>
+                    {String(idx + 1).padStart(2, "0")} / {String(vets.length).padStart(2, "0")}
                   </span>
-                  <span style={{ width: 18, height: 1, backgroundColor: DARK.border }} />
-                  <span style={{ color: DARK.inkMuted }}>{String(vets.length).padStart(2, "0")}</span>
-                  <span style={{ marginLeft: 12, color: Cur.lime }}>{vet.especialidad || 'Veterinario'}</span>
+                  <span aria-hidden="true" style={{ color: DARK.inkMuted }}>·</span>
+                  <span style={{ color: Cur.lime, fontWeight: 600 }}>{vet.especialidad || 'Veterinario'}</span>
                 </div>
 
                 <h3 className="vp-font-display" style={{
                   marginTop: 14, marginBottom: 0,
-                  fontSize: "clamp(36px, 4.8vw, 60px)", lineHeight: 1.0,
-                  fontWeight: 500, color: DARK.ink, letterSpacing: "-0.02em",
+                  fontSize: "clamp(38px, 4.8vw, 64px)", lineHeight: 1.0,
+                  fontWeight: 700, color: DARK.ink, letterSpacing: "-0.025em",
                 }}>
-                  <span style={{ fontStyle: "italic" }}>{fullName}</span>
+                  {fullName}
                 </h3>
 
                 <p style={{
@@ -342,17 +340,16 @@ export default function VeterinariosLanding() {
                     <div key={s.v} style={{
                       backgroundColor: DARK.surface,
                       border: `1px solid ${DARK.borderSoft}`,
-                      borderRadius: 14, padding: "12px 10px", textAlign: "left",
+                      borderRadius: 14, padding: "14px 12px", textAlign: "left",
                     }}>
                       <div className="vp-font-display vp-tabular" style={{
-                        fontStyle: "italic", fontSize: 22, fontWeight: 500,
-                        color: Cur.lime, lineHeight: 1, letterSpacing: "-0.02em",
+                        fontSize: 24, fontWeight: 700,
+                        color: Cur.lime, lineHeight: 1, letterSpacing: "-0.025em",
                       }}>
                         {s.k}
                       </div>
                       <div style={{
-                        fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase",
-                        color: DARK.inkMuted, fontWeight: 700, marginTop: 6,
+                        fontSize: 12, color: DARK.inkMuted, fontWeight: 500, marginTop: 6,
                       }}>
                         {s.v}
                       </div>
@@ -373,14 +370,25 @@ export default function VeterinariosLanding() {
                   <CVField label="Idiomas"        items={languages} />
                 </div>
 
-                {/* Frase */}
-                <blockquote className="vp-font-display" style={{
-                  marginTop: 32, paddingLeft: 18,
-                  borderLeft: `2px solid ${Cur.lime}`,
-                  fontStyle: "italic", fontSize: 18, lineHeight: 1.45,
-                  color: DARK.ink, maxWidth: 560,
+                {/* Frase — quote mark grande en lugar de border-left (ban absoluto del skill) */}
+                <blockquote style={{
+                  marginTop: 36, marginInline: 0, padding: 0,
+                  position: 'relative', maxWidth: 560,
                 }}>
-                  “{frase}”
+                  <span aria-hidden="true" className="vp-font-display" style={{
+                    position: 'absolute', top: -32, left: -8,
+                    fontSize: 88, lineHeight: 1, color: Cur.lime, fontWeight: 700,
+                    opacity: 0.5,
+                  }}>
+                    “
+                  </span>
+                  <p style={{
+                    margin: 0, fontSize: 18, lineHeight: 1.5,
+                    color: DARK.ink, fontWeight: 400,
+                    position: 'relative', zIndex: 1,
+                  }}>
+                    {frase}
+                  </p>
                 </blockquote>
 
                 {/* CTA */}
