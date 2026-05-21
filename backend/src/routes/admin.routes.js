@@ -11,7 +11,17 @@ router.use(verificarToken, soloAdmin);
 router.get("/notificaciones", async (req, res) => {
   try {
     const [[{ citas_pend }]]  = await db.query("SELECT COUNT(*) AS citas_pend  FROM citas WHERE estado = 'pendiente'");
-    const [[{ reagenda }]]    = await db.query("SELECT COUNT(*) AS reagenda    FROM citas WHERE reagendamiento_estado = 'propuesta'");
+    // Solo cuenta propuestas REALMENTE pendientes:
+    //  - reagendamiento_estado = 'propuesta'
+    //  - no expiradas (expira_en > NOW() o sin expiración)
+    //  - la cita no está cancelada/completada/rechazada (esos casos la propuesta queda huérfana)
+    const [[{ reagenda }]]    = await db.query(`
+      SELECT COUNT(*) AS reagenda
+      FROM citas
+      WHERE reagendamiento_estado = 'propuesta'
+        AND (reagendamiento_expira_en IS NULL OR reagendamiento_expira_en > NOW())
+        AND estado NOT IN ('cancelada_cliente','cancelada_vet','rechazada','completada','no_asistio')
+    `);
     const [[{ ordenes_new }]] = await db.query("SELECT COUNT(*) AS ordenes_new FROM ordenes WHERE estado IN ('pendiente','pendiente_pago')");
     const [[{ stock_bajo }]]  = await db.query("SELECT COUNT(*) AS stock_bajo  FROM productos WHERE stock <= stock_minimo AND activo = 1");
 

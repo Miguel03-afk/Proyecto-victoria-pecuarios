@@ -1,13 +1,15 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import db from "../db.js";
 import { verificarToken } from "../middlewares/auth.middleware.js";
 import { validateBody } from "../middlewares/validate.middleware.js";
-import { enviarCodigoVerificacion } from "../services/email.js";
+import { enviarCodigoVerificacion, enviarEmailReset } from "../services/email.js";
 import {
   registroSchema, loginSchema, verificarEmailSchema, reenviarCodigoSchema,
   actualizarPerfilSchema, cambiarPasswordSchema, cambiarEmailSchema,
+  solicitarResetSchema, restablecerPasswordSchema,
 } from "../validators/auth.validators.js";
 
 const genCodigo = () => String(Math.floor(100000 + Math.random() * 900000));
@@ -337,6 +339,109 @@ router.get("/mis-ordenes/:id", verificarToken, async (req, res) => {
     res.json({ ...orden, items });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── SOLICITAR RESET DE CONTRASEÑA ───────────────────────────────────────────
+// POST /api/auth/solicitar-reset
+// Recibe email, genera token, envía correo con link de reset (10 min validez).
+// SIEMPRE responde igual aunque el email no exista — evita enumeración de cuentas.
+router.post("/solicitar-reset", validateBody(solicitarResetSchema), async (req, res) => {
+  const { email } = req.body;
+
+  // Respuesta genérica — no revelar si el email está registrado
+  const mensajeGenerico = {
+    mensaje: "Si existe una cuenta con ese correo, te enviamos un enlace para restablecer tu contraseña. Revisa tu bandeja (y spam).",
+  };
+
+  try {
+    // Solo cuentas activas pueden resetear. Verificación de email NO es requisito
+    // (un usuario que olvidó verificar también puede reseterar — su email funciona).
+    const [rows] = await db.query(
+      "SELECT id, nombre FROM usuarios WHERE email = ? AND activo = 1",
+      [email]
+    );
+
+    if (rows.length === 0) {
+      // Email no registrado o cuenta desactivada → respondemos genérico, no hacemos nada
+      return res.json(mensajeGenerico);
+    }
+
+    const usuario = rows[0];
+
+    // Token aleatorio criptográficamente seguro: 32 bytes = 64 hex chars
+    const token  = crypto.randomBytes(32).toString("hex");
+    const expira = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+
+    // Guardar token (sobreescribe el anterior si pidieron reset 2 veces seguidas)
+    await db.query(
+      "UPDATE usuarios SET reset_token = ?, reset_token_expira = ? WHERE id = ?",
+      [token, expira, usuario.id]
+    );
+
+    // URL del frontend: usa el origin del request o el primero de FRONTEND_ORIGINS
+    const origin = req.headers.origin
+      || (process.env.FRONTEND_ORIGINS || "").split(",")[0].trim()
+      || "http://localhost:5173";
+    const resetUrl = `${origin}/restablecer-password?token=${token}`;
+
+    // Enviar email — si falla, log internamente pero mantenemos mensaje genérico
+    try {
+      await enviarEmailReset(email, usuario.nombre, resetUrl);
+    } catch (emailErr) {
+      console.error("Email reset no enviado (revisar config Brevo):", emailErr.message);
+    }
+
+    res.json(mensajeGenerico);
+  } catch (err) {
+    console.error("Error solicitando reset:", err);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
+});
+
+// ─── RESTABLECER CONTRASEÑA CON TOKEN ────────────────────────────────────────
+// POST /api/auth/restablecer-password
+// Recibe { token, nueva_password }. Valida token + expiración + activo,
+// hashea password, limpia el token (no reusable).
+router.post("/restablecer-password", validateBody(restablecerPasswordSchema), async (req, res) => {
+  const { token, nueva_password } = req.body;
+
+  try {
+    const [rows] = await db.query(
+      `SELECT id, email, nombre FROM usuarios
+       WHERE reset_token = ?
+         AND reset_token_expira > NOW()
+         AND activo = 1`,
+      [token]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({
+        error:    "El enlace es inválido o ya expiró. Solicita uno nuevo.",
+        expirado: true,
+      });
+    }
+
+    const usuario = rows[0];
+
+    // Hash de la nueva password (mismo cost factor que en registro)
+    const hash = await bcrypt.hash(nueva_password, 10);
+
+    // Update password + invalidar token de un solo uso
+    await db.query(
+      `UPDATE usuarios
+       SET password_hash = ?, reset_token = NULL, reset_token_expira = NULL
+       WHERE id = ?`,
+      [hash, usuario.id]
+    );
+
+    res.json({
+      mensaje: "Contraseña actualizada. Ya puedes iniciar sesión con tu nueva clave.",
+      email:   usuario.email,
+    });
+  } catch (err) {
+    console.error("Error restableciendo password:", err);
+    res.status(500).json({ error: "Error interno del servidor." });
   }
 });
 

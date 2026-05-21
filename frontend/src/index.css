@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+/* ─── Animation tokens (Emil Kowalski's design engineering) ───────────────── */
+:root {
+  /* Strong ease-out for UI interactions — punchier than default ease-out */
+  --vp-ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
+  /* Strong ease-in-out for on-screen movement */
+  --vp-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  /* iOS drawer curve (from Ionic) — perfect for drawers/sheets */
+  --vp-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ─── Fluid typography (clamp = min, preferred, max) ─────────────────────
+     Escalan suave entre móvil y desktop sin breakpoint discreto.
+     Sintaxis: clamp(MIN, PREFERRED-vw, MAX). */
+  --vp-text-xs:   clamp(10px,   1.6vw, 11px);
+  --vp-text-sm:   clamp(11px,   1.9vw, 13px);
+  --vp-text-base: clamp(13px,   2.4vw, 15px);
+  --vp-text-lg:   clamp(15px,   3.2vw, 18px);
+  --vp-text-xl:   clamp(18px,   4vw,   22px);
+  --vp-text-2xl:  clamp(22px,   5vw,   28px);
+  --vp-text-3xl:  clamp(26px,   6vw,   36px);
+  --vp-text-4xl:  clamp(30px,   8vw,   48px);
+
+  /* Spacing fluid para padding/gap responsive */
+  --vp-space-xs:  clamp(6px,   1.4vw, 8px);
+  --vp-space-sm:  clamp(8px,   1.8vw, 12px);
+  --vp-space-md:  clamp(12px,  2.6vw, 16px);
+  --vp-space-lg:  clamp(16px,  3.6vw, 24px);
+  --vp-space-xl:  clamp(20px,  5vw,   32px);
+}
+
+/* ─── Global button press feedback ────────────────────────────────────────── */
+/* Subtle scale-down on press tells the user the UI heard them.
+   Excludes :disabled. Uses transform (GPU-accelerated). */
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* If a button has no inline transition, this gives it a baseline.
+   Inline transitions override this when present. */
+button {
+  transition: transform 120ms var(--vp-ease-out);
+}
+
+button:disabled {
+  transform: none;
+}
+
+/* ─── Shared keyframes for modals, toasts, etc. ───────────────────────────── */
+@keyframes vp-modal-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes vp-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes vp-msg-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Accessibility: respect user's motion preference ─────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active {
+    transform: none;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

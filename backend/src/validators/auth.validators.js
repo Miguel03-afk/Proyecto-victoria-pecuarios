@@ -17,6 +17,16 @@ const passwordSchema = z.string()
     "Usa al menos una mayúscula, número o símbolo"
   );
 
+/* Schema más estricto para reset de contraseña: exige mayúscula Y carácter
+   especial obligatorios (ambos, no uno u otro). Más seguro que el de registro
+   porque el reset implica que la cuenta ya fue comprometida o el usuario
+   olvidó la clave — momento ideal para forzar una mejor. */
+const passwordStrongSchema = z.string()
+  .min(8,  "La contraseña debe tener al menos 8 caracteres")
+  .max(20, "La contraseña no puede tener más de 20 caracteres")
+  .regex(/[A-Z]/,        "Debe contener al menos una letra mayúscula")
+  .regex(/[^A-Za-z0-9]/, "Debe contener al menos un carácter especial (!@#$%^&*...)");
+
 const nombreSchema = z.string()
   .trim()
   .min(2, "Mínimo 2 caracteres")
@@ -75,4 +85,19 @@ export const cambiarPasswordSchema = z.object({
 export const cambiarEmailSchema = z.object({
   nuevo_email:     emailSchema,
   password_actual: z.string().min(1, "Contraseña actual requerida"),
+});
+
+/* ─── Reset de contraseña (flujo "Olvidé mi contraseña") ────────────────── */
+
+// 1) Solicitar reset → recibe email, genera token, envía correo.
+export const solicitarResetSchema = z.object({
+  email: emailSchema,
+});
+
+// 2) Restablecer con token → recibe token + nueva password.
+export const restablecerPasswordSchema = z.object({
+  token: z.string()
+    .length(64, "Token inválido")
+    .regex(/^[a-f0-9]+$/i, "Token inválido"),
+  nueva_password: passwordStrongSchema,
 });

@@ -33,7 +33,7 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 
 /* ─── 1) CORS dinámico con whitelist desde .env ─────────────────────────────
    FRONTEND_ORIGINS en .env, separado por comas:
-     FRONTEND_ORIGINS=http://localhost:5173,https://victoriapecuarios.com
+     FRONTEND_ORIGINS=http://localhost:5173,https://victoriapets.com
    En dev, si no está definido, permite localhost:5173-5175.
 */
 const DEV_ORIGINS = [
@@ -110,9 +110,14 @@ const pagosLimiter = rateLimit({
   message: { error: "Demasiadas peticiones de pago. Intenta de nuevo en unos minutos." },
 });
 
-/* ─── 7) Servir uploads (públicos, ya que el frontend los muestra) ──────────*/
+/* ─── 7) Servir uploads (públicos, ya que el frontend los muestra) ──────────
+   maxAge: "5m" en lugar de "7d" porque admin/vet pueden REEMPLAZAR archivos
+   (fotos de veterinarios, galería de productos, etc.). Si el cache fuera muy
+   largo, el navegador seguiría mostrando la imagen vieja por días. */
 app.use("/uploads", express.static(path.join(__dirname, "../uploads"), {
-  maxAge: "7d",
+  maxAge: "5m",
+  etag: true,           // permite revalidación rápida al servidor
+  lastModified: true,
   setHeaders(res) {
     res.set("Cross-Origin-Resource-Policy", "cross-origin");
   },
@@ -134,7 +139,7 @@ app.use("/api/ordenes-servicio", ordenesServicioRouter);
 
 /* ─── 9) Health check ───────────────────────────────────────────────────────*/
 app.get("/", (req, res) => {
-  res.json({ mensaje: "API Victoria Pecuarios activa", version: "2.0", env: NODE_ENV });
+  res.json({ mensaje: "API Victoria Pets activa", version: "2.0", env: NODE_ENV });
 });
 app.get("/health", (req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
