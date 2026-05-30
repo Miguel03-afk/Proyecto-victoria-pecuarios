@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPhone, faLocationDot, faClock, faEnvelope,
-  faPaperPlane, faArrowRight, faCalendarCheck, faStethoscope,
+  faPaperPlane, faArrowRight, faStethoscope,
 } from "@fortawesome/free-solid-svg-icons";
 import { faWhatsapp, faInstagram, faFacebookF } from "@fortawesome/free-brands-svg-icons";
 import Navbar from "../components/Navbar";
@@ -311,7 +311,7 @@ export default function Contacto() {
                       <span style={labelBase}>Asunto</span>
                       <select value={form.asunto} onChange={onChange('asunto')} className="vp-bare"
                         style={{ ...inputBase, cursor: 'pointer' }}>
-                        {['Consulta general', 'Agendar cita', 'Urgencia', 'Productos / pedidos', 'Otro'].map(a => (
+                        {['Consulta general', 'Productos / pedidos', 'Urgencia', 'Otro'].map(a => (
                           <option key={a} value={a}>{a}</option>
                         ))}
                       </select>
@@ -358,7 +358,7 @@ export default function Contacto() {
           </div>
         </section>
 
-        {/* CTA agendar */}
+        {/* CTA tienda */}
         <section style={{
           padding: '64px 24px',
           backgroundColor: Cur.surfaceAlt,
@@ -375,18 +375,18 @@ export default function Contacto() {
                 fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 500,
                 color: Cur.ink, lineHeight: 1.1, margin: 0,
               }}>
-                ¿Prefieres ir directo a agendar?
+                ¿Prefieres explorar nuestra tienda?
               </h2>
               <p style={{
                 marginTop: 14, fontSize: 15, color: Cur.inkSoft, lineHeight: 1.6,
                 maxWidth: 540, marginLeft: 'auto', marginRight: 'auto',
               }}>
-                Reserva tu cita en menos de 60 segundos. Cancela o reagenda cuando quieras.
+                Encuentra productos de calidad para el bienestar de tu mascota.
               </p>
               <div style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 12, marginTop: 28, justifyContent: 'center' }}>
                 <button
                   type="button"
-                  onClick={() => navigate('/agendar-cita')}
+                  onClick={() => navigate('/tienda')}
                   className="vp-cta-primary"
                   style={{
                     padding: '14px 26px', borderRadius: 999,
@@ -397,21 +397,7 @@ export default function Contacto() {
                     boxShadow: `0 12px 24px -8px ${Cur.navy}55`,
                   }}
                 >
-                  <FontAwesomeIcon icon={faCalendarCheck} /> Agendar cita
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate('/equipo')}
-                  style={{
-                    padding: '14px 26px', borderRadius: 999,
-                    backgroundColor: 'transparent', color: Cur.ink,
-                    border: `1.5px solid ${Cur.border}`,
-                    fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                  }}
-                >
-                  Ver nuestro equipo <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 11 }} />
+                  Ver productos <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 11 }} />
                 </button>
               </div>
             </Reveal>

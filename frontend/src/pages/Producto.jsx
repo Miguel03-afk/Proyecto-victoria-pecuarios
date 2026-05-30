@@ -4,6 +4,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useCarrito } from "../context/CarritoContext";
 import { useAuth } from "../context/AuthContext";
+import { useFavoritos } from "../hooks/useFavoritos";
 import { useTheme } from "../styles/ThemeProvider.jsx";
 import { FONT } from "../styles/admin.tokens";
 import ProductCard from "../components/ProductCard";
@@ -189,8 +190,8 @@ function PanelCompra({ producto, variantes }) {
   const [varIdx, setVarIdx] = useState(0);
   const [cantidad, setCantidad] = useState(1);
   const [agregado, setAgregado] = useState(false);
-  const [favorito, setFavorito] = useState(false);
   const [error, setError] = useState("");
+  const { esFavorito, toggle: toggleFav } = useFavoritos(usuario);
 
   const navy     = C.navy     || '#1E3A8A';
   const navyDeep = C.navyDeep || '#0F2563';
@@ -221,7 +222,7 @@ function PanelCompra({ producto, variantes }) {
     const cant = Math.max(1, Math.min(stock, parseInt(cantidad, 10) || 1));
     if (cant !== cantidad) setCantidad(cant);
     if (cant > stock) return setError(`Solo hay ${stock} unidades disponibles.`);
-    if (!usuario) { navigate("/login"); return; }
+    // Carrito guest soportado en localStorage. Login solo al finalizar compra.
 
     agregar({
       id: tieneVariantes ? `${producto.id}-v${varActiva.id}` : producto.id,
@@ -274,15 +275,6 @@ function PanelCompra({ producto, variantes }) {
             DESTACADO
           </span>
         )}
-        {producto.uso_clinico && (
-          <span style={{
-            padding: '3px 10px', borderRadius: 999,
-            backgroundColor: purple, color: '#fff',
-            fontSize: 10, fontWeight: 800, letterSpacing: '0.04em',
-          }}>
-            USO CLÍNICO
-          </span>
-        )}
       </div>
 
       <h1 style={{
@@ -320,9 +312,57 @@ function PanelCompra({ producto, variantes }) {
           fontSize: 11, fontWeight: 700,
         }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }}/>
-          {hayStock ? (stock <= (stockMin || 5) ? `Últimas ${stock} unidades` : "En stock") : "Sin stock"}
+          {hayStock
+            ? (stock <= (stockMin || 5)
+                ? `Últimas ${stock} ${stock === 1 ? "unidad" : "unidades"}`
+                : `${stock} ${stock === 1 ? "unidad disponible" : "unidades disponibles"}`)
+            : "Sin stock"}
         </span>
       </div>
+
+      {/* Bloque de stock resaltado — info crítica de compra */}
+      {(() => {
+        const stockBajoDet = hayStock && stock <= (stockMin || 5);
+        const cfg = !hayStock
+          ? { bg: `${red}10`,    border: `${red}40`,           text: red,                fgNum: red,                label: "Producto agotado",      sub: "Te avisaremos cuando vuelva." }
+          : stockBajoDet
+            ? { bg: "#FEF3C7",   border: "#FCD34D",            text: "#92400E",          fgNum: "#92400E",          label: "¡Últimas unidades!",     sub: "Cómpralo antes de que se agote." }
+            : { bg: `${lime}15`, border: `${C.limeDeep || lime}55`, text: C.limeDeep || lime, fgNum: C.limeDeep || lime, label: "Stock disponible",       sub: tieneVariantes ? "Disponibilidad en la variante seleccionada." : "Listo para envío inmediato." };
+        return (
+          <div style={{
+            marginTop: 4,
+            padding: "14px 18px",
+            borderRadius: 14,
+            background: cfg.bg,
+            border: `1.5px solid ${cfg.border}`,
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            gap: 12, flexWrap: "wrap",
+          }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{
+                fontSize: 11, fontWeight: 700, color: cfg.text,
+                letterSpacing: "0.04em", textTransform: "uppercase",
+              }}>
+                {cfg.label}
+              </span>
+              <span style={{ fontSize: 12, color: cfg.text, opacity: 0.85 }}>
+                {cfg.sub}
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+              <span className="vp-tabular" style={{
+                fontSize: 28, fontWeight: 700, color: cfg.fgNum,
+                lineHeight: 1, fontVariantNumeric: "tabular-nums",
+              }}>
+                {stock}
+              </span>
+              <span style={{ fontSize: 12, color: cfg.text, fontWeight: 600 }}>
+                {stock === 1 ? "unidad" : "unidades"}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Precio */}
       <div className="vp-prod-precio-box" style={{
@@ -506,9 +546,12 @@ function PanelCompra({ producto, variantes }) {
           )}
         </button>
 
+        {(() => { const favorito = esFavorito(producto.id); return (
         <button
-          onClick={() => setFavorito(f => !f)}
-          aria-label="Favorito"
+          onClick={() => toggleFav(producto)}
+          aria-label={favorito ? "Quitar de favoritos" : "Añadir a favoritos"}
+          aria-pressed={favorito}
+          title={favorito ? "Quitar de favoritos" : "Añadir a favoritos"}
           className="vp-prod-fav"
           style={{
             width: 56, height: 56,
@@ -518,7 +561,7 @@ function PanelCompra({ producto, variantes }) {
             color: favorito ? red : C.ink,
             fontSize: 16, cursor: "pointer",
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            transition: "all 200ms ease",
+            transition: "all 200ms var(--vp-ease-out)",
           }}
           onMouseEnter={(e) => {
             if (!favorito) {
@@ -534,6 +577,7 @@ function PanelCompra({ producto, variantes }) {
           }}>
           <FontAwesomeIcon icon={faHeart} />
         </button>
+        ); })()}
       </div>
 
       {error && (
@@ -557,7 +601,7 @@ function PanelCompra({ producto, variantes }) {
         {[
           { icon: faTruckFast,    titulo: "Envío gratis",         sub: "En Ibagué desde $80.000", color: navy },
           { icon: faShieldHalved, titulo: "Garantía oficial",     sub: "Producto verificado",     color: lime },
-          { icon: faStethoscope,  titulo: "Recomendado por vets", sub: "Aprobado por la clínica", color: purple },
+          { icon: faStethoscope,  titulo: "Marca verificada",     sub: "Producto de origen comprobado", color: purple },
           { icon: faLocationDot,  titulo: "Recoge en tienda",     sub: "Cra. 5 #34-12",           color: red },
         ].map(g => (
           <div key={g.titulo} className="vp-prod-garantia" style={{

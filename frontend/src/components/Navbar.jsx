@@ -5,23 +5,22 @@ import { useCarrito } from "../context/CarritoContext";
 import { useTheme } from "../styles/ThemeProvider.jsx";
 import { FONT, RADIUS } from "../styles/admin.tokens";
 import { useState, useEffect, useRef } from "react";
+import api from "../services/api";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faMagnifyingGlass, faUser, faCartShopping, faBars, faXmark,
   faPaw, faSun, faMoon, faChevronDown, faRightFromBracket,
   faPhone, faTruck, faLocationDot, faClock,
-  faBoxOpen, faCalendarCheck, faStethoscope, faGear, faCashRegister,
+  faBoxOpen, faGear, faCashRegister,
   faCircleUser,
 } from "@fortawesome/free-solid-svg-icons";
 import logoVP from "../assets/WhatsApp Image 2026-04-22 at 1.19.17 PM.jpeg";
 
 const NAV_LINKS = [
-  { to: "/",             label: "Inicio"     },
-  { to: "/tienda",       label: "Tienda"     },
-  { to: "/#servicios",   label: "Servicios"  },
-  { to: "/equipo",       label: "Equipo"     },
-  { to: "/agendar-cita", label: "Citas"      },
-  { to: "/contacto",     label: "Contacto"   },
+  { to: "/",           label: "Inicio"    },
+  { to: "/tienda",     label: "Tienda"    },
+  { to: "/#servicios", label: "Servicios" },
+  { to: "/contacto",   label: "Contacto"  },
 ];
 
 /* ─── Toggle modo claro/oscuro ───────────────────────────────────────────── */
@@ -59,9 +58,12 @@ export default function Navbar() {
   const location = useLocation();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const [sugerencias, setSugerencias] = useState([]);
+  const [mostrarSug, setMostrarSug] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [pagoPendiente, setPagoPendiente] = useState(null);
   const [movilOpen, setMovilOpen] = useState(false);
+  const debounceRef = useRef(null);
 
   // Scroll shadow
   useEffect(() => {
@@ -88,7 +90,31 @@ export default function Navbar() {
     if (e.key === "Enter" && busqueda.trim()) {
       navigate(`/tienda?buscar=${encodeURIComponent(busqueda.trim())}`);
       setBusqueda("");
+      setSugerencias([]);
+      setMostrarSug(false);
+    } else if (e.key === "Escape") {
+      setMostrarSug(false);
     }
+  };
+
+  // Autocompletado con debounce 200ms contra /api/public/sugerir
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const q = busqueda.trim();
+    if (q.length < 2) { setSugerencias([]); return; }
+    debounceRef.current = setTimeout(() => {
+      api.get(`/public/sugerir?q=${encodeURIComponent(q)}`)
+        .then(({ data }) => setSugerencias(data?.sugerencias || []))
+        .catch(() => setSugerencias([]));
+    }, 200);
+    return () => debounceRef.current && clearTimeout(debounceRef.current);
+  }, [busqueda]);
+
+  const elegirSugerencia = (nombre) => {
+    navigate(`/tienda?buscar=${encodeURIComponent(nombre)}`);
+    setBusqueda("");
+    setSugerencias([]);
+    setMostrarSug(false);
   };
 
   const esActivo = (path) => {
@@ -311,8 +337,19 @@ export default function Navbar() {
             <input
               type="text"
               value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
+              onChange={e => { setBusqueda(e.target.value); setMostrarSug(true); }}
               onKeyDown={handleBuscar}
+              onFocus={e => {
+                e.currentTarget.style.borderColor = C.brand;
+                e.currentTarget.style.background = C.surface;
+                setMostrarSug(true);
+              }}
+              onBlur={e => {
+                e.currentTarget.style.borderColor = C.lineStrong;
+                e.currentTarget.style.background = C.surfaceAlt;
+                // Delay para permitir click en sugerencias antes de cerrar
+                setTimeout(() => setMostrarSug(false), 150);
+              }}
               placeholder="Buscar producto…"
               style={{
                 width: "100%", height: 38,
@@ -325,9 +362,51 @@ export default function Navbar() {
                 outline: "none",
                 transition: "border-color 0.15s, background 0.15s",
               }}
-              onFocus={e => { e.currentTarget.style.borderColor = C.brand; e.currentTarget.style.background = C.surface; }}
-              onBlur={e => { e.currentTarget.style.borderColor = C.lineStrong; e.currentTarget.style.background = C.surfaceAlt; }}
             />
+
+            {/* Dropdown de sugerencias */}
+            {mostrarSug && sugerencias.length > 0 && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
+                background: C.surfaceElev,
+                border: `1px solid ${C.lineStrong}`,
+                borderRadius: RADIUS.md,
+                boxShadow: C.shadowLg,
+                overflow: "hidden", zIndex: 200,
+                animation: "vp-slideDown 180ms cubic-bezier(0.23,1,0.32,1)",
+              }}>
+                {sugerencias.map((s, i) => {
+                  const idx = s.toLowerCase().indexOf(busqueda.trim().toLowerCase());
+                  const before = idx >= 0 ? s.slice(0, idx) : s;
+                  const match  = idx >= 0 ? s.slice(idx, idx + busqueda.trim().length) : "";
+                  const after  = idx >= 0 ? s.slice(idx + busqueda.trim().length) : "";
+                  return (
+                    <button
+                      key={`${s}-${i}`}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => elegirSugerencia(s)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 10,
+                        width: "100%", padding: "10px 14px",
+                        background: "transparent", border: "none",
+                        textAlign: "left", cursor: "pointer",
+                        color: C.ink, fontSize: 13, fontFamily: FONT.ui,
+                        transition: "background 120ms ease",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = C.brandSoft)}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+                      <FontAwesomeIcon icon={faMagnifyingGlass} style={{ fontSize: 10, color: C.muted }}/>
+                      <span>
+                        <span style={{ color: C.brand, fontWeight: 600 }}>{before}</span>
+                        <span style={{ color: C.ink, fontWeight: 700 }}>{match}</span>
+                        <span style={{ color: C.brand, fontWeight: 600 }}>{after}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Mi cuenta */}
@@ -389,12 +468,15 @@ export default function Navbar() {
                     </div>
 
                     <div style={{ padding: "6px 0" }}>
-                      {[
-                        { to: "/perfil",       label: "Mi perfil",     icon: faCircleUser },
-                        { to: "/mis-ordenes",  label: "Mis órdenes",   icon: faBoxOpen },
-                        { to: "/mis-citas",    label: "Mis citas",     icon: faCalendarCheck },
-                        { to: "/agendar-cita", label: "Agendar cita",  icon: faCalendarCheck },
-                      ].map(item => (
+                      {(usuario?.rol === 'cliente'
+                        ? [
+                            { to: "/perfil",       label: "Mi perfil",     icon: faCircleUser },
+                            { to: "/mis-ordenes",  label: "Mis órdenes",   icon: faBoxOpen },
+                          ]
+                        : [
+                            { to: "/perfil",       label: "Mi perfil",     icon: faCircleUser },
+                          ]
+                      ).map(item => (
                         <Link
                           key={item.to}
                           to={item.to}
@@ -414,19 +496,6 @@ export default function Navbar() {
                         </Link>
                       ))}
 
-                      {usuario?.rol === "veterinario" && (
-                        <Link to="/veterinario" onClick={() => setMenuAbierto(false)}
-                          style={{
-                            display: "flex", alignItems: "center", gap: 10,
-                            padding: "9px 16px", fontSize: 13,
-                            color: C.brand, fontWeight: 700,
-                            textDecoration: "none",
-                            fontFamily: FONT.ui,
-                          }}>
-                          <FontAwesomeIcon icon={faStethoscope} style={{ width: 14 }}/>
-                          Panel veterinario
-                        </Link>
-                      )}
                       {esCajero && (
                         <Link to="/cajero" onClick={() => setMenuAbierto(false)}
                           style={{

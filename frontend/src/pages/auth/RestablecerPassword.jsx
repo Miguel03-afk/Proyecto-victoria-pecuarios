@@ -9,16 +9,14 @@ import {
   faCircleCheck, faTriangleExclamation, faArrowLeft, faCheck, faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import api from "../../services/api";
-import AuthLayout, { AUTH_C, AuthCard, AuthInput } from "./AuthLayout";
+import AuthLayout, { AUTH_C, AuthCard, AuthInput, AuthCTA, AuthAlert } from "./AuthLayout";
 
-/* ─── Reglas de validación de la contraseña ──────────────────────────────
-   DEBE coincidir EXACTAMENTE con passwordStrongSchema del backend para
-   evitar que el cliente piense que es válida y el server la rechace. */
+/* DEBE coincidir EXACTAMENTE con passwordStrongSchema del backend. */
 const REGLAS = [
   { id: "min",  test: (p) => p.length >= 8,           label: "Al menos 8 caracteres" },
   { id: "max",  test: (p) => p.length <= 20,          label: "Máximo 20 caracteres" },
   { id: "upp",  test: (p) => /[A-Z]/.test(p),         label: "Al menos una mayúscula" },
-  { id: "spec", test: (p) => /[^A-Za-z0-9]/.test(p),  label: "Al menos un carácter especial (!@#$%...)" },
+  { id: "spec", test: (p) => /[^A-Za-z0-9]/.test(p),  label: "Al menos un símbolo (!@#$%...)" },
 ];
 
 function StrengthIndicator({ password }) {
@@ -27,7 +25,7 @@ function StrengthIndicator({ password }) {
   const color =
     pct < 50  ? AUTH_C.red :
     pct < 100 ? "#F59E0B"  :
-                AUTH_C.lime;
+                AUTH_C.limeDeep;
 
   if (!password) return null;
 
@@ -35,11 +33,11 @@ function StrengthIndicator({ password }) {
     <div style={{ marginTop: 10 }}>
       <div style={{
         height: 4, borderRadius: 999,
-        background: AUTH_C.inputBorder, overflow: "hidden",
+        background: '#E5E7EB', overflow: "hidden",
       }}>
         <div style={{
           width: `${pct}%`, height: "100%", background: color,
-          transition: "width 200ms ease, background-color 200ms ease",
+          transition: "width 220ms var(--vp-ease-out), background-color 220ms var(--vp-ease-out)",
         }}/>
       </div>
       <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
@@ -48,8 +46,8 @@ function StrengthIndicator({ password }) {
           return (
             <div key={r.id} style={{
               display: "flex", alignItems: "center", gap: 6,
-              fontSize: 11, color: ok ? AUTH_C.lime : AUTH_C.fgMuted,
-              transition: "color 200ms ease",
+              fontSize: 11.5, color: ok ? AUTH_C.limeDeep : AUTH_C.fgMuted,
+              transition: "color 200ms var(--vp-ease-out)",
             }}>
               <FontAwesomeIcon icon={ok ? faCheck : faXmark} style={{ fontSize: 9, width: 10 }} />
               {r.label}
@@ -76,7 +74,6 @@ export default function RestablecerPassword() {
   const [shake,       setShake]       = useState(false);
   const [tokenValido, setTokenValido] = useState(true);
 
-  // Validar formato del token al montar (debe ser 64 hex chars)
   useEffect(() => {
     if (!token || !/^[a-f0-9]{64}$/i.test(token)) {
       setTokenValido(false);
@@ -110,12 +107,8 @@ export default function RestablecerPassword() {
     setCargando(true);
     setErrorGen("");
     try {
-      await api.post("/auth/restablecer-password", {
-        token,
-        nueva_password: password,
-      });
+      await api.post("/auth/restablecer-password", { token, nueva_password: password });
       setExito(true);
-      // Auto-redirige al login después de 3 seg
       setTimeout(() => navigate("/login", { replace: true }), 3000);
     } catch (err) {
       const msg      = err.response?.data?.error || "No pudimos restablecer la contraseña.";
@@ -131,15 +124,15 @@ export default function RestablecerPassword() {
     }
   };
 
-  /* ─── Pantalla: token inválido o expirado ──────────────────────── */
   if (!tokenValido) {
     return (
-      <AuthLayout breadcrumb="Restablecer contraseña">
+      <AuthLayout breadcrumb="Restablecer contraseña" heroStep={4}
+        heroEyebrow="Hmm" heroTitle="Enlace expirado" heroSubtitle="Tus enlaces de restablecimiento duran 10 minutos por seguridad.">
         <AuthCard>
           <div style={{ textAlign: "center", padding: "8px 0" }}>
             <div style={{
               width: 64, height: 64, borderRadius: 18,
-              background: `${AUTH_C.red}22`, border: `1px solid ${AUTH_C.red}55`,
+              background: AUTH_C.redSoft, border: `1px solid ${AUTH_C.redBorder}`,
               display: "inline-flex", alignItems: "center", justifyContent: "center",
               marginBottom: 18,
             }}>
@@ -148,19 +141,17 @@ export default function RestablecerPassword() {
 
             <h1 style={{
               margin: "0 0 10px",
-              fontFamily: '"General Sans", system-ui, sans-serif',
-              fontWeight: 700, fontSize: 28, color: AUTH_C.fg,
-              letterSpacing: "-0.025em", lineHeight: 1.05,
+              fontWeight: 600, fontSize: 28, color: AUTH_C.fg,
+              letterSpacing: "-0.025em", lineHeight: 1.1,
             }}>
               Enlace inválido o expirado
             </h1>
 
             <p style={{
-              margin: "0 0 24px", fontSize: 13, color: AUTH_C.fgSoft,
-              lineHeight: 1.6,
+              margin: "0 0 24px", fontSize: 13.5, color: AUTH_C.fgSoft, lineHeight: 1.6,
             }}>
               El enlace que usaste no es válido o ya expiró (duran 10 minutos).
-              Solicita uno nuevo desde la pantalla de login.
+              Solicita uno nuevo y continúa el proceso.
             </p>
 
             <Link
@@ -168,9 +159,12 @@ export default function RestablecerPassword() {
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "12px 24px", borderRadius: 12,
-                background: AUTH_C.fg, color: AUTH_C.card,
-                textDecoration: "none", fontSize: 13, fontWeight: 700,
+                background: AUTH_C.ctaBg, color: AUTH_C.ctaText,
+                textDecoration: "none", fontSize: 14, fontWeight: 600,
+                transition: 'background-color 160ms var(--vp-ease-out)',
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = AUTH_C.ctaBgHover)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = AUTH_C.ctaBg)}
             >
               Solicitar nuevo enlace
               <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 10 }} />
@@ -181,35 +175,33 @@ export default function RestablecerPassword() {
     );
   }
 
-  /* ─── Pantalla: éxito ──────────────────────────────────────────── */
   if (exito) {
     return (
-      <AuthLayout breadcrumb="Restablecer contraseña">
+      <AuthLayout breadcrumb="Restablecer contraseña" heroStep={4}
+        heroEyebrow="Listo" heroTitle="Contraseña actualizada" heroSubtitle="Te redirigimos al login en un momento.">
         <AuthCard>
           <div style={{ textAlign: "center", padding: "8px 0" }}>
             <div style={{
               width: 64, height: 64, borderRadius: 18,
-              background: `${AUTH_C.lime}22`, border: `1px solid ${AUTH_C.lime}55`,
+              background: '#ECFDF5', border: `1px solid #A7F3D0`,
               display: "inline-flex", alignItems: "center", justifyContent: "center",
               marginBottom: 18,
             }}>
-              <FontAwesomeIcon icon={faCircleCheck} style={{ color: AUTH_C.lime, fontSize: 28 }} />
+              <FontAwesomeIcon icon={faCircleCheck} style={{ color: '#059669', fontSize: 28 }} />
             </div>
 
             <h1 style={{
               margin: "0 0 10px",
-              fontFamily: '"General Sans", system-ui, sans-serif',
-              fontWeight: 700, fontSize: 28, color: AUTH_C.fg,
-              letterSpacing: "-0.025em", lineHeight: 1.05,
+              fontWeight: 600, fontSize: 28, color: AUTH_C.fg,
+              letterSpacing: "-0.025em", lineHeight: 1.1,
             }}>
               Contraseña actualizada
             </h1>
 
             <p style={{
-              margin: "0 0 24px", fontSize: 13, color: AUTH_C.fgSoft,
-              lineHeight: 1.6,
+              margin: "0 0 24px", fontSize: 13.5, color: AUTH_C.fgSoft, lineHeight: 1.6,
             }}>
-              Tu contraseña fue cambiada correctamente. Te estamos redirigiendo al login...
+              Tu contraseña fue cambiada correctamente. Te estamos redirigiendo al login…
             </p>
 
             <Link
@@ -217,8 +209,8 @@ export default function RestablecerPassword() {
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "12px 24px", borderRadius: 12,
-                background: AUTH_C.fg, color: AUTH_C.card,
-                textDecoration: "none", fontSize: 13, fontWeight: 700,
+                background: AUTH_C.ctaBg, color: AUTH_C.ctaText,
+                textDecoration: "none", fontSize: 14, fontWeight: 600,
               }}
             >
               Iniciar sesión ahora
@@ -230,120 +222,93 @@ export default function RestablecerPassword() {
     );
   }
 
-  /* ─── Pantalla: formulario nueva contraseña ────────────────────── */
   return (
-    <AuthLayout breadcrumb="Restablecer contraseña">
+    <AuthLayout breadcrumb="Restablecer contraseña" heroStep={4}>
       <AuthCard shake={shake}>
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{
-            margin: "0 0 8px",
-            fontFamily: '"General Sans", system-ui, sans-serif',
-            fontWeight: 700, fontSize: 30, color: AUTH_C.fg,
-            letterSpacing: "-0.025em", lineHeight: 1.05,
-          }}>
-            Crear nueva contraseña
-          </h1>
-          <p style={{ margin: 0, fontSize: 13, color: AUTH_C.fgSoft, lineHeight: 1.6 }}>
-            Elige una contraseña segura. Cumple todos los requisitos para activar el botón.
-          </p>
-        </div>
+        <h1 style={{
+          margin: 0, fontSize: 30, fontWeight: 600, color: AUTH_C.fg,
+          letterSpacing: "-0.025em", lineHeight: 1.1,
+        }}>
+          Crear nueva contraseña
+        </h1>
+        <p style={{ margin: '8px 0 0', fontSize: 14, color: AUTH_C.fgSoft, lineHeight: 1.55 }}>
+          Cumple los cuatro requisitos para activar el botón.
+        </p>
 
-        <form onSubmit={onSubmit} noValidate>
-          {errorGen && (
-            <div style={{
-              padding: "10px 14px", borderRadius: 10,
-              background: `${AUTH_C.red}15`, border: `1px solid ${AUTH_C.red}40`,
-              color: AUTH_C.red, fontSize: 12, marginBottom: 16,
-              display: "flex", alignItems: "center", gap: 8,
-            }}>
-              <FontAwesomeIcon icon={faTriangleExclamation} style={{ fontSize: 12 }} />
-              {errorGen}
-            </div>
-          )}
+        <form onSubmit={onSubmit} noValidate style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {errorGen && <AuthAlert>{errorGen}</AuthAlert>}
 
-          <AuthInput
-            label="Nueva contraseña"
-            type={showPass ? "text" : "password"}
-            value={password}
-            onChange={(e) => {
-              // Slice a 20 para que ni siquiera puedas pegar más caracteres.
-              // Esto bloquea físicamente que un usuario pegue un link de 200 chars.
-              const v = e.target.value.slice(0, 20);
-              setPassword(v);
-              if (errors.password) setErrors(s => ({ ...s, password: "" }));
-            }}
-            placeholder="Entre 8 y 20 caracteres"
-            autoComplete="new-password"
-            leadingIcon={faLock}
-            error={errors.password}
-            trailingButton={
-              <button
-                type="button"
-                onClick={() => setShow(s => !s)}
-                aria-label={showPass ? "Ocultar contraseña" : "Mostrar contraseña"}
-                style={{
-                  position: "absolute", right: 14, top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none", border: "none", cursor: "pointer",
-                  color: AUTH_C.fgMuted, padding: 0,
-                  display: "flex", alignItems: "center",
-                }}
-              >
-                <FontAwesomeIcon icon={showPass ? faEyeSlash : faEye} style={{ fontSize: 14 }} />
-              </button>
-            }
-          />
-
-          <StrengthIndicator password={password} />
-
-          <div style={{ marginTop: 16 }}>
+          <div>
             <AuthInput
-              label="Confirmar contraseña"
+              label="Nueva contraseña"
               type={showPass ? "text" : "password"}
-              value={confirm}
+              value={password}
               onChange={(e) => {
                 const v = e.target.value.slice(0, 20);
-                setConfirm(v);
-                if (errors.confirm) setErrors(s => ({ ...s, confirm: "" }));
+                setPassword(v);
+                if (errors.password) setErrors(s => ({ ...s, password: "" }));
               }}
-              placeholder="Repite tu contraseña"
+              placeholder="Entre 8 y 20 caracteres"
               autoComplete="new-password"
               leadingIcon={faLock}
-              error={errors.confirm}
+              error={errors.password}
+              trailingButton={
+                <button
+                  type="button"
+                  onClick={() => setShow(s => !s)}
+                  aria-label={showPass ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  style={{
+                    position: "absolute", right: 8, top: "50%",
+                    transform: "translateY(-50%)",
+                    width: 36, height: 36, borderRadius: 999,
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    color: AUTH_C.fgMuted,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = AUTH_C.fg)}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = AUTH_C.fgMuted)}
+                >
+                  <FontAwesomeIcon icon={showPass ? faEyeSlash : faEye} style={{ fontSize: 14 }} />
+                </button>
+              }
             />
+            <StrengthIndicator password={password} />
           </div>
 
-          <button
-            type="submit"
-            disabled={cargando || !passwordValida || !confirm}
-            className="vp-auth-cta"
-            style={{
-              width: "100%", height: 50, marginTop: 24,
-              borderRadius: 14, border: "none",
-              cursor: (cargando || !passwordValida || !confirm) ? "not-allowed" : "pointer",
-              background: (passwordValida && confirm) ? AUTH_C.fg : `${AUTH_C.fg}40`,
-              color: (passwordValida && confirm) ? AUTH_C.card : AUTH_C.fgMuted,
-              fontSize: 14, fontWeight: 700, fontFamily: "inherit",
-              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
-              opacity: cargando ? 0.6 : 1,
+          <AuthInput
+            label="Confirmar contraseña"
+            type={showPass ? "text" : "password"}
+            value={confirm}
+            onChange={(e) => {
+              const v = e.target.value.slice(0, 20);
+              setConfirm(v);
+              if (errors.confirm) setErrors(s => ({ ...s, confirm: "" }));
             }}
-          >
-            {cargando ? "Guardando..." : (<>Cambiar contraseña <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 11 }} /></>)}
-          </button>
+            placeholder="Repite tu contraseña"
+            autoComplete="new-password"
+            leadingIcon={faLock}
+            error={errors.confirm}
+          />
+
+          <AuthCTA loading={cargando} disabled={!passwordValida || !confirm} icon={faArrowRight}>
+            {cargando ? "Guardando…" : "Cambiar contraseña"}
+          </AuthCTA>
         </form>
 
         <div style={{
           marginTop: 24, paddingTop: 20,
-          borderTop: `1px solid ${AUTH_C.cardBorder}`,
+          borderTop: `1px solid ${AUTH_C.border}`,
           textAlign: "center",
         }}>
           <Link
             to="/login"
             style={{
               display: "inline-flex", alignItems: "center", gap: 6,
-              fontSize: 13, color: AUTH_C.fgSoft, textDecoration: "none",
+              fontSize: 13.5, color: AUTH_C.fgSoft, textDecoration: "none",
               fontWeight: 500,
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = AUTH_C.fg)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = AUTH_C.fgSoft)}
           >
             <FontAwesomeIcon icon={faArrowLeft} style={{ fontSize: 10 }} />
             Volver al login

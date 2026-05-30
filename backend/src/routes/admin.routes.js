@@ -2,44 +2,26 @@
 import { Router } from "express";
 import db from "../db.js";
 import { verificarToken, soloAdmin } from "../middlewares/auth.middleware.js";
-import { enviarPropuestaReagendamiento } from "../services/email.js";
 
 const router = Router();
 router.use(verificarToken, soloAdmin);
 
 // ── NOTIFICACIONES ───────────────────────────────────────────
+// Simplificado: ya no hay citas ni reagendamientos (scope eliminado).
+// Solo quedan órdenes nuevas y stock bajo.
 router.get("/notificaciones", async (req, res) => {
   try {
-    const [[{ citas_pend }]]  = await db.query("SELECT COUNT(*) AS citas_pend  FROM citas WHERE estado = 'pendiente'");
-    // Solo cuenta propuestas REALMENTE pendientes:
-    //  - reagendamiento_estado = 'propuesta'
-    //  - no expiradas (expira_en > NOW() o sin expiración)
-    //  - la cita no está cancelada/completada/rechazada (esos casos la propuesta queda huérfana)
-    const [[{ reagenda }]]    = await db.query(`
-      SELECT COUNT(*) AS reagenda
-      FROM citas
-      WHERE reagendamiento_estado = 'propuesta'
-        AND (reagendamiento_expira_en IS NULL OR reagendamiento_expira_en > NOW())
-        AND estado NOT IN ('cancelada_cliente','cancelada_vet','rechazada','completada','no_asistio')
-    `);
     const [[{ ordenes_new }]] = await db.query("SELECT COUNT(*) AS ordenes_new FROM ordenes WHERE estado IN ('pendiente','pendiente_pago')");
     const [[{ stock_bajo }]]  = await db.query("SELECT COUNT(*) AS stock_bajo  FROM productos WHERE stock <= stock_minimo AND activo = 1");
 
     const items = [];
-    if (citas_pend  > 0) items.push({ tipo:"cita",          texto:`${citas_pend}  cita${citas_pend  > 1 ? "s" : ""} esperando confirmación`, nivel:"warning" });
-    if (reagenda    > 0) items.push({ tipo:"reagendamiento", texto:`${reagenda}    propuesta${reagenda > 1 ? "s" : ""} de reagendamiento pendiente${reagenda > 1 ? "s" : ""}`, nivel:"info" });
-    if (ordenes_new > 0) items.push({ tipo:"orden",          texto:`${ordenes_new} orden${ordenes_new > 1 ? "es" : ""} nueva${ordenes_new > 1 ? "s" : ""} sin procesar`, nivel:"warning" });
-    if (stock_bajo  > 0) items.push({ tipo:"stock",          texto:`${stock_bajo}  producto${stock_bajo > 1 ? "s" : ""} con stock bajo`, nivel:"danger" });
+    if (ordenes_new > 0) items.push({ tipo:"orden", texto:`${ordenes_new} orden${ordenes_new > 1 ? "es" : ""} nueva${ordenes_new > 1 ? "s" : ""} sin procesar`, nivel:"warning" });
+    if (stock_bajo  > 0) items.push({ tipo:"stock", texto:`${stock_bajo}  producto${stock_bajo > 1 ? "s" : ""} con stock bajo`, nivel:"danger" });
 
     res.json({
-      total: Number(citas_pend) + Number(reagenda) + Number(ordenes_new) + Number(stock_bajo),
+      total: Number(ordenes_new) + Number(stock_bajo),
       items,
-      conteos: {
-        citas:          Number(citas_pend),
-        reagendamiento: Number(reagenda),
-        ordenes:        Number(ordenes_new),
-        stock:          Number(stock_bajo),
-      },
+      conteos: { ordenes: Number(ordenes_new), stock: Number(stock_bajo) },
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -142,20 +124,10 @@ router.get("/stats", async (req, res) => {
       ORDER BY stock ASC LIMIT 8`
     );
 
-    // Citas pendientes/agendadas
-    const [[{ citas_total, citas_hoy, citas_pendientes }]] = await db.query(`
-      SELECT
-        COUNT(*) AS citas_total,
-        SUM(DATE(fecha) = CURDATE()) AS citas_hoy,
-        SUM(estado = 'pendiente') AS citas_pendientes
-      FROM citas`
-    );
-
     res.json({
       total_usuarios, total_productos, total_ordenes, ingresos,
       stock_bajo, ganancia_mes, iva_mes,
       ventas_mes, ordenes_recientes, productos_stock_bajo,
-      // Nuevos para el dashboard PDF
       ventas_hoy:       Number(ventas_hoy.valor) || 0,
       ventas_hoy_count: Number(ventas_hoy.conteo) || 0,
       ventas_online_hoy:Number(ventas_hoy_online.valor) || 0,
@@ -167,9 +139,6 @@ router.get("/stats", async (req, res) => {
         servicios: Number(ventas_servicios.valor) || 0,
       },
       ticket_promedio,
-      citas_total:      Number(citas_total) || 0,
-      citas_hoy:        Number(citas_hoy) || 0,
-      citas_pendientes: Number(citas_pendientes) || 0,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -186,6 +155,10 @@ router.get("/productos", async (req, res) => {
       SELECT p.id, p.nombre, p.slug, p.precio, p.precio_antes, p.precio_costo,
              p.stock, p.stock_minimo, p.activo, p.destacado, p.imagen_url, p.marca,
              p.codigo_barra,
+             p.descripcion, p.descripcion_corta,
+             p.imagenes_extra, p.proveedor_id,
+             p.unidad, p.especie,
+             p.requiere_formula,
              c.nombre AS categoria, c.id AS categoria_id
       FROM productos p
       JOIN categorias c ON p.categoria_id = c.id
@@ -255,11 +228,71 @@ router.get("/usuarios", async (req, res) => {
   }
 });
 
+/* POST /admin/usuarios — crear usuario desde el panel de admin.
+   Diferente al /auth/registro: aquí el admin elige el rol y NO se requiere OTP.
+   Email se valida como único (constraint a nivel de DB y check previo). */
+router.post("/usuarios", async (req, res) => {
+  const {
+    nombre, apellido, email, password,
+    telefono, tipo_documento, numero_documento, rol = "cliente",
+  } = req.body || {};
+
+  if (!nombre?.trim() || !apellido?.trim() || !email?.trim() || !password) {
+    return res.status(400).json({ error: "Nombre, apellido, email y contraseña son obligatorios." });
+  }
+  if (!/.+@.+\..+/.test(email)) {
+    return res.status(400).json({ error: "Email inválido." });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres." });
+  }
+  const rolesValidos = ["cliente", "cajero", "admin", "superadmin"];
+  if (!rolesValidos.includes(rol)) {
+    return res.status(400).json({ error: "Rol no válido." });
+  }
+
+  try {
+    const emailLower = email.trim().toLowerCase();
+    const [[existente]] = await db.query("SELECT id FROM usuarios WHERE email = ?", [emailLower]);
+    if (existente) {
+      return res.status(409).json({ error: "Ya existe un usuario con ese correo." });
+    }
+
+    const bcrypt = await import("bcryptjs");
+    const hash = await bcrypt.default.hash(password, 10);
+
+    const [r] = await db.query(
+      `INSERT INTO usuarios
+        (nombre, apellido, email, password_hash, telefono,
+         tipo_documento, numero_documento, rol, activo, email_verificado)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1)`,
+      [
+        nombre.trim(), apellido.trim(), emailLower, hash,
+        telefono?.trim() || null,
+        tipo_documento || null,
+        numero_documento?.trim() || null,
+        rol,
+      ]
+    );
+
+    res.status(201).json({
+      mensaje: "Usuario creado correctamente.",
+      usuario: { id: r.insertId, nombre, apellido, email: emailLower, rol },
+    });
+  } catch (err) {
+    console.error("[admin/usuarios POST]", err);
+    if (err.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({ error: "Ya existe un usuario con ese correo." });
+    }
+    res.status(500).json({ error: "Error al crear el usuario." });
+  }
+});
+
 router.get("/usuarios/:id", async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT id, nombre, apellido, email, telefono, tipo_documento, numero_documento,
-              rol, activo, avatar_url, created_at FROM usuarios WHERE id=?`,
+              rol, activo, created_at FROM usuarios WHERE id=?`,
       [req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: "Usuario no encontrado." });
@@ -298,14 +331,6 @@ router.put("/usuarios/:id", async (req, res) => {
        tipo_documento??null, numero_documento??null, rol??null, activo??null,
        req.params.id]
     );
-    // Si se asigna rol veterinario, garantizar perfil en tabla veterinarios
-    if (rol === "veterinario") {
-      await db.query(
-        `INSERT IGNORE INTO veterinarios (usuario_id, especialidad, duracion_cita, activo)
-         VALUES (?, 'Medicina General', 30, 1)`,
-        [req.params.id]
-      );
-    }
     res.json({ mensaje: "Usuario actualizado." });
   } catch (err) {
     res.status(500).json({ error: "Error al actualizar." });
@@ -410,279 +435,6 @@ router.patch("/ordenes/:id/envio", async (req, res) => {
     const nuevoTotal = ord.subtotal + costo - (ord.descuento || 0);
     await db.query("UPDATE ordenes SET costo_envio=?, total=? WHERE id=?", [costo, nuevoTotal, req.params.id]);
     res.json({ mensaje: "Costo de envío actualizado.", costo_envio: costo, total: nuevoTotal });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── ESTADÍSTICAS GLOBALES DE CITAS (dashboard) ───────────────
-router.get("/citas/stats", async (req, res) => {
-  try {
-    const hoy = new Date().toISOString().split("T")[0];
-    const [[s]] = await db.query(`
-      SELECT
-        COUNT(*)                              AS total,
-        SUM(estado = 'pendiente')             AS pendientes,
-        SUM(estado = 'confirmada')            AS confirmadas,
-        SUM(estado = 'completada')            AS completadas,
-        SUM(DATE_FORMAT(fecha,'%Y-%m-%d') = ?) AS hoy
-      FROM citas
-    `, [hoy]);
-    res.json({
-      total:       Number(s.total       || 0),
-      pendientes:  Number(s.pendientes  || 0),
-      confirmadas: Number(s.confirmadas || 0),
-      completadas: Number(s.completadas || 0),
-      hoy:         Number(s.hoy         || 0),
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── CITAS (vista admin) ───────────────────────────────────────
-router.get("/citas", async (req, res) => {
-  try {
-    const { estado = "" } = req.query;
-    let where = "1=1";
-    const params = [];
-    if (estado) { where += " AND c.estado = ?"; params.push(estado); }
-
-    const [citas] = await db.query(`
-      SELECT c.id, c.codigo, DATE_FORMAT(c.fecha,'%Y-%m-%d') AS fecha, c.hora,
-             c.estado, c.motivo, c.nombre_mascota, c.especie_mascota,
-             c.motivo_cancelacion, c.created_at,
-             c.reagendamiento_motivo, c.reagendamiento_estado,
-             DATE_FORMAT(c.reagendamiento_nueva_fecha,'%Y-%m-%d') AS reagendamiento_nueva_fecha,
-             c.reagendamiento_nueva_hora,
-             c.reagendamiento_expira_en,
-             u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.email AS cliente_email,
-             uv.nombre AS vet_nombre, uv.apellido AS vet_apellido,
-             v.especialidad
-      FROM citas c
-      JOIN usuarios u  ON u.id  = c.cliente_id
-      JOIN veterinarios v  ON v.id  = c.veterinario_id
-      JOIN usuarios uv ON uv.id = v.usuario_id
-      WHERE ${where}
-      ORDER BY c.fecha ASC, c.hora ASC
-      LIMIT 200
-    `, params);
-    res.json(citas);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── REAGENDAR CITA (admin propone nueva fecha al cliente) ─────
-router.post("/citas/:id/reagendar", async (req, res) => {
-  const { motivo, nueva_fecha, nueva_hora } = req.body;
-  if (!motivo?.trim())
-    return res.status(400).json({ error: "El motivo es obligatorio." });
-
-  try {
-    const [[cita]] = await db.query(
-      `SELECT c.id, c.codigo, c.estado, c.nombre_mascota,
-              u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.email AS cliente_email
-       FROM citas c JOIN usuarios u ON u.id = c.cliente_id
-       WHERE c.id = ?`,
-      [req.params.id]
-    );
-    if (!cita) return res.status(404).json({ error: "Cita no encontrada." });
-    if (!["pendiente","confirmada"].includes(cita.estado))
-      return res.status(400).json({ error: "Solo se pueden reagendar citas pendientes o confirmadas." });
-
-    await db.query(
-      `UPDATE citas SET
-         reagendamiento_motivo     = ?,
-         reagendamiento_nueva_fecha= ?,
-         reagendamiento_nueva_hora = ?,
-         reagendamiento_estado     = 'propuesta',
-         reagendamiento_expira_en  = DATE_ADD(NOW(), INTERVAL 1 HOUR)
-       WHERE id = ?`,
-      [motivo.trim(), nueva_fecha || null, nueva_hora || null, req.params.id]
-    );
-
-    try {
-      await enviarPropuestaReagendamiento(
-        cita.cliente_email,
-        cita.cliente_nombre,
-        cita,
-        motivo.trim(),
-        nueva_fecha || null,
-        nueva_hora  || null
-      );
-    } catch (emailErr) {
-      console.error("Email reagendamiento no enviado:", emailErr.message);
-    }
-
-    res.json({ mensaje: "Propuesta de reagendamiento enviada al cliente." });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── VETERINARIOS ─────────────────────────────────────────────
-router.get("/veterinarios", async (req, res) => {
-  try {
-    const [rows] = await db.query(`
-      SELECT u.id AS usuario_id, u.nombre, u.apellido, u.email, u.activo AS usuario_activo,
-             v.id AS vet_id, v.especialidad, v.duracion_cita, v.descripcion,
-             v.foto_url, v.activo AS vet_activo,
-             COUNT(DISTINCT c.id)                                                   AS total_citas,
-             SUM(CASE WHEN c.estado='pendiente'  THEN 1 ELSE 0 END)                AS citas_pendientes,
-             SUM(CASE WHEN c.estado='confirmada' THEN 1 ELSE 0 END)                AS citas_confirmadas
-      FROM usuarios u
-      LEFT JOIN veterinarios v ON v.usuario_id = u.id
-      LEFT JOIN citas c        ON c.veterinario_id = v.id
-      WHERE u.rol = 'veterinario'
-      GROUP BY u.id, v.id
-      ORDER BY u.nombre ASC
-    `);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Usuarios con rol veterinario pero sin perfil en la tabla veterinarios
-router.get("/veterinarios/candidatos", async (req, res) => {
-  try {
-    const [rows] = await db.query(`
-      SELECT u.id, u.nombre, u.apellido, u.email
-      FROM usuarios u
-      LEFT JOIN veterinarios v ON v.usuario_id = u.id
-      WHERE u.rol = 'veterinario' AND v.id IS NULL AND u.activo = 1
-      ORDER BY u.nombre ASC
-    `);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.post("/veterinarios", async (req, res) => {
-  const { usuario_id, especialidad, duracion_cita, descripcion } = req.body;
-  if (!usuario_id) return res.status(400).json({ error: "usuario_id es requerido." });
-  try {
-    await db.query(
-      `INSERT INTO veterinarios (usuario_id, especialidad, duracion_cita, descripcion, activo)
-       VALUES (?, ?, ?, ?, 1)`,
-      [usuario_id, especialidad || "Medicina General", duracion_cita || 30, descripcion || null]
-    );
-    res.status(201).json({ mensaje: "Perfil veterinario creado." });
-  } catch (err) {
-    if (err.code === "ER_DUP_ENTRY")
-      return res.status(409).json({ error: "Este usuario ya tiene un perfil veterinario." });
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.put("/veterinarios/:id", async (req, res) => {
-  const { especialidad, duracion_cita, descripcion, foto_url, activo } = req.body;
-  try {
-    const sets = [], vals = [];
-    if (especialidad  !== undefined) { sets.push("especialidad=?");   vals.push(especialidad||null); }
-    if (duracion_cita !== undefined) { sets.push("duracion_cita=?");  vals.push(Number(duracion_cita)||30); }
-    if (descripcion   !== undefined) { sets.push("descripcion=?");    vals.push(descripcion||null); }
-    if (foto_url      !== undefined) { sets.push("foto_url=?");       vals.push(foto_url||null); }
-    if (activo        !== undefined) { sets.push("activo=?");         vals.push(activo ? 1 : 0); }
-    if (!sets.length) return res.json({ mensaje: "Sin cambios." });
-    vals.push(req.params.id);
-    await db.query(`UPDATE veterinarios SET ${sets.join(",")} WHERE id=?`, vals);
-    res.json({ mensaje: "Perfil actualizado." });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Citas confirmadas HOY de un veterinario (para previsualizar antes de desactivar)
-router.get("/veterinarios/:id/citas-hoy", async (req, res) => {
-  try {
-    const hoy = new Date().toISOString().split("T")[0];
-    const [citas] = await db.query(
-      `SELECT c.id, c.codigo, DATE_FORMAT(c.fecha,'%Y-%m-%d') AS fecha, c.hora,
-              c.estado, c.nombre_mascota, c.especie_mascota,
-              u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.email AS cliente_email
-       FROM citas c
-       JOIN usuarios u ON u.id = c.cliente_id
-       WHERE c.veterinario_id = ? AND DATE_FORMAT(c.fecha,'%Y-%m-%d') = ? AND c.estado = 'confirmada'
-       ORDER BY c.hora ASC`,
-      [req.params.id, hoy]
-    );
-    res.json(citas);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Desactivar vet + notificar a clientes con citas confirmadas hoy
-// Body: { motivo: string, citas: [{ id, nueva_fecha, nueva_hora }] }
-router.post("/veterinarios/:id/desactivar", async (req, res) => {
-  const { motivo, citas: citasPayload = [] } = req.body;
-  if (!motivo?.trim())
-    return res.status(400).json({ error: "Debes indicar el motivo para notificar a los clientes." });
-
-  // Mapa id → nueva_fecha/hora para acceso rápido
-  const fechasMap = {};
-  for (const c of citasPayload) {
-    if (c.id) fechasMap[c.id] = { nueva_fecha: c.nueva_fecha || null, nueva_hora: c.nueva_hora || null };
-  }
-
-  try {
-    const hoy = new Date().toISOString().split("T")[0];
-    const [citasHoy] = await db.query(
-      `SELECT c.id, c.codigo, c.nombre_mascota,
-              u.nombre AS cliente_nombre, u.apellido AS cliente_apellido, u.email AS cliente_email
-       FROM citas c JOIN usuarios u ON u.id = c.cliente_id
-       WHERE c.veterinario_id = ? AND DATE_FORMAT(c.fecha,'%Y-%m-%d') = ? AND c.estado = 'confirmada'`,
-      [req.params.id, hoy]
-    );
-
-    let enviados = 0;
-    for (const cita of citasHoy) {
-      const extra = fechasMap[cita.id] || {};
-      const nueva_fecha = extra.nueva_fecha || null;
-      const nueva_hora  = extra.nueva_hora  || null;
-      try {
-        await db.query(
-          `UPDATE citas SET
-             reagendamiento_motivo     = ?,
-             reagendamiento_nueva_fecha= ?,
-             reagendamiento_nueva_hora = ?,
-             reagendamiento_estado     = 'propuesta',
-             reagendamiento_expira_en  = DATE_ADD(NOW(), INTERVAL 1 HOUR)
-           WHERE id = ?`,
-          [motivo.trim(), nueva_fecha, nueva_hora, cita.id]
-        );
-        await enviarPropuestaReagendamiento(
-          cita.cliente_email, cita.cliente_nombre, cita,
-          motivo.trim(), nueva_fecha, nueva_hora
-        );
-        enviados++;
-      } catch (e) {
-        console.error(`Error notificando cita ${cita.id}:`, e.message);
-      }
-    }
-
-    await db.query("UPDATE veterinarios SET activo=0 WHERE id=?", [req.params.id]);
-
-    res.json({
-      mensaje: `Veterinario desactivado. ${enviados} cliente${enviados !== 1 ? "s" : ""} notificado${enviados !== 1 ? "s" : ""}.`,
-      afectados: enviados,
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Toggle activo/inactivo del veterinario
-router.patch("/veterinarios/:id/activo", async (req, res) => {
-  try {
-    const [[vet]] = await db.query("SELECT id, activo FROM veterinarios WHERE id=?", [req.params.id]);
-    if (!vet) return res.status(404).json({ error: "Veterinario no encontrado." });
-    const nuevoEstado = vet.activo ? 0 : 1;
-    await db.query("UPDATE veterinarios SET activo=? WHERE id=?", [nuevoEstado, req.params.id]);
-    res.json({ activo: nuevoEstado, mensaje: nuevoEstado ? "Veterinario activado." : "Veterinario desactivado." });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -845,6 +597,26 @@ router.post("/facturas", async (req, res) => {
     res.status(400).json({ error: err.message });
   } finally {
     conn.release();
+  }
+});
+
+/* ─── CUADRE DE CAJA — Admin ve turnos de todos los cajeros ───────────────── */
+router.get("/turnos-caja", async (req, res) => {
+  try {
+    const { abiertos } = req.query;
+    let q = `SELECT t.id, t.cajero_id, t.monto_apertura, t.monto_cierre,
+                    t.total_ventas, t.diferencia,
+                    t.abierto_at, t.cerrado_at, t.observaciones,
+                    u.nombre, u.apellido, u.email
+               FROM cajero_turnos t
+               INNER JOIN usuarios u ON u.id = t.cajero_id`;
+    if (abiertos === "1") q += " WHERE t.cerrado_at IS NULL";
+    q += " ORDER BY t.abierto_at DESC LIMIT 100";
+    const [rows] = await db.query(q);
+    res.json(rows);
+  } catch (err) {
+    console.error("[admin/turnos-caja]", err);
+    res.status(500).json({ error: "Error al obtener turnos de caja." });
   }
 });
 

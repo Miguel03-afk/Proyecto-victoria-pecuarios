@@ -522,7 +522,7 @@ export default function CarritoPanel() {
               {hayNoDisponibles ? (
                 <><FontAwesomeIcon icon={faTriangleExclamation} /> Retira productos no disponibles</>
               ) : (
-                <>Ir al checkout <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 11 }} /></>
+                <>Finalizar compra <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 11 }} /></>
               )}
             </button>
 

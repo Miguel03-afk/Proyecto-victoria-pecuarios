@@ -4,11 +4,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faEnvelope, faArrowRight, faCircleCheck, faTriangleExclamation,
-  faArrowLeft,
+  faEnvelope, faArrowRight, faCircleCheck, faArrowLeft,
 } from "@fortawesome/free-solid-svg-icons";
 import api from "../../services/api";
-import AuthLayout, { AUTH_C, AuthCard, AuthInput } from "./AuthLayout";
+import AuthLayout, { AUTH_C, AuthCard, AuthInput, AuthCTA, AuthAlert } from "./AuthLayout";
 
 export default function SolicitarReset() {
   const [email, setEmail]       = useState("");
@@ -26,7 +25,7 @@ export default function SolicitarReset() {
 
   const validar = () => {
     const e = {};
-    if (!email.trim())                e.email = "Email requerido";
+    if (!email.trim())                 e.email = "Email requerido";
     else if (!/.+@.+\..+/.test(email)) e.email = "Email inválido";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -45,52 +44,47 @@ export default function SolicitarReset() {
     setCargando(true);
     try {
       await api.post("/auth/solicitar-reset", { email: email.trim().toLowerCase() });
-      // Por seguridad, siempre mostramos "enviado" aunque el email no exista
       setEnviado(true);
     } catch (err) {
-      const msg = err.response?.data?.error || "No pudimos procesar la solicitud. Intenta de nuevo.";
-      setErrorGen(msg);
+      setErrorGen(err.response?.data?.error || "No pudimos procesar la solicitud. Intenta de nuevo.");
       triggerShake();
     } finally {
       setCargando(false);
     }
   };
 
-  /* ─── Pantalla de "enviado" ─────────────────────────────────────── */
   if (enviado) {
     return (
-      <AuthLayout breadcrumb="Recuperar contraseña">
+      <AuthLayout breadcrumb="Recuperar contraseña" heroStep={4}
+        heroEyebrow="Casi listo" heroTitle="Revisa tu correo" heroSubtitle="Te acabamos de enviar un enlace seguro para restablecer tu contraseña.">
         <AuthCard>
           <div style={{ textAlign: "center", padding: "8px 0" }}>
             <div style={{
               width: 64, height: 64, borderRadius: 18,
-              background: `${AUTH_C.lime}22`, border: `1px solid ${AUTH_C.lime}55`,
+              background: '#ECFDF5', border: `1px solid #A7F3D0`,
               display: "inline-flex", alignItems: "center", justifyContent: "center",
               marginBottom: 18,
             }}>
-              <FontAwesomeIcon icon={faCircleCheck} style={{ color: AUTH_C.lime, fontSize: 28 }} />
+              <FontAwesomeIcon icon={faCircleCheck} style={{ color: '#059669', fontSize: 28 }} />
             </div>
 
             <h1 style={{
               margin: "0 0 10px",
-              fontFamily: '"General Sans", system-ui, sans-serif',
-              fontWeight: 700, fontSize: 28, color: AUTH_C.fg,
-              letterSpacing: "-0.025em", lineHeight: 1.05,
+              fontWeight: 600, fontSize: 28, color: AUTH_C.fg,
+              letterSpacing: "-0.025em", lineHeight: 1.1,
             }}>
               Revisa tu correo
             </h1>
 
             <p style={{
-              margin: "0 0 6px", fontSize: 14, color: AUTH_C.fgSoft,
-              lineHeight: 1.6,
+              margin: "0 0 6px", fontSize: 14, color: AUTH_C.fgSoft, lineHeight: 1.6,
             }}>
               Si existe una cuenta con <strong style={{ color: AUTH_C.fg }}>{email}</strong>,
               te enviamos un enlace para restablecer tu contraseña.
             </p>
 
             <p style={{
-              margin: "0 0 24px", fontSize: 12, color: AUTH_C.fgMuted,
-              lineHeight: 1.6,
+              margin: "0 0 24px", fontSize: 12.5, color: AUTH_C.fgMuted, lineHeight: 1.6,
             }}>
               El enlace expira en 10 minutos. Revisa también tu carpeta de spam.
             </p>
@@ -99,11 +93,14 @@ export default function SolicitarReset() {
               to="/login"
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "12px 24px", borderRadius: 12,
-                background: "transparent", color: AUTH_C.fgSoft,
-                border: `1px solid ${AUTH_C.inputBorder}`,
-                textDecoration: "none", fontSize: 13, fontWeight: 600,
+                padding: "11px 22px", borderRadius: 12,
+                background: AUTH_C.surface, color: AUTH_C.fg,
+                border: `1px solid ${AUTH_C.border}`,
+                textDecoration: "none", fontSize: 13.5, fontWeight: 600,
+                transition: 'all 160ms var(--vp-ease-out)',
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = AUTH_C.surfaceAlt)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = AUTH_C.surface)}
             >
               <FontAwesomeIcon icon={faArrowLeft} style={{ fontSize: 11 }} />
               Volver al login
@@ -114,36 +111,21 @@ export default function SolicitarReset() {
     );
   }
 
-  /* ─── Pantalla del formulario ──────────────────────────────────── */
   return (
-    <AuthLayout breadcrumb="Recuperar contraseña">
+    <AuthLayout breadcrumb="Recuperar contraseña" heroStep={4}>
       <AuthCard shake={shake}>
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{
-            margin: "0 0 8px",
-            fontFamily: '"General Sans", system-ui, sans-serif',
-            fontWeight: 700, fontSize: 30, color: AUTH_C.fg,
-            letterSpacing: "-0.025em", lineHeight: 1.05,
-          }}>
-            Recuperar contraseña
-          </h1>
-          <p style={{ margin: 0, fontSize: 13, color: AUTH_C.fgSoft, lineHeight: 1.6 }}>
-            Ingresa el correo de tu cuenta y te enviaremos un enlace para crear una nueva contraseña.
-          </p>
-        </div>
+        <h1 style={{
+          margin: 0, fontSize: 30, fontWeight: 600, color: AUTH_C.fg,
+          letterSpacing: "-0.025em", lineHeight: 1.1,
+        }}>
+          Recuperar contraseña
+        </h1>
+        <p style={{ margin: '8px 0 0', fontSize: 14, color: AUTH_C.fgSoft, lineHeight: 1.55 }}>
+          Ingresa el correo de tu cuenta. Te enviamos un enlace para crear una nueva contraseña.
+        </p>
 
-        <form onSubmit={onSubmit} noValidate>
-          {errorGen && (
-            <div style={{
-              padding: "10px 14px", borderRadius: 10,
-              background: `${AUTH_C.red}15`, border: `1px solid ${AUTH_C.red}40`,
-              color: AUTH_C.red, fontSize: 12, marginBottom: 16,
-              display: "flex", alignItems: "center", gap: 8,
-            }}>
-              <FontAwesomeIcon icon={faTriangleExclamation} style={{ fontSize: 12 }} />
-              {errorGen}
-            </div>
-          )}
+        <form onSubmit={onSubmit} noValidate style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {errorGen && <AuthAlert>{errorGen}</AuthAlert>}
 
           <AuthInput
             label="Correo electrónico"
@@ -156,35 +138,25 @@ export default function SolicitarReset() {
             error={errors.email}
           />
 
-          <button
-            type="submit"
-            disabled={cargando}
-            className="vp-auth-cta"
-            style={{
-              width: "100%", height: 50, marginTop: 24,
-              borderRadius: 14, border: "none", cursor: cargando ? "not-allowed" : "pointer",
-              background: AUTH_C.fg, color: AUTH_C.card,
-              fontSize: 14, fontWeight: 700, fontFamily: "inherit",
-              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10,
-              opacity: cargando ? 0.6 : 1,
-            }}
-          >
-            {cargando ? "Enviando..." : (<>Enviar enlace <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 11 }} /></>)}
-          </button>
+          <AuthCTA loading={cargando} icon={faArrowRight}>
+            {cargando ? "Enviando…" : "Enviar enlace"}
+          </AuthCTA>
         </form>
 
         <div style={{
           marginTop: 24, paddingTop: 20,
-          borderTop: `1px solid ${AUTH_C.cardBorder}`,
+          borderTop: `1px solid ${AUTH_C.border}`,
           textAlign: "center",
         }}>
           <Link
             to="/login"
             style={{
               display: "inline-flex", alignItems: "center", gap: 6,
-              fontSize: 13, color: AUTH_C.fgSoft, textDecoration: "none",
+              fontSize: 13.5, color: AUTH_C.fgSoft, textDecoration: "none",
               fontWeight: 500,
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = AUTH_C.fg)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = AUTH_C.fgSoft)}
           >
             <FontAwesomeIcon icon={faArrowLeft} style={{ fontSize: 10 }} />
             Volver al login

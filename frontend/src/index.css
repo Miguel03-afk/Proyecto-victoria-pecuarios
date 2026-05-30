@@ -107,6 +107,35 @@ a:focus-visible {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ─── Print: ocultar todo menos lo marcado como imprimible ─────────────────
+   Para reportes que el admin exporta a PDF vía window.print().
+   .vp-no-print: oculta elementos al imprimir (botones, sidebar, etc.).
+   .vp-print-only: solo se muestra al imprimir (headers de PDF). */
+@media print {
+  /* Reset visual de la página entera */
+  body, html { background: #fff !important; }
+  /* Oculta lo que NO debe salir en el PDF */
+  .vp-admin-side, nav, .vp-no-print, button.vp-no-print,
+  .vp-admin-main > header {
+    display: none !important;
+  }
+  /* El main del admin pasa a ocupar todo */
+  .vp-admin-main { padding: 0 !important; }
+  /* Headers solo visibles al imprimir */
+  .vp-print-only { display: block !important; }
+  /* Backgrounds y sombras off para PDF limpio */
+  * {
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+  }
+  /* Saltos de página inteligentes */
+  table { page-break-inside: auto; }
+  tr    { page-break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+}
+
 /* ─── Accessibility: respect user's motion preference ─────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   button:not(:disabled):active {

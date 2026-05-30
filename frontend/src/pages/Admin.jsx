@@ -46,7 +46,7 @@ const NAV = [
   // ── Galería de imágenes ──
   {id:"galeria",         label:"Galería",        d:"M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"},
   {id:"proveedores",     label:"Proveedores",    d:"M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"},
-  {id:"veterinarios",    label:"Veterinarios",   d:"M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"},
+
 ];
 
 const TITULOS = {
@@ -56,7 +56,6 @@ const TITULOS = {
   // ── Galería ──
   galeria:"Galería de imágenes",
   proveedores:"Proveedores",
-  veterinarios:"Veterinarios & Citas",
 };
 
 // ─── Componentes base ─────────────────────────────────────────
@@ -257,7 +256,6 @@ function ChartTooltip({ active, payload, label }) {
 function Dashboard() {
   const { C: T } = useTheme();
   const [stats,    setStats]    = useState(null);
-  const [citas,    setCitas]    = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error,    setError]    = useState(null);
   const [rango,    setRango]    = useState("15d");
@@ -266,18 +264,9 @@ function Dashboard() {
     setCargando(true); setError(null);
     Promise.all([
       api.get("/admin/stats"),
-      api.get("/admin/citas/stats").catch(() => ({ data: {} })),
     ])
-    .then(([s, c]) => {
+    .then(([s]) => {
       setStats(s.data);
-      const d = c.data || {};
-      setCitas({
-        total:       Number(d.total       ?? 0),
-        pendientes:  Number(d.pendientes  ?? 0),
-        confirmadas: Number(d.confirmadas ?? 0),
-        completadas: Number(d.completadas ?? 0),
-        hoy:         Number(d.hoy         ?? 0),
-      });
     })
     .catch(err => setError(err.response?.data?.error || "Error al cargar el dashboard"))
     .finally(() => setCargando(false));
@@ -330,14 +319,6 @@ function Dashboard() {
     { label:"Stock bajo", value: stats.stock_bajo ?? 0,        accent:"#dc2626",  bg:"#dc262612",      icon:"⚠️", spark: null },
   ];
 
-  const metricsCitas = citas ? [
-    { label:"Total",      value: citas.total,       accent:"#7c3aed", bg:"#7c3aed12" },
-    { label:"Pendientes", value: citas.pendientes,  accent:"#d97706", bg:"#d9770612" },
-    { label:"Confirmadas",value: citas.confirmadas, accent:T.info,    bg:`${T.info}12` },
-    { label:"Completadas",value: citas.completadas, accent:T.success, bg:`${T.success}12` },
-    { label:"Hoy",        value: citas.hoy,         accent:T.brand,   bg:`${T.brand}12` },
-  ] : [];
-
   const RANGOS = [
     { id:"7d",  label:"7d"  },
     { id:"15d", label:"15d" },
@@ -367,10 +348,6 @@ function Dashboard() {
       sparkColor: T.success,
     },
     {
-      label: "Citas agendadas",
-      value: stats.citas_total ?? citas?.total ?? 0,
-      tendencia: null,
-      sub: `${stats.citas_hoy ?? 0} hoy · ${stats.citas_pendientes ?? 0} sin confirmar`,
       color: T.info,
       spark: chartData.length > 1 ? chartData.map(d => ({ v: d.ordenes })) : null,
       sparkColor: T.info,
@@ -843,13 +820,11 @@ function Dashboard() {
 function DashboardLegacy() {
   const { C: T } = useTheme();
   const stats = {};
-  const citas = {};
   const chartData = [];
   const avgVentas = 0;
   const avgOrdenes = 0;
   const tendVentas = null;
   const metrics = [];
-  const metricsCitas = [];
   const RANGOS = [];
   const rango = "6m";
   const setRango = () => {};
@@ -968,7 +943,6 @@ function DashboardLegacy() {
         )}
       </Card>
 
-      {/* ── FILA 3: KPIs mes + citas ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {(stats.ganancia_mes != null || stats.iva_mes != null) && (
           <Card className="p-5">
@@ -998,48 +972,9 @@ function DashboardLegacy() {
           </Card>
         )}
 
-        {citas && (
-          <Card className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <SecTitle sub="Estado general">Citas veterinarias</SecTitle>
-              {citas.pendientes > 0 && (
-                <span className="text-xs px-2 py-0.5 rounded-full font-bold"
-                  style={{background:"#fef3c7", color:"#92400e"}}>
-                  ⚠ {citas.pendientes} por confirmar
-                </span>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {metricsCitas.map(k => (
-                <div key={k.label} className="rounded-xl px-3 py-3 flex items-center gap-3"
-                  style={{background:k.bg, border:`1px solid ${k.accent}22`}}>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{background:`${k.accent}22`}}>
-                    <span style={{color:k.accent, fontSize:12, fontWeight:800}}>{k.value}</span>
-                  </div>
-                  <p className="text-xs font-semibold uppercase tracking-wide" style={{color:k.accent, opacity:0.85}}>{k.label}</p>
-                </div>
-              ))}
-            </div>
-            {citas.total > 0 && (
-              <div className="mt-4 pt-4" style={{borderTop:`1px solid ${T.border}`}}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-xs" style={{color:T.textMuted}}>Tasa completadas</p>
-                  <p className="text-xs font-bold tabular-nums" style={{color:T.text,fontFamily:font.mono}}>
-                    {Math.round((citas.completadas/citas.total)*100)}%
-                  </p>
-                </div>
-                <div className="h-1.5 rounded-full overflow-hidden" style={{background:T.border}}>
-                  <div className="h-full rounded-full transition-all duration-700"
-                    style={{width:`${Math.round((citas.completadas/citas.total)*100)}%`, background:`linear-gradient(90deg,${T.brand},#10b981)`}}/>
-                </div>
-              </div>
-            )}
-          </Card>
-        )}
       </div>
 
-      {/* ── FILA 4: Órdenes recientes + Stock crítico + Citas pendientes ── */}
+      {/* ── FILA 4: Órdenes recientes + Stock crítico + Pedidos pendientes ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="p-5">
           <SecTitle sub="Últimas transacciones">Órdenes recientes</SecTitle>
@@ -1091,32 +1026,6 @@ function DashboardLegacy() {
           }
         </Card>
 
-        <Card className="p-5">
-          <SecTitle sub="Esperan confirmación">Citas pendientes</SecTitle>
-          {!citas || citas.pendientes === 0
-            ? <div className="flex flex-col items-center py-8 gap-2">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-base" style={{background:T.successBg}}>✓</div>
-                <p className="text-sm font-medium" style={{color:T.success}}>Sin citas pendientes</p>
-              </div>
-            : <div className="space-y-1.5">
-                {[
-                  { label:"Pendientes de confirmar", val:citas.pendientes, color:"#d97706", bg:"#fef3c7" },
-                  { label:"Confirmadas",             val:citas.confirmadas,color:T.info,    bg:T.infoBg },
-                  { label:"Citas hoy",               val:citas.hoy,        color:T.brand,   bg:T.brandLight },
-                ].map(r => (
-                  <div key={r.label} className="flex items-center justify-between py-2.5 px-3 rounded-xl"
-                    style={{background:r.bg, border:`1px solid ${r.color}22`}}>
-                    <p className="text-xs font-medium" style={{color:r.color}}>{r.label}</p>
-                    <p className="text-sm font-bold tabular-nums" style={{color:r.color,fontFamily:font.mono}}>{r.val}</p>
-                  </div>
-                ))}
-                <button className="w-full text-xs font-semibold py-2 mt-1 rounded-xl transition-colors"
-                  style={{background:T.brandLight, color:T.brand, border:`1px solid ${T.brandBorder}`}}>
-                  Ver panel veterinario →
-                </button>
-              </div>
-          }
-        </Card>
       </div>
 
     </div>
@@ -1132,6 +1041,13 @@ function Usuarios() {
   const [detalle,setDetalle]=useState(null); const [editando,setEditando]=useState(null);
   const [formEdit,setFormEdit]=useState({}); const [modalPwd,setModalPwd]=useState(null);
   const [nuevaPwd,setNuevaPwd]=useState(""); const [msg,setMsg]=useState({});
+  const [modalNuevo, setModalNuevo] = useState(false);
+  const [formNuevo, setFormNuevo] = useState({
+    nombre:"", apellido:"", email:"", password:"", telefono:"",
+    tipo_documento:"CC", numero_documento:"", rol:"cliente",
+  });
+  const [errorNuevo, setErrorNuevo] = useState("");
+  const [creando, setCreando] = useState(false);
 
   const cargar = useCallback(async()=>{
     setCargando(true);
@@ -1160,11 +1076,50 @@ function Usuarios() {
   };
   const toggleActivo=async(u)=>{await api.put(`/admin/usuarios/${u.id}`,{activo:u.activo?0:1});cargar();};
   const fe=k=>e=>setFormEdit({...formEdit,[k]:e.target.value});
+  const fn=k=>e=>{ setFormNuevo({...formNuevo,[k]:e.target.value}); if(errorNuevo) setErrorNuevo(""); };
+
+  const abrirCrear = () => {
+    setFormNuevo({
+      nombre:"", apellido:"", email:"", password:"", telefono:"",
+      tipo_documento:"CC", numero_documento:"", rol:"cliente",
+    });
+    setErrorNuevo("");
+    setModalNuevo(true);
+  };
+
+  const crearUsuario = async () => {
+    setErrorNuevo("");
+    if (!formNuevo.nombre.trim() || !formNuevo.apellido.trim() || !formNuevo.email.trim() || !formNuevo.password) {
+      setErrorNuevo("Nombre, apellido, email y contraseña son obligatorios.");
+      return;
+    }
+    if (!/.+@.+\..+/.test(formNuevo.email)) {
+      setErrorNuevo("Email inválido.");
+      return;
+    }
+    if (formNuevo.password.length < 6) {
+      setErrorNuevo("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+    setCreando(true);
+    try {
+      await api.post("/admin/usuarios", formNuevo);
+      showMsg("Usuario creado correctamente.");
+      setModalNuevo(false);
+      setPagina(1);
+      cargar();
+    } catch (err) {
+      setErrorNuevo(err.response?.data?.error || "Error al crear el usuario.");
+    } finally {
+      setCreando(false);
+    }
+  };
 
   const rolSt=(rol)=>({
-    superadmin:{bg:"#f3e8ff",text:"#6b21a8",border:"#d8b4fe"},
-    admin:{bg:T.infoBg,text:T.info,border:T.infoBorder},
-    cliente:{bg:T.surfaceAlt,text:T.textTer,border:T.border},
+    superadmin: {bg:T.purpleBg,    text:T.purpleDeep, border:T.purpleBorder},
+    admin:      {bg:T.infoBg,      text:T.info,       border:T.infoBorder},
+    cajero:     {bg:T.goldBg,      text:T.gold,       border:T.goldBorder},
+    cliente:    {bg:T.coralSoft,   text:T.coral,      border:T.coral},
   }[rol]||{bg:T.surfaceAlt,text:T.textTer,border:T.border});
 
   return (
@@ -1181,7 +1136,16 @@ function Usuarios() {
             className="pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none w-72"
             style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}/>
         </div>
-        <span className="text-xs font-medium" style={{color:T.textMuted}}>{total} usuarios</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-medium" style={{color:T.textMuted}}>{total} usuarios</span>
+          <button onClick={abrirCrear}
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold transition-all"
+            style={{background:T.brand, color:"#FAF7F0", border:"none", cursor:"pointer"}}
+            onMouseEnter={e=>{e.currentTarget.style.background=T.brandDark;}}
+            onMouseLeave={e=>{e.currentTarget.style.background=T.brand;}}>
+            + Nuevo usuario
+          </button>
+        </div>
       </div>
       <Card>
         <div className="overflow-x-auto">
@@ -1229,7 +1193,7 @@ function Usuarios() {
                       <div className="flex gap-3">
                         <button onClick={()=>abrirDetalle(u.id)} className="text-xs font-semibold hover:underline" style={{color:T.brand}}>Ver</button>
                         <button onClick={()=>abrirEditar(u)} className="text-xs font-semibold hover:underline" style={{color:T.info}}>Editar</button>
-                        <button onClick={()=>setModalPwd(u)} className="text-xs font-semibold hover:underline" style={{color:T.gold}}>Pwd</button>
+                        <button onClick={()=>setModalPwd(u)} className="text-xs font-semibold hover:underline" style={{color:T.gold}}>Contraseña</button>
                       </div>
                     </td>
                   </tr>
@@ -1301,7 +1265,6 @@ function Usuarios() {
             <Sel label="Rol" value={formEdit.rol} onChange={fe("rol")}>
               <option value="cliente">Cliente</option>
               <option value="cajero">Cajero</option>
-              <option value="veterinario">Veterinario</option>
               <option value="admin">Admin</option>
               <option value="superadmin">Superadmin</option>
             </Sel>
@@ -1313,7 +1276,66 @@ function Usuarios() {
         )}
       </Modal>
 
-      <Modal abierto={!!modalPwd} onClose={()=>{setModalPwd(null);setNuevaPwd("");}}>
+      {/* Modal crear nuevo usuario */}
+      <Modal abierto={modalNuevo} onClose={()=>!creando && setModalNuevo(false)} titulo="Crear nuevo usuario" ancho="max-w-xl">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Nombre"   value={formNuevo.nombre}   onChange={fn("nombre")}   placeholder="Miguel"/>
+            <Input label="Apellido" value={formNuevo.apellido} onChange={fn("apellido")} placeholder="García"/>
+          </div>
+          <Input label="Email" type="email" value={formNuevo.email} onChange={fn("email")}
+            placeholder="usuario@correo.com"/>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Teléfono (opcional)" value={formNuevo.telefono} onChange={fn("telefono")}
+              placeholder="+57 300 000 0000"/>
+            <Input label="N° documento (opcional)" value={formNuevo.numero_documento}
+              onChange={fn("numero_documento")} placeholder="1234567890"/>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                style={{color:T.textMuted}}>Tipo documento</label>
+              <select value={formNuevo.tipo_documento} onChange={fn("tipo_documento")}
+                className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}>
+                <option value="CC">CC</option>
+                <option value="CE">CE</option>
+                <option value="TI">TI</option>
+                <option value="NIT">NIT</option>
+                <option value="PP">Pasaporte</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                style={{color:T.textMuted}}>Rol</label>
+              <select value={formNuevo.rol} onChange={fn("rol")}
+                className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                style={{border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text}}>
+                <option value="cliente">Cliente</option>
+                <option value="cajero">Cajero</option>
+                <option value="admin">Admin</option>
+                <option value="superadmin">Superadmin</option>
+              </select>
+            </div>
+          </div>
+          <Input label="Contraseña inicial" type="password" value={formNuevo.password}
+            onChange={fn("password")} placeholder="Mínimo 6 caracteres"/>
+          {errorNuevo && (
+            <div className="px-3 py-2.5 rounded-lg text-xs" style={{
+              background:T.dangerBg, border:`1px solid ${T.dangerBorder}`, color:T.danger,
+            }}>{errorNuevo}</div>
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <Btn variant="ghost" onClick={()=>!creando && setModalNuevo(false)} disabled={creando}>Cancelar</Btn>
+            <Btn onClick={crearUsuario} disabled={creando}>
+              {creando ? "Creando…" : "Crear usuario"}
+            </Btn>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal abierto={!!modalPwd} onClose={()=>{setModalPwd(null);setNuevaPwd("");}}
+        titulo={modalPwd?`Actualizar contraseña de ${modalPwd.nombre}`:""}>
         <div className="space-y-4">
           <Input label="Nueva contraseña" type="password" value={nuevaPwd}
             onChange={e=>setNuevaPwd(e.target.value)} placeholder="Mínimo 6 caracteres"/>
@@ -1340,7 +1362,7 @@ function Productos() {
   const VACIO={nombre:"",slug:"",descripcion:"",descripcion_corta:"",categoria_id:"",proveedor_id:"",
     precio:"",precio_antes:"",precio_costo:"",stock:"",stock_minimo:"5",imagen_url:"",
     imagen_v2:"",imagen_v3:"",imagen_v4:"",imagen_v5:"",
-    marca:"",unidad:"",especie:"",destacado:false,activo:true,requiere_formula:false,uso_clinico:false,codigo_barra:""};
+    marca:"",unidad:"",especie:"",destacado:false,activo:true,requiere_formula:false,codigo_barra:""};
   const [form,setForm]=useState(VACIO);
   const barraRef=useRef(null);
   const [scanEstado,setScanEstado]=useState(null); // null | "ok"
@@ -1381,7 +1403,6 @@ function Productos() {
       imagen_v2:v2,imagen_v3:v3,imagen_v4:v4,imagen_v5:v5,
       marca:p.marca||"",unidad:p.unidad||"",especie:p.especie||"",
       destacado:!!p.destacado,activo:p.activo!==0,requiere_formula:!!p.requiere_formula,
-      uso_clinico:!!p.uso_clinico,
       codigo_barra:p.codigo_barra||""});
     setEditando(p); setFieldErrors({}); setScanEstado(p.codigo_barra?"ok":null); setModal(true);
     setTimeout(()=>barraRef.current?.focus(),80);
@@ -1428,7 +1449,6 @@ function Productos() {
       if(form.codigo_barra)      p.codigo_barra=form.codigo_barra;
       else                       p.codigo_barra=null;
       p.destacado=form.destacado?1:0; p.activo=form.activo?1:0; p.requiere_formula=form.requiere_formula?1:0;
-      p.uso_clinico=form.uso_clinico?1:0;
       if(!p.slug&&p.nombre) p.slug=p.nombre.toLowerCase().normalize("NFD")
         .replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
       if(editando){await api.put(`/productos/${editando.id}`,p);showMsg("Producto actualizado.");}
@@ -1774,42 +1794,6 @@ function Productos() {
             ))}
           </div>
 
-          {/* Toggle "Uso clínico" — destacado en morado */}
-          <div style={{
-            padding: "12px 14px",
-            borderRadius: 12,
-            background: form.uso_clinico ? "#f3e8ff" : T.surfaceAlt,
-            border: `1.5px solid ${form.uso_clinico ? "#a855f7" : T.border}`,
-            display: "flex", alignItems: "center", gap: 12,
-            transition: "all 0.18s",
-          }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", flex: 1 }}>
-              <input
-                type="checkbox"
-                checked={!!form.uso_clinico}
-                onChange={fc("uso_clinico")}
-                style={{ accentColor: "#7c3aed", width: 18, height: 18 }}
-              />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: form.uso_clinico ? "#6b21a8" : T.text }}>
-                  <FontAwesomeIcon icon={faPills} style={{ marginRight: 6, color: "#7c3aed" }}/>
-                  Uso clínico / Farmacéutico
-                </div>
-                <div style={{ fontSize: 11, color: form.uso_clinico ? "#7c3aed" : T.textMuted, marginTop: 2 }}>
-                  Solo productos marcados aparecerán en el panel del veterinario al agregar insumos a una consulta
-                </div>
-              </div>
-            </label>
-            {form.uso_clinico && (
-              <span style={{
-                padding: "3px 10px", borderRadius: 999,
-                background: "#7c3aed", color: "#fff",
-                fontSize: 10, fontWeight: 800, letterSpacing: 0.5,
-              }}>
-                CLÍNICO
-              </span>
-            )}
-          </div>
           <div className="flex justify-end gap-3 pt-2" style={{borderTop:`1px solid ${T.border}`}}>
             <Btn variant="ghost" onClick={()=>setModal(false)}>Cancelar</Btn>
             <Btn onClick={guardar} size="md">{editando?"Guardar cambios":"Crear producto"}</Btn>
@@ -2093,14 +2077,23 @@ function Ordenes() {
 function Cajeros({ onIrUsuarios }) {
   const { C: T } = useTheme();
   const [lista, setLista] = useState([]);
+  const [turnos, setTurnos] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [verTurnos, setVerTurnos] = useState(false);
 
   useEffect(() => {
     setCargando(true);
-    api.get("/admin/cajeros")
-      .then(({ data }) => setLista(data))
-      .finally(() => setCargando(false));
+    Promise.all([
+      api.get("/admin/cajeros").then(r => r.data).catch(() => []),
+      api.get("/admin/turnos-caja").then(r => r.data).catch(() => []),
+    ]).then(([cajeros, turnosData]) => {
+      setLista(cajeros);
+      setTurnos(turnosData);
+    }).finally(() => setCargando(false));
   }, []);
+
+  const fmtCOP = (n) => "$" + Number(n || 0).toLocaleString("es-CO");
+  const fmtDT  = (s) => s ? new Date(s).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 
   if (cargando) return <Spinner />;
 
@@ -2112,11 +2105,86 @@ function Cajeros({ onIrUsuarios }) {
             Los cajeros se asignan cambiando el rol del usuario en la sección <strong>Usuarios</strong>.
           </p>
         </div>
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
-          style={{ background: T.goldBg, color: T.gold, border: `1px solid ${T.goldBorder}` }}>
-          {lista.length} cajero{lista.length !== 1 ? "s" : ""} registrado{lista.length !== 1 ? "s" : ""}
-        </span>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setVerTurnos(v => !v)}
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold"
+            style={{
+              background: verTurnos ? T.brand : T.surface,
+              color: verTurnos ? "#fff" : T.text,
+              border: `1px solid ${verTurnos ? T.brand : T.border}`,
+              cursor: "pointer",
+            }}>
+            {verTurnos ? "Ver cajeros" : "Ver turnos de caja"}
+          </button>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+            style={{ background: T.goldBg, color: T.gold, border: `1px solid ${T.goldBorder}` }}>
+            {lista.length} cajero{lista.length !== 1 ? "s" : ""}
+          </span>
+        </div>
       </div>
+
+      {verTurnos && (
+        <Card>
+          <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${T.borderSub}` }}>
+            <div>
+              <p className="text-sm font-bold" style={{ color: T.text }}>Cuadre de caja</p>
+              <p className="text-xs" style={{ color: T.textMuted }}>
+                Turnos abiertos/cerrados de los cajeros (últimos 100).
+              </p>
+            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+              style={{ background: T.brandSoft, color: T.brand }}>
+              {turnos.filter(t => !t.cerrado_at).length} abierto{turnos.filter(t => !t.cerrado_at).length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <THead cols={["Cajero", "Apertura", "Base", "Ventas efectivo", "Cierre", "Contado", "Diferencia", "Estado"]} />
+              <tbody>
+                {turnos.length === 0
+                  ? <tr><td colSpan={8} className="text-center py-12 text-sm" style={{ color: T.textMuted }}>Sin turnos registrados</td></tr>
+                  : turnos.map((t, i) => {
+                    const cerrado = !!t.cerrado_at;
+                    const dif = Number(t.diferencia || 0);
+                    const difColor = dif === 0 ? T.success : dif > 0 ? T.info : T.danger;
+                    return (
+                      <tr key={t.id} style={{
+                        borderBottom: `1px solid ${T.borderSub}`,
+                        background: i % 2 === 0 ? T.surface : T.surfaceAlt,
+                      }}>
+                        <td className="py-3 px-4 text-xs font-semibold" style={{ color: T.text }}>
+                          {t.nombre} {t.apellido}
+                        </td>
+                        <td className="py-3 px-4 text-xs" style={{ color: T.textSec }}>{fmtDT(t.abierto_at)}</td>
+                        <td className="py-3 px-4 text-xs tabular-nums" style={{ color: T.text }}>{fmtCOP(t.monto_apertura)}</td>
+                        <td className="py-3 px-4 text-xs tabular-nums" style={{ color: T.brand, fontWeight: 600 }}>
+                          {cerrado ? fmtCOP(t.total_ventas) : "—"}
+                        </td>
+                        <td className="py-3 px-4 text-xs" style={{ color: T.textSec }}>{cerrado ? fmtDT(t.cerrado_at) : "—"}</td>
+                        <td className="py-3 px-4 text-xs tabular-nums" style={{ color: T.text }}>
+                          {cerrado ? fmtCOP(t.monto_cierre) : "—"}
+                        </td>
+                        <td className="py-3 px-4 text-xs tabular-nums font-bold" style={{ color: cerrado ? difColor : T.textMuted }}>
+                          {cerrado ? (dif > 0 ? "+" : "") + fmtCOP(dif) : "—"}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                            style={cerrado
+                              ? { background: T.successBg, color: T.success, border: `1px solid ${T.successBorder}` }
+                              : { background: T.warningBg, color: T.warning, border: `1px solid ${T.warningBorder}` }}>
+                            {cerrado ? "Cerrado" : "Abierto"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {!verTurnos && (<></>)}
 
       {!lista.length ? (
         <Card className="p-10 flex flex-col items-center gap-3">
@@ -2332,867 +2400,6 @@ function Proveedores() {
   );
 }
 
-// ─── VETERINARIOS & CITAS ─────────────────────────────────────
-const CITA_ESTADOS = {
-  pendiente:         { bg:"#fef3c7", text:"#92400e", border:"#fde68a", label:"Pendiente" },
-  confirmada:        { bg:"#dbeafe", text:"#1e40af", border:"#bfdbfe", label:"Confirmada" },
-  completada:        { bg:"#dcfce7", text:"#14532d", border:"#bbf7d0", label:"Completada" },
-  rechazada:         { bg:"#fee2e2", text:"#7f1d1d", border:"#fecaca", label:"Rechazada" },
-  cancelada_cliente: { bg:"#f3f4f6", text:"#374151", border:"#d1d5db", label:"Cancelada cliente" },
-  no_asistio:        { bg:"#f3f4f6", text:"#374151", border:"#d1d5db", label:"No asistió" },
-};
-
-function BadgeCita({ estado }) {
-  const { C: T } = useTheme();
-  const s = CITA_ESTADOS[estado] || CITA_ESTADOS.pendiente;
-  return (
-    <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
-      style={{ background:s.bg, color:s.text, border:`1px solid ${s.border}` }}>
-      {s.label || estado}
-    </span>
-  );
-}
-
-function Veterinarios() {
-  const { C: T } = useTheme();
-  const [vets, setVets]       = useState([]);
-  const [citas, setCitas]     = useState([]);
-  const [filtroEstado, setFiltroEstado] = useState("pendiente");
-  const [cargando, setCargando] = useState(true);
-  const [tab, setTab]         = useState("citas");
-  const [msg, setMsg]         = useState({});
-  const [modalVet, setModalVet] = useState(null);
-  const [formVet, setFormVet] = useState({ especialidad:"", duracion_cita:30, descripcion:"" });
-  const [candidatos, setCandidatos] = useState([]);
-  const [modalNuevo, setModalNuevo] = useState(false);
-  const [formNuevo, setFormNuevo]   = useState({ usuario_id:"", especialidad:"Medicina General", duracion_cita:30, descripcion:"" });
-  const [modalReagendar, setModalReagendar] = useState(null);
-  const [formReagendar, setFormReagendar]   = useState({ motivo:"", nueva_fecha:"", nueva_hora:"", proponer_fecha:false });
-  const [enviandoReagendamiento, setEnviandoReagendamiento] = useState(false);
-  const [modalDesactivarVet, setModalDesactivarVet] = useState(null); // { vet, citas }
-  const [desactivarForm, setDesactivarForm]         = useState({ motivo:"", citasData:{} });
-  const [desactivando, setDesactivando]             = useState(false);
-  const [modalDetalleVet, setModalDetalleVet]       = useState(null);  // resumen del vet
-
-  const cargarVets = async () => {
-    const { data } = await api.get("/admin/veterinarios");
-    setVets(data);
-  };
-
-  const cargarCitas = async (estado) => {
-    const { data } = await api.get(`/admin/citas?estado=${estado}`);
-    setCitas(data);
-  };
-
-  const cargarCandidatos = async () => {
-    const { data } = await api.get("/admin/veterinarios/candidatos");
-    setCandidatos(data);
-  };
-
-  useEffect(() => {
-    setCargando(true);
-    Promise.all([cargarVets(), cargarCitas(filtroEstado)])
-      .finally(() => setCargando(false));
-  }, []);
-
-  useEffect(() => { cargarCitas(filtroEstado); }, [filtroEstado]);
-
-  const guardarVet = async () => {
-    if (!modalVet) return;
-    try {
-      await api.put(`/admin/veterinarios/${modalVet.vet_id}`, formVet);
-      setMsg({ texto:"Perfil actualizado.", tipo:"ok" });
-      setModalVet(null);
-      cargarVets();
-    } catch (err) {
-      setMsg({ texto: err.response?.data?.error || "Error.", tipo:"err" });
-    }
-  };
-
-  const crearVet = async () => {
-    if (!formNuevo.usuario_id) return;
-    try {
-      await api.post("/admin/veterinarios", formNuevo);
-      setMsg({ texto:"Veterinario creado.", tipo:"ok" });
-      setModalNuevo(false);
-      cargarVets(); cargarCandidatos();
-    } catch (err) {
-      setMsg({ texto: err.response?.data?.error || "Error.", tipo:"err" });
-    }
-  };
-
-  const enviarReagendamiento = async () => {
-    if (!formReagendar.motivo.trim()) return;
-    setEnviandoReagendamiento(true);
-    try {
-      await api.post(`/admin/citas/${modalReagendar.id}/reagendar`, {
-        motivo:      formReagendar.motivo.trim(),
-        nueva_fecha: formReagendar.proponer_fecha ? formReagendar.nueva_fecha : null,
-        nueva_hora:  formReagendar.proponer_fecha ? formReagendar.nueva_hora  : null,
-      });
-      setMsg({ texto:"Notificación de reagendamiento enviada al cliente.", tipo:"ok" });
-      setModalReagendar(null);
-      setFormReagendar({ motivo:"", nueva_fecha:"", nueva_hora:"", proponer_fecha:false });
-      cargarCitas(filtroEstado);
-    } catch (err) {
-      setMsg({ texto: err.response?.data?.error || "Error al enviar notificación.", tipo:"err" });
-    } finally {
-      setEnviandoReagendamiento(false);
-    }
-  };
-
-  const iniciarDesactivacion = async (v) => {
-    try {
-      const { data: citasHoy } = await api.get(`/admin/veterinarios/${v.vet_id}/citas-hoy`);
-      // Inicializar fechas vacías para cada cita
-      const citasData = {};
-      citasHoy.forEach(c => { citasData[c.id] = { nueva_fecha:"", nueva_hora:"" }; });
-      setDesactivarForm({ motivo:"", citasData });
-      setModalDesactivarVet({ vet: v, citas: citasHoy });
-    } catch {
-      setMsg({ texto:"Error al verificar citas del día.", tipo:"err" });
-    }
-  };
-
-  const setCitaFecha = (id, campo, valor) => {
-    setDesactivarForm(prev => ({
-      ...prev,
-      citasData: { ...prev.citasData, [id]: { ...prev.citasData[id], [campo]: valor } },
-    }));
-  };
-
-  const confirmarDesactivacion = async () => {
-    if (!modalDesactivarVet) return;
-    const { vet, citas } = modalDesactivarVet;
-    setDesactivando(true);
-    try {
-      if (citas.length > 0) {
-        const citasPayload = citas.map(c => ({
-          id: c.id,
-          nueva_fecha: desactivarForm.citasData[c.id]?.nueva_fecha || null,
-          nueva_hora:  desactivarForm.citasData[c.id]?.nueva_hora  || null,
-        }));
-        const { data } = await api.post(`/admin/veterinarios/${vet.vet_id}/desactivar`, {
-          motivo: desactivarForm.motivo,
-          citas:  citasPayload,
-        });
-        setMsg({ texto: data.mensaje, tipo:"ok" });
-      } else {
-        await api.patch(`/admin/veterinarios/${vet.vet_id}/activo`);
-        setMsg({ texto:"Veterinario desactivado.", tipo:"ok" });
-      }
-      setModalDesactivarVet(null);
-      cargarVets();
-    } catch (err) {
-      setMsg({ texto: err.response?.data?.error || "Error al desactivar.", tipo:"err" });
-    } finally {
-      setDesactivando(false);
-    }
-  };
-
-  const FILTROS_CITA = [
-    { k:"pendiente",  l:"Pendientes" },
-    { k:"confirmada", l:"Confirmadas" },
-    { k:"completada", l:"Completadas" },
-    { k:"rechazada",  l:"Rechazadas" },
-    { k:"",           l:"Todas" },
-  ];
-
-  return (
-    <div className="space-y-5">
-      {/* Modal editar vet */}
-      {modalVet && (
-        <div style={{ position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:24 }}
-          onClick={() => setModalVet(null)}>
-          <div style={{ background:T.surface,borderRadius:20,width:"100%",maxWidth:440,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}
-            onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-bold mb-4" style={{ color:T.text }}>
-              Editar perfil — {modalVet.nombre} {modalVet.apellido}
-            </h3>
-            <div className="space-y-3">
-              <Input label="Especialidad" value={formVet.especialidad}
-                onChange={e => setFormVet(p=>({...p,especialidad:e.target.value}))}/>
-              <Input label="Duración de cita (min)" type="number" value={formVet.duracion_cita}
-                onChange={e => setFormVet(p=>({...p,duracion_cita:Number(e.target.value)}))}/>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>Descripción</label>
-                <textarea rows={3} value={formVet.descripcion}
-                  onChange={e => setFormVet(p=>({...p,descripcion:e.target.value}))}
-                  placeholder="Descripción visible para los clientes..."
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none resize-none"
-                  style={{ border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text }}/>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-5">
-              <Btn variant="outline" onClick={() => setModalVet(null)}>Cancelar</Btn>
-              <Btn onClick={guardarVet}>Guardar cambios</Btn>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal nuevo vet */}
-      {modalNuevo && (
-        <div style={{ position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:24 }}
-          onClick={() => setModalNuevo(false)}>
-          <div style={{ background:T.surface,borderRadius:20,width:"100%",maxWidth:440,padding:28 }}
-            onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-bold mb-4" style={{ color:T.text }}>Asignar veterinario</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>Usuario</label>
-                <select value={formNuevo.usuario_id}
-                  onChange={e => setFormNuevo(p=>({...p,usuario_id:e.target.value}))}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none"
-                  style={{ border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text }}>
-                  <option value="">Seleccionar usuario...</option>
-                  {candidatos.map(c => (
-                    <option key={c.id} value={c.id}>{c.nombre} {c.apellido} ({c.email})</option>
-                  ))}
-                </select>
-              </div>
-              <Input label="Especialidad" value={formNuevo.especialidad}
-                onChange={e => setFormNuevo(p=>({...p,especialidad:e.target.value}))}/>
-              <Input label="Duración cita (min)" type="number" value={formNuevo.duracion_cita}
-                onChange={e => setFormNuevo(p=>({...p,duracion_cita:Number(e.target.value)}))}/>
-            </div>
-            <div className="flex gap-3 mt-5">
-              <Btn variant="outline" onClick={() => setModalNuevo(false)}>Cancelar</Btn>
-              <Btn onClick={crearVet} disabled={!formNuevo.usuario_id}>Crear perfil</Btn>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal reagendar cita */}
-      {modalReagendar && (
-        <div style={{ position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",padding:24 }}
-          onClick={() => setModalReagendar(null)}>
-          <div style={{ background:T.surface,borderRadius:20,width:"100%",maxWidth:500,padding:28,boxShadow:"0 24px 64px rgba(0,0,0,0.22)" }}
-            onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-bold mb-1" style={{ color:T.text }}>Notificar reagendamiento</h3>
-            <p className="text-xs mb-5" style={{ color:T.textMuted }}>
-              Cita <strong style={{color:T.brand}}>{modalReagendar.codigo}</strong> · {modalReagendar.cliente_nombre} {modalReagendar.cliente_apellido} · {modalReagendar.nombre_mascota}
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>
-                  Mensaje / motivo para el cliente *
-                </label>
-                <textarea rows={4} value={formReagendar.motivo}
-                  onChange={e => setFormReagendar(p=>({...p,motivo:e.target.value}))}
-                  placeholder="Ejemplo: Lamentamos informarte que el Dr. García no podrá atenderte el día de tu cita por un percance de salud. Pedimos disculpas por los inconvenientes."
-                  className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none resize-none"
-                  style={{ border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text,lineHeight:1.6 }}
-                  onFocus={e=>{e.target.style.borderColor=T.brand;}} onBlur={e=>{e.target.style.borderColor=T.border;}}
-                  autoFocus/>
-              </div>
-
-              <label style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"10px 14px",borderRadius:10,background:T.surfaceAlt,border:`1px solid ${T.border}` }}>
-                <input type="checkbox" checked={formReagendar.proponer_fecha}
-                  onChange={e => setFormReagendar(p=>({...p,proponer_fecha:e.target.checked}))}
-                  style={{ width:16,height:16,accentColor:T.brand,cursor:"pointer" }}/>
-                <span className="text-sm font-medium" style={{ color:T.textSec }}>Proponer nueva fecha y hora</span>
-              </label>
-
-              {formReagendar.proponer_fecha && (
-                <div className="flex gap-3 flex-wrap">
-                  <div className="flex-1" style={{ minWidth:140 }}>
-                    <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>Nueva fecha</label>
-                    <input type="date" value={formReagendar.nueva_fecha}
-                      onChange={e => setFormReagendar(p=>({...p,nueva_fecha:e.target.value}))}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none"
-                      style={{ border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text }}
-                      onFocus={e=>{e.target.style.borderColor=T.brand;}} onBlur={e=>{e.target.style.borderColor=T.border;}}/>
-                  </div>
-                  <div className="flex-1" style={{ minWidth:120 }}>
-                    <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>Nueva hora</label>
-                    <input type="time" value={formReagendar.nueva_hora}
-                      onChange={e => setFormReagendar(p=>({...p,nueva_hora:e.target.value}))}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none"
-                      style={{ border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text }}
-                      onFocus={e=>{e.target.style.borderColor=T.brand;}} onBlur={e=>{e.target.style.borderColor=T.border;}}/>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <Btn variant="outline" onClick={() => setModalReagendar(null)}>Cancelar</Btn>
-              <Btn onClick={enviarReagendamiento}
-                disabled={!formReagendar.motivo.trim() || enviandoReagendamiento ||
-                  (formReagendar.proponer_fecha && (!formReagendar.nueva_fecha || !formReagendar.nueva_hora))}>
-                {enviandoReagendamiento ? "Enviando..." : "Enviar notificación al cliente"}
-              </Btn>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal desactivar vet */}
-      {modalDesactivarVet && (
-        <div style={{ position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.55)",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",padding:20 }}
-          onClick={() => setModalDesactivarVet(null)}>
-          <div style={{ background:T.surface,borderRadius:20,width:"100%",maxWidth:700,boxShadow:"0 24px 64px rgba(0,0,0,0.22)",maxHeight:"90vh",display:"flex",flexDirection:"column" }}
-            onClick={e => e.stopPropagation()}>
-
-            {/* Header */}
-            <div style={{ padding:"22px 28px 18px",borderBottom:`1px solid ${T.border}` }}>
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base" style={{ background:T.dangerBg }}>⚠️</div>
-                <div>
-                  <h3 className="text-base font-bold" style={{ color:T.text }}>Desactivar veterinario</h3>
-                  <p className="text-xs" style={{ color:T.textMuted }}>
-                    {modalDesactivarVet.vet.nombre} {modalDesactivarVet.vet.apellido} · {modalDesactivarVet.vet.especialidad || "Sin especialidad"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Cuerpo scrolleable */}
-            <div style={{ flex:1,overflowY:"auto",padding:"20px 28px" }}>
-              {modalDesactivarVet.citas.length === 0 ? (
-                <div className="p-4 rounded-xl" style={{ background:T.successBg, border:`1px solid ${T.successBorder}` }}>
-                  <p className="text-sm font-semibold" style={{ color:T.success }}>✓ Sin citas confirmadas para hoy</p>
-                  <p className="text-xs mt-1" style={{ color:"#166534" }}>El veterinario puede desactivarse sin necesidad de notificar clientes.</p>
-                </div>
-              ) : (
-                <>
-                  {/* Alerta */}
-                  <div className="p-4 rounded-xl mb-5" style={{ background:T.warningBg, border:`1px solid ${T.warningBorder}` }}>
-                    <p className="text-sm font-bold" style={{ color:T.warning }}>
-                      ⚠ {modalDesactivarVet.citas.length} cita{modalDesactivarVet.citas.length > 1 ? "s" : ""} confirmada{modalDesactivarVet.citas.length > 1 ? "s" : ""} para hoy
-                    </p>
-                    <p className="text-xs mt-1" style={{ color:"#78350f" }}>
-                      Asigna una nueva fecha y hora para cada cita. El cliente recibirá el correo con la propuesta y tendrá <strong>1 hora</strong> para confirmar o rechazar.
-                    </p>
-                  </div>
-
-                  {/* Motivo global */}
-                  <div className="mb-5">
-                    <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color:T.textTer }}>
-                      Mensaje / motivo para todos los clientes *
-                    </label>
-                    <textarea rows={3} value={desactivarForm.motivo}
-                      onChange={e => setDesactivarForm(p=>({...p,motivo:e.target.value}))}
-                      placeholder="Ej: El Dr. García no podrá atender hoy por un percance de salud. Lamentamos los inconvenientes."
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl outline-none resize-none"
-                      style={{ border:`1.5px solid ${T.border}`,background:T.surfaceAlt,color:T.text,lineHeight:1.6 }}
-                      onFocus={e=>{e.target.style.borderColor=T.warning;}} onBlur={e=>{e.target.style.borderColor=T.border;}}/>
-                  </div>
-
-                  {/* Tabla de citas con pickers */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color:T.textTer }}>
-                      Proponer nueva fecha y hora por cita
-                    </label>
-                    <div style={{ border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden" }}>
-                      <table style={{ width:"100%",borderCollapse:"collapse" }}>
-                        <thead>
-                          <tr style={{ background:T.surfaceAlt }}>
-                            {["Cliente","Mascota","Hora orig.","Nueva fecha","Nueva hora"].map((h,i) => (
-                              <th key={h} style={{ textAlign:"left",padding:"10px 14px",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:0.6,color:T.textTer,borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap" }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {modalDesactivarVet.citas.map((c,i) => {
-                            const fd = desactivarForm.citasData[c.id] || {};
-                            return (
-                              <tr key={c.id} style={{ borderBottom: i < modalDesactivarVet.citas.length-1?`1px solid ${T.borderSub}`:"none", background:i%2===0?T.surface:T.surfaceAlt }}>
-                                <td style={{ padding:"10px 14px" }}>
-                                  <p style={{ margin:0,fontSize:12,fontWeight:700,color:T.text }}>{c.cliente_nombre} {c.cliente_apellido}</p>
-                                  <p style={{ margin:0,fontSize:10,color:T.textMuted }}>{c.cliente_email}</p>
-                                </td>
-                                <td style={{ padding:"10px 14px",fontSize:12,color:T.textSec }}>{c.nombre_mascota}</td>
-                                <td style={{ padding:"10px 14px",fontSize:13,fontWeight:700,color:T.brand,fontFamily:"monospace" }}>
-                                  {c.hora?.slice(0,5)}
-                                </td>
-                                <td style={{ padding:"8px 10px" }}>
-                                  <input type="date" value={fd.nueva_fecha||""}
-                                    onChange={e => setCitaFecha(c.id,"nueva_fecha",e.target.value)}
-                                    style={{ width:"100%",padding:"7px 10px",borderRadius:8,border:`1.5px solid ${T.border}`,background:T.surface,color:T.text,fontSize:12,outline:"none" }}
-                                    onFocus={e=>{e.target.style.borderColor=T.brand;}} onBlur={e=>{e.target.style.borderColor=T.border;}}/>
-                                </td>
-                                <td style={{ padding:"8px 10px" }}>
-                                  <input type="time" value={fd.nueva_hora||""}
-                                    onChange={e => setCitaFecha(c.id,"nueva_hora",e.target.value)}
-                                    style={{ width:"100%",padding:"7px 10px",borderRadius:8,border:`1.5px solid ${T.border}`,background:T.surface,color:T.text,fontSize:12,outline:"none" }}
-                                    onFocus={e=>{e.target.style.borderColor=T.brand;}} onBlur={e=>{e.target.style.borderColor=T.border;}}/>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    <p className="text-xs mt-2" style={{ color:T.textMuted }}>
-                      Las fechas propuestas bloquean ese horario para nuevas citas. El cliente tiene 1 hora para responder.
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div style={{ padding:"16px 28px 22px",borderTop:`1px solid ${T.border}`,display:"flex",gap:12 }}>
-              <Btn variant="outline" onClick={() => setModalDesactivarVet(null)}>Cancelar</Btn>
-              <button
-                onClick={confirmarDesactivacion}
-                disabled={desactivando || (modalDesactivarVet.citas.length > 0 && !desactivarForm.motivo.trim())}
-                className="flex-1 px-4 py-2 text-xs font-bold rounded-xl transition-all disabled:opacity-40"
-                style={{ background:T.danger, color:"#fff" }}>
-                {desactivando
-                  ? "Desactivando..."
-                  : modalDesactivarVet.citas.length > 0
-                    ? `Desactivar y notificar ${modalDesactivarVet.citas.length} cliente${modalDesactivarVet.citas.length > 1 ? "s" : ""}`
-                    : "Confirmar desactivación"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <Msg texto={msg.texto} tipo={msg.tipo}/>
-
-      {/* Tabs + filtros minimalistas (underline style) */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap",
-        borderBottom: `1px solid ${T.border}`, paddingBottom: 4,
-      }}>
-        {/* Tabs principales */}
-        <div style={{ display: "flex", gap: 6 }}>
-          {[{k:"citas",l:"Citas"},{k:"perfiles",l:"Perfiles"}].map(t => {
-            const activo = tab === t.k;
-            return (
-              <button key={t.k} onClick={() => setTab(t.k)}
-                style={{
-                  padding: "8px 4px", marginBottom: -1,
-                  background: "transparent", border: "none",
-                  borderBottom: `2px solid ${activo ? T.brand : "transparent"}`,
-                  color: activo ? T.text : T.textTer,
-                  fontWeight: activo ? 700 : 500, fontSize: 13,
-                  cursor: "pointer", transition: "all 0.15s",
-                  fontFamily: "inherit", letterSpacing: 0.1,
-                }}
-                onMouseEnter={e => { if (!activo) e.currentTarget.style.color = T.text; }}
-                onMouseLeave={e => { if (!activo) e.currentTarget.style.color = T.textTer; }}>
-                {t.l}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Filtros de estado (solo en tab citas) */}
-        {tab === "citas" && (
-          <div style={{
-            display: "flex", gap: 4, flexWrap: "wrap",
-            paddingLeft: 16, borderLeft: `1px solid ${T.border}`,
-          }}>
-            {FILTROS_CITA.map(f => {
-              const activo = filtroEstado === f.k;
-              return (
-                <button key={f.k} onClick={() => setFiltroEstado(f.k)}
-                  style={{
-                    padding: "6px 10px", borderRadius: 6,
-                    background: activo ? T.brandSoft : "transparent",
-                    border: "none",
-                    color: activo ? T.brand : T.textTer,
-                    fontWeight: activo ? 700 : 500, fontSize: 11.5,
-                    cursor: "pointer", transition: "all 0.15s",
-                    fontFamily: "inherit",
-                  }}
-                  onMouseEnter={e => { if (!activo) { e.currentTarget.style.background = T.surfaceAlt; e.currentTarget.style.color = T.text; } }}
-                  onMouseLeave={e => { if (!activo) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = T.textTer; } }}>
-                  {f.l}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* CTA Asignar veterinario (solo en tab perfiles) */}
-        {tab === "perfiles" && (
-          <button
-            onClick={() => { cargarCandidatos(); setModalNuevo(true); }}
-            style={{
-              marginLeft: "auto", padding: "8px 14px", borderRadius: 8,
-              background: T.brand, color: "#fff", border: "none",
-              fontSize: 12, fontWeight: 700, cursor: "pointer",
-              fontFamily: "inherit",
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = T.brandDark}
-            onMouseLeave={e => e.currentTarget.style.background = T.brand}>
-            + Asignar veterinario
-          </button>
-        )}
-      </div>
-
-      {/* Contenido */}
-      {cargando ? <Spinner/> : tab === "citas" ? (
-        <Card>
-          {citas.length === 0 ? (
-            <div className="py-16 text-center text-sm" style={{ color:T.textMuted }}>
-              Sin citas con ese filtro
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <THead cols={["Código","Cliente","Mascota","Veterinario","Fecha","Hora","Estado","Acción"]}/>
-                <tbody>
-                  {citas.map((c,i) => (
-                    <tr key={c.id} style={{ borderBottom:`1px solid ${T.borderSub}`,background:c.reagendamiento_estado==="aceptada"?"#eff6ff":c.reagendamiento_estado==="propuesta"?"#fffbeb":i%2===0?T.surface:T.surfaceAlt }}>
-                      <td className="py-3 px-4 font-mono text-xs font-bold" style={{ color:T.brand }}>{c.codigo}</td>
-                      <td className="py-3 px-4">
-                        <p className="text-xs font-semibold" style={{ color:T.text }}>{c.cliente_nombre} {c.cliente_apellido}</p>
-                        <p className="text-xs" style={{ color:T.textMuted }}>{c.cliente_email}</p>
-                      </td>
-                      <td className="py-3 px-4 text-xs" style={{ color:T.textSec }}>
-                        {c.nombre_mascota} <span style={{ color:T.textMuted }}>({c.especie_mascota})</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <p className="text-xs font-semibold" style={{ color:T.text }}>{c.vet_nombre} {c.vet_apellido}</p>
-                        <p className="text-xs" style={{ color:T.textMuted }}>{c.especialidad}</p>
-                      </td>
-                      <td className="py-3 px-4 text-xs tabular-nums" style={{ color:T.textSec }}>{c.fecha}</td>
-                      <td className="py-3 px-4 text-xs tabular-nums" style={{ color:T.textSec }}>{c.hora?.slice(0,5)}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-col gap-1">
-                          <BadgeCita estado={c.estado}/>
-                          {c.reagendamiento_estado === "propuesta" && (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                              style={{ background:"#fef3c7",color:"#92400e",border:"1px solid #fde68a" }}>
-                              Esperando cliente
-                            </span>
-                          )}
-                          {c.reagendamiento_estado === "aceptada" && (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                              style={{ background:"#dcfce7",color:"#14532d",border:"1px solid #bbf7d0" }}>
-                              Reagendada ✓
-                            </span>
-                          )}
-                          {c.reagendamiento_estado === "rechazada" && (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                              style={{ background:"#fee2e2",color:"#7f1d1d",border:"1px solid #fecaca" }}>
-                              Propuesta rechazada
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        {["pendiente","confirmada"].includes(c.estado) && c.reagendamiento_estado !== "propuesta" && (
-                          <button
-                            onClick={() => {
-                              setModalReagendar(c);
-                              setFormReagendar({ motivo:"", nueva_fecha:"", nueva_hora:"", proponer_fecha:false });
-                            }}
-                            className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all"
-                            style={{ background:T.warningBg,color:T.warning,border:`1.5px solid ${T.warningBorder}` }}
-                            onMouseEnter={e=>{e.currentTarget.style.background=T.warning;e.currentTarget.style.color="#fff";}}
-                            onMouseLeave={e=>{e.currentTarget.style.background=T.warningBg;e.currentTarget.style.color=T.warning;}}>
-                            Reagendar
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-      ) : (
-        /* Perfiles */
-        <>
-        <style>{`
-          .vp-vets-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 16px;
-          }
-          @media (max-width: 640px) {
-            .vp-vets-grid { grid-template-columns: 1fr; gap: 12px; }
-          }
-          @media (min-width: 641px) and (max-width: 1024px) {
-            .vp-vets-grid { grid-template-columns: repeat(2, 1fr); }
-          }
-        `}</style>
-        <div className="vp-vets-grid">
-          {vets.length === 0 ? (
-            <Card className="p-10 text-center col-span-full">
-              <p className="text-sm font-semibold mb-1" style={{ color:T.text }}>Sin veterinarios registrados</p>
-              <p className="text-xs" style={{ color:T.textMuted }}>Usa el botón "Asignar veterinario" para agregar uno.</p>
-            </Card>
-          ) : vets.map(v => (
-            <Card
-              key={v.usuario_id}
-              className="p-5"
-              style={{ cursor: "pointer", transition: "transform 0.15s, box-shadow 0.15s" }}
-              onClick={() => setModalDetalleVet(v)}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = T.shadowMd; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = ""; }}
-            >
-              <div className="flex items-start gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
-                  style={{ background:T.brandLight, color:T.brand }}>
-                  {v.nombre?.charAt(0)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold truncate" style={{ color:T.text }}>{v.nombre} {v.apellido}</p>
-                  <p className="text-xs truncate" style={{ color:T.textMuted }}>{v.email}</p>
-                  <p className="text-xs mt-0.5 font-medium" style={{ color:T.brand }}>{v.especialidad || "Sin especialidad"}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {[
-                  { label:"Citas totales", value:v.total_citas ?? 0 },
-                  { label:"Pendientes",    value:v.citas_pendientes ?? 0, highlight:true },
-                  { label:"Duración",      value:`${v.duracion_cita ?? 30} min` },
-                  { label:"Estado",        value:v.vet_activo ? "Activo" : "Inactivo" },
-                ].map(s => (
-                  <div key={s.label} className="rounded-lg px-3 py-2"
-                    style={{ background:s.highlight&&s.value>0?T.warningBg:T.surfaceAlt, border:`1px solid ${s.highlight&&s.value>0?T.warningBorder:T.border}` }}>
-                    <p className="text-xs" style={{ color:T.textMuted }}>{s.label}</p>
-                    <p className="text-sm font-bold tabular-nums" style={{ color:s.highlight&&s.value>0?T.warning:T.text }}>{s.value}</p>
-                  </div>
-                ))}
-              </div>
-
-              {v.vet_id ? (
-                <div className="flex gap-2 flex-wrap" onClick={e => e.stopPropagation()}>
-                  <Btn size="xs" variant="outline" onClick={(e) => {
-                    e.stopPropagation();
-                    setModalVet(v);
-                    setFormVet({ especialidad:v.especialidad||"", duracion_cita:v.duracion_cita||30, descripcion:v.descripcion||"" });
-                  }}>
-                    Editar perfil
-                  </Btn>
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (v.vet_activo) {
-                        // Desactivar: verificar citas del día primero
-                        await iniciarDesactivacion(v);
-                      } else {
-                        // Activar: toggle directo
-                        try {
-                          await api.patch(`/admin/veterinarios/${v.vet_id}/activo`);
-                          cargarVets();
-                        } catch (err) {
-                          setMsg({ texto: err.response?.data?.error || "Error.", tipo:"err" });
-                        }
-                      }
-                    }}
-                    className="px-3 py-1 text-xs font-semibold rounded-lg transition-all"
-                    style={{
-                      background: v.vet_activo ? T.dangerBg : T.successBg,
-                      color: v.vet_activo ? T.danger : T.success,
-                      border: `1.5px solid ${v.vet_activo ? T.dangerBorder : T.successBorder}`,
-                    }}>
-                    {v.vet_activo ? "Desactivar" : "Activar"}
-                  </button>
-                </div>
-              ) : (
-                <p className="text-xs px-3 py-2 rounded-lg" style={{ background:T.dangerBg, color:T.danger, border:`1px solid ${T.dangerBorder}` }}>
-                  Sin perfil veterinario — usa "Asignar veterinario"
-                </p>
-              )}
-            </Card>
-          ))}
-        </div>
-        </>
-      )}
-
-      {/* ── Modal detalle del veterinario ───────────────────────────── */}
-      {modalDetalleVet && (
-        <div
-          style={{
-            position: "fixed", inset: 0, zIndex: 250,
-            background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 24, animation: "vp-fadein 0.2s ease",
-          }}
-          onClick={() => setModalDetalleVet(null)}
-        >
-          <div
-            style={{
-              background: T.surface, borderRadius: 20,
-              width: "100%", maxWidth: 540,
-              boxShadow: "0 24px 60px rgba(0,0,0,0.25)",
-              overflow: "hidden", maxHeight: "90vh", display: "flex", flexDirection: "column",
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header con gradiente */}
-            <div style={{
-              padding: "24px 28px 20px",
-              background: `linear-gradient(135deg, ${T.brand} 0%, ${T.brandDark} 100%)`,
-              color: "#fff", position: "relative",
-            }}>
-              <button
-                onClick={() => setModalDetalleVet(null)}
-                aria-label="Cerrar"
-                style={{
-                  position: "absolute", top: 14, right: 14,
-                  width: 32, height: 32, borderRadius: "50%",
-                  background: "rgba(255,255,255,0.15)", border: "none",
-                  color: "#fff", fontSize: 18, cursor: "pointer",
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  transition: "background 0.15s",
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.28)"}
-                onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.15)"}
-              >×</button>
-
-              <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                <div style={{
-                  width: 64, height: 64, borderRadius: 16,
-                  background: "rgba(255,255,255,0.18)",
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 26, fontWeight: 700, color: "#fff",
-                  border: "2px solid rgba(255,255,255,0.25)",
-                  flexShrink: 0,
-                  backgroundImage: modalDetalleVet.foto_url ? `url(${modalDetalleVet.foto_url.startsWith("http") ? modalDetalleVet.foto_url : "http://localhost:3000" + modalDetalleVet.foto_url})` : "none",
-                  backgroundSize: "cover", backgroundPosition: "center",
-                }}>
-                  {!modalDetalleVet.foto_url && modalDetalleVet.nombre?.charAt(0)}
-                </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <h3 style={{
-                    margin: 0, fontSize: 20, fontWeight: 700, color: "#FAF7F0",
-                    fontFamily: '"General Sans", system-ui, sans-serif',
-                    letterSpacing: '-0.02em',
-                  }}>
-                    Dr. {modalDetalleVet.nombre} {modalDetalleVet.apellido}
-                  </h3>
-                  <p style={{ margin: "4px 0 0", fontSize: 13, color: "rgba(255,255,255,0.85)" }}>
-                    {modalDetalleVet.especialidad || "Sin especialidad asignada"}
-                  </p>
-                  <div style={{
-                    marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "2px 10px", borderRadius: 999,
-                    background: modalDetalleVet.vet_activo ? "rgba(132,252,170,0.22)" : "rgba(248,113,113,0.22)",
-                    fontSize: 11, fontWeight: 700,
-                  }}>
-                    <span style={{
-                      width: 6, height: 6, borderRadius: "50%",
-                      background: modalDetalleVet.vet_activo ? "#86efac" : "#fca5a5",
-                    }} />
-                    {modalDetalleVet.vet_activo ? "Activo" : "Inactivo"}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Body */}
-            <div style={{ padding: "20px 28px 24px", overflowY: "auto" }}>
-              {/* Stats grid */}
-              <div style={{
-                display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
-                gap: 10, marginBottom: 20,
-              }}>
-                {[
-                  { l: "Citas totales", v: modalDetalleVet.total_citas ?? 0, c: T.brand },
-                  { l: "Pendientes", v: modalDetalleVet.citas_pendientes ?? 0, c: T.warning },
-                  { l: "Duración", v: `${modalDetalleVet.duracion_cita ?? 30}m`, c: T.text },
-                ].map(s => (
-                  <div key={s.l} style={{
-                    padding: "12px 14px", borderRadius: 12,
-                    background: T.surfaceAlt, border: `1px solid ${T.border}`,
-                    textAlign: "center",
-                  }}>
-                    <p style={{
-                      margin: 0, fontSize: 22, fontWeight: 700, color: s.c,
-                      fontVariantNumeric: "tabular-nums", lineHeight: 1,
-                    }}>{s.v}</p>
-                    <p style={{ margin: "5px 0 0", fontSize: 10.5, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.6 }}>{s.l}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Info de contacto */}
-              <div style={{
-                padding: "14px 16px", borderRadius: 12,
-                background: T.surfaceAlt, border: `1px solid ${T.border}`,
-                marginBottom: 16,
-              }}>
-                <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: T.textTer, textTransform: "uppercase", letterSpacing: 0.6 }}>
-                  Contacto
-                </p>
-                <p style={{ margin: 0, fontSize: 13, color: T.text, wordBreak: "break-all" }}>
-                  {modalDetalleVet.email}
-                </p>
-                {modalDetalleVet.telefono && (
-                  <p style={{ margin: "4px 0 0", fontSize: 13, color: T.textSec }}>
-                    {modalDetalleVet.telefono}
-                  </p>
-                )}
-              </div>
-
-              {/* Descripción */}
-              {modalDetalleVet.descripcion && (
-                <div style={{
-                  padding: "14px 16px", borderRadius: 12,
-                  background: T.surfaceAlt, border: `1px solid ${T.border}`,
-                  marginBottom: 16,
-                }}>
-                  <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: T.textTer, textTransform: "uppercase", letterSpacing: 0.6 }}>
-                    Descripción
-                  </p>
-                  <p style={{ margin: 0, fontSize: 13, color: T.textSec, lineHeight: 1.55 }}>
-                    {modalDetalleVet.descripcion}
-                  </p>
-                </div>
-              )}
-
-              {/* Acciones */}
-              {modalDetalleVet.vet_id && (
-                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                  <button
-                    onClick={() => {
-                      setModalVet(modalDetalleVet);
-                      setFormVet({
-                        especialidad: modalDetalleVet.especialidad || "",
-                        duracion_cita: modalDetalleVet.duracion_cita || 30,
-                        descripcion: modalDetalleVet.descripcion || "",
-                      });
-                      setModalDetalleVet(null);
-                    }}
-                    style={{
-                      flex: 1, padding: "10px 14px", borderRadius: 10,
-                      background: T.brand, color: "#fff", border: "none",
-                      fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
-                    }}>
-                    Editar perfil
-                  </button>
-                  <button
-                    onClick={() => setModalDetalleVet(null)}
-                    style={{
-                      padding: "10px 18px", borderRadius: 10,
-                      background: "transparent", color: T.textSec,
-                      border: `1.5px solid ${T.border}`,
-                      fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-                    }}>
-                    Cerrar
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <style>{`
-            @keyframes vp-fadein { from { opacity: 0; } to { opacity: 1; } }
-          `}</style>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── LAYOUT PRINCIPAL ─────────────────────────────────────────
 export default function Admin() {
   const { C: T } = useTheme();
   const {usuario,esAdmin}=useAuth();
@@ -3232,7 +2439,6 @@ export default function Admin() {
     // ── Galería de imágenes ──
     if(seccion==="galeria")         return <GaleriaAdmin T={T}/>;
     if(seccion==="proveedores")     return <Proveedores/>;
-    if(seccion==="veterinarios")    return <Veterinarios/>;
   };
 
   return (
@@ -3448,7 +2654,7 @@ export default function Admin() {
                         danger:  {bg:T.dangerBg,  text:T.danger,  border:T.dangerBorder},
                         info:    {bg:T.infoBg,    text:T.info,    border:T.infoBorder},
                       }[it.nivel] || {bg:T.surfaceAlt, text:T.textSec, border:T.border};
-                      const iconos = { cita:"🐾", reagendamiento:"📅", orden:"🛒", stock:"⚠️" };
+                      const iconos = { orden:"🛒", stock:"⚠️" };
                       return (
                         <div key={i} className="mx-2 my-1 flex items-start gap-2.5 px-3 py-2.5 rounded-xl"
                           style={{background:colors.bg, border:`1px solid ${colors.border}`}}>
@@ -3461,13 +2667,6 @@ export default function Admin() {
 
                   {/* Accesos rápidos */}
                   <div className="px-3 py-2.5 flex gap-1.5" style={{borderTop:`1px solid ${T.border}`}}>
-                    {notifs.conteos?.citas > 0 && (
-                      <button onClick={()=>{setSeccion("veterinarios");setBellAbierto(false);}}
-                        className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-                        style={{background:T.warningBg,color:T.warning}}>
-                        Ver citas
-                      </button>
-                    )}
                     {notifs.conteos?.ordenes > 0 && (
                       <button onClick={()=>{setSeccion("ordenes");setBellAbierto(false);}}
                         className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors"

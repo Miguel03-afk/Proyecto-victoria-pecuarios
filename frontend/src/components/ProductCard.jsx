@@ -7,6 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useCarrito } from "../context/CarritoContext";
 import { useAuth } from "../context/AuthContext";
+import { useFavoritos } from "../hooks/useFavoritos";
 import { useTheme } from "../styles/ThemeProvider.jsx";
 import { FONT } from "../styles/admin.tokens";
 
@@ -30,6 +31,8 @@ export default function ProductCard({ producto }) {
   const { C }       = useTheme();
   const { agregar } = useCarrito();
   const { usuario } = useAuth();
+  const { esFavorito, toggle: toggleFav } = useFavoritos(usuario);
+  const fav = esFavorito(producto.id);
   const navigate    = useNavigate();
   const [hovered,  setHovered]  = useState(false);
   const [agregado, setAgregado] = useState(false);
@@ -63,7 +66,8 @@ export default function ProductCard({ producto }) {
   const handleAgregar = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!usuario) { navigate("/login"); return; }
+    // El carrito acepta items sin sesión (persistido en localStorage como guest).
+    // El login solo se pide al momento de finalizar la compra (ver Carrito.jsx).
     if (!hayStock) return;
     agregar({
       id:          producto.id,
@@ -169,39 +173,32 @@ export default function ProductCard({ producto }) {
               DESTACADO
             </span>
           ) : null}
-          {producto.uso_clinico ? (
-            <span style={{
-              backgroundColor: purple, color: "#fff",
-              fontSize: 10, fontWeight: 800, letterSpacing: "0.04em",
-              padding: "4px 10px", borderRadius: 999,
-            }}>
-              USO CLÍNICO
-            </span>
-          ) : null}
         </div>
 
-        {/* Wishlist (decorativo) */}
+        {/* Wishlist — persistido en localStorage por usuario */}
         <button
           type="button"
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          aria-label="Añadir a deseos"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFav(producto); }}
+          aria-label={fav ? "Quitar de favoritos" : "Añadir a favoritos"}
+          aria-pressed={fav}
+          title={fav ? "Quitar de favoritos" : "Añadir a favoritos"}
           className="vp-card-wish"
           style={{
             position: "absolute", top: 24, right: 24, zIndex: 3,
             width: 34, height: 34, borderRadius: 999,
-            backgroundColor: C.surfaceAlt, color: C.ink,
+            backgroundColor: fav ? red : C.surfaceAlt,
+            color: fav ? "#fff" : C.ink,
             border: "none", cursor: "pointer", fontFamily: 'inherit',
             display: "inline-flex", alignItems: "center", justifyContent: "center",
-            transition: "all 200ms ease",
+            transition: "all 200ms var(--vp-ease-out)",
+            boxShadow: fav ? `0 4px 12px -4px ${red}66` : "none",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = red;
-            e.currentTarget.style.color = "#fff";
+            if (!fav) { e.currentTarget.style.backgroundColor = red; e.currentTarget.style.color = "#fff"; }
             e.currentTarget.style.transform = "scale(1.1)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = C.surfaceAlt;
-            e.currentTarget.style.color = C.ink;
+            if (!fav) { e.currentTarget.style.backgroundColor = C.surfaceAlt; e.currentTarget.style.color = C.ink; }
             e.currentTarget.style.transform = "scale(1)";
           }}
         >
@@ -313,9 +310,9 @@ export default function ProductCard({ producto }) {
             {!hayStock ? (
               <span style={{ color: inkMuted }}>● Agotado</span>
             ) : stockBajo ? (
-              <span style={{ color: red }}>● ¡Solo {stock} disponibles!</span>
+              <span style={{ color: red }}>● ¡Solo {stock} {stock === 1 ? "unidad" : "unidades"}!</span>
             ) : (
-              <span style={{ color: limeDeep }}>● En stock</span>
+              <span style={{ color: limeDeep }}>● {stock} {stock === 1 ? "unidad disponible" : "unidades disponibles"}</span>
             )}
           </div>
 

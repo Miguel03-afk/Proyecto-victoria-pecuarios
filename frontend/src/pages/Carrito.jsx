@@ -998,8 +998,12 @@ function PasoPago({ onVolver, datosEnvio }) {
           address_billing: datosEnvio.direccion || "",
         });
 
-        vaciar();
+        // NO vaciar el carrito aquí — solo abrimos el widget. Si el usuario
+        // cancela el pago, su carrito debe quedar intacto. El vaciado real
+        // sucede en PagoRespuesta.jsx cuando el pago se aprueba.
       } else {
+        // Método sin pasarela (efectivo / transferencia): la orden quedó creada
+        // y confirmada en este momento, así que sí limpiamos el carrito.
         vaciar();
         setOrden({ codigo: ordenData.codigo, id: ordenData.orden_id });
       }

@@ -6,7 +6,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faImages, faPlay, faFilter, faChevronLeft, faChevronRight,
-  faArrowRight, faCalendarCheck,
+  faArrowRight,
 } from "@fortawesome/free-solid-svg-icons";
 import Navbar from "../components/Navbar";
 import {
@@ -237,7 +237,7 @@ export default function Galeria() {
                 lineHeight: 1.6, maxWidth: 560,
                 marginLeft: "auto", marginRight: "auto",
               }}>
-                Mascotas que han pasado por nuestra clínica y los momentos que valen la pena guardar.
+                Mascotas y familias que pasan por la tienda — los momentos que valen la pena guardar.
               </p>
             </Reveal>
           </div>
@@ -346,11 +346,11 @@ export default function Galeria() {
                   margin: '8px 0 24px', fontSize: 14, color: Cur.inkSoft,
                   lineHeight: 1.55,
                 }}>
-                  ¡Pronto vendrán historias de nuestros pacientes!
+                  ¡Pronto compartiremos más momentos de la tienda!
                 </p>
                 <button
                   type="button"
-                  onClick={() => navigate('/agendar-cita')}
+                  onClick={() => navigate('/tienda')}
                   style={{
                     padding: '12px 24px', borderRadius: 999,
                     backgroundColor: Cur.navy, color: '#fff',
@@ -359,7 +359,7 @@ export default function Galeria() {
                     display: 'inline-flex', alignItems: 'center', gap: 8,
                   }}
                 >
-                  <FontAwesomeIcon icon={faCalendarCheck} /> Agendar primera consulta
+                  Ver productos
                 </button>
               </div>
             ) : filtrados.length === 0 ? (
@@ -492,18 +492,18 @@ export default function Galeria() {
                   fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 500,
                   color: Cur.ink, lineHeight: 1.1, margin: 0,
                 }}>
-                  ¿Quieres que tu mascota{' '}
-                  <span style={{ color: Cur.navy }}>aparezca aquí</span>?
+                  ¿Buscas algo para{' '}
+                  <span style={{ color: Cur.navy }}>tu mascota</span>?
                 </h2>
                 <p style={{
                   marginTop: 14, fontSize: 15, color: Cur.inkSoft, lineHeight: 1.6,
                   maxWidth: 520, marginLeft: 'auto', marginRight: 'auto',
                 }}>
-                  Agenda una consulta y forma parte de nuestras historias.
+                  Explora nuestro catálogo de productos para el bienestar de tu compañero.
                 </p>
                 <button
                   type="button"
-                  onClick={() => navigate('/agendar-cita')}
+                  onClick={() => navigate('/tienda')}
                   className="vp-cta-primary"
                   style={{
                     marginTop: 28, padding: '14px 26px', borderRadius: 999,
@@ -514,7 +514,7 @@ export default function Galeria() {
                     boxShadow: `0 12px 24px -8px ${Cur.navy}55`,
                   }}
                 >
-                  <FontAwesomeIcon icon={faCalendarCheck} /> Agendar cita
+                  Ver productos
                   <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 11 }} />
                 </button>
               </Reveal>

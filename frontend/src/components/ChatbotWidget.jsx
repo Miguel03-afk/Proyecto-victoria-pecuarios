@@ -1,5 +1,6 @@
 // src/components/ChatbotWidget.jsx
 import { useState, useEffect, useRef } from "react";
+import cocoAvatar from "../assets/Agente AI/perro agente AI victoria pets.png";
 
 const CHATBOT_WEBHOOK_URL = "https://aleyep.app.n8n.cloud/webhook/coco-chat";
 
@@ -18,7 +19,7 @@ const C = {
 };
 
 const SALUDO_INICIAL =
-  "¡Hola! Soy Coco 🐶, el asistente virtual de Victoria Pets. ¿En qué te puedo ayudar hoy? Puedo contarte sobre nuestros servicios, productos o ayudarte a agendar una cita.";
+  "¡Hola! Soy Coco 🐶, el asistente virtual de Victoria Pets. ¿En qué te puedo ayudar hoy? Puedo contarte sobre nuestros productos, precios, disponibilidad o resolver tus dudas.";
 
 /* Easing token alineado con Emil Kowalski: strong ease-out */
 const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
@@ -50,20 +51,26 @@ const KEYFRAMES = `
 }
 `;
 
-function DogAvatar({ size = 32, color = C.navy }) {
+/* Avatar de Coco — usa la imagen oficial del proyecto.
+   El parámetro `color` se ignora (legacy: antes el SVG cambiaba de color
+   según el fondo). Mantengo la firma para no romper los call sites. */
+function DogAvatar({ size = 32 /* , color */ }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-      <ellipse cx="14" cy="20" rx="8" ry="13" fill={color} transform="rotate(-25 14 20)" />
-      <ellipse cx="50" cy="20" rx="8" ry="13" fill={color} transform="rotate(25 50 20)" />
-      <circle  cx="32" cy="34" r="20" fill={color} />
-      <ellipse cx="32" cy="42" rx="10" ry="7" fill={C.crema} />
-      <ellipse cx="32" cy="37" rx="3"  ry="2.2" fill={C.texto} />
-      <circle  cx="24" cy="30" r="2.5" fill={C.texto} />
-      <circle  cx="24.8" cy="29.2" r="0.9" fill={C.blanco} />
-      <circle  cx="40" cy="30" r="2.5" fill={C.texto} />
-      <circle  cx="40.8" cy="29.2" r="0.9" fill={C.blanco} />
-      <path    d="M28 44 Q32 47 36 44" stroke={C.texto} strokeWidth="1.2" strokeLinecap="round" fill="none" />
-    </svg>
+    <img
+      src={cocoAvatar}
+      alt="Coco"
+      width={size}
+      height={size}
+      style={{
+        width: size, height: size,
+        borderRadius: "50%",
+        objectFit: "cover",
+        display: "block",
+        userSelect: "none",
+        pointerEvents: "none",
+      }}
+      draggable={false}
+    />
   );
 }
 
@@ -428,7 +435,7 @@ export default function ChatbotWidget() {
                 textAlign: "center", marginTop: 6, lineHeight: 1.35,
               }}
             >
-              Coco es un asistente virtual. Para diagnósticos médicos, consulta siempre con un veterinario.
+              Coco es un asistente virtual. Para atención médica de tu mascota, consulta a un profesional.
             </div>
           </div>
         </div>

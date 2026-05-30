@@ -10,8 +10,6 @@ import HeroLanding         from "../components/landing/HeroLanding";
 import ServiciosLanding    from "../components/landing/ServiciosLanding";
 import CategoriasLanding   from "../components/landing/CategoriasLanding";
 import ProductosLanding    from "../components/landing/ProductosLanding";
-import VeterinariosLanding from "../components/landing/VeterinariosLanding";
-import PlanLanding         from "../components/landing/PlanLanding";
 import GaleriaLanding      from "../components/landing/GaleriaLanding";
 import TestimoniosLanding  from "../components/landing/TestimoniosLanding";
 import FooterLanding       from "../components/landing/FooterLanding";
@@ -43,8 +41,6 @@ export default function Landing() {
         <ServiciosLanding />
         <CategoriasLanding />
         <ProductosLanding />
-        <VeterinariosLanding />
-        <PlanLanding />
         <GaleriaLanding />
         <TestimoniosLanding />
         <FooterLanding />

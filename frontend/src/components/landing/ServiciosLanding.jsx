@@ -3,12 +3,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faStethoscope, faPrescriptionBottleMedical, faBowlFood, faTruckFast,
+  faPrescriptionBottleMedical, faBowlFood, faTruckFast,
   faCheck, faArrowRight,
 } from "@fortawesome/free-solid-svg-icons";
 import { Reveal, TypeReveal, SectionEyebrow, useLandingPalette } from "./landing.utils.jsx";
 
-import imgConsulta  from "../../assets/landing/p3-consult.png";
 import imgFarmacia  from "../../assets/landing/p6-pharmacy.png";
 import imgNutricion from "../../assets/landing/hero-2-bottle.png";
 import imgEnvio     from "../../assets/landing/p1-walk.png";
@@ -230,18 +229,9 @@ export default function ServiciosLanding() {
 
   const services = [
     {
-      n: "01", icon: faStethoscope, accent: Cur.navy,
-      title: "Consulta veterinaria",
-      body: "Medicina general y especializada con un veterinario asignado. La misma persona en cada visita, para que tu mascota construya confianza.",
-      img: imgConsulta,
-      includes: ["Receta digital al instante", "Historia clínica unificada", "Seguimiento por WhatsApp"],
-      onClick: () => navigate('/agendar-cita'),
-      ctaLabel: "Agendar consulta",
-    },
-    {
       n: "02", icon: faPrescriptionBottleMedical, accent: Cur.red,
       title: "Farmacología",
-      body: "Medicamentos formulados por nuestros veterinarios y trazabilidad de cada lote. Solo despachamos lo que está clínicamente justificado.",
+      body: "Medicamentos con trazabilidad de cada lote. Surtido amplio, marcas reconocidas y despacho seguro a domicilio en Ibagué.",
       img: imgFarmacia,
       includes: ["+200 referencias en stock", "Despacho con receta digital", "Asesoría de dosis incluida"],
       onClick: () => navigate('/tienda?categoria=farmacologia'),
@@ -250,7 +240,7 @@ export default function ServiciosLanding() {
     {
       n: "03", icon: faBowlFood, accent: Cur.lime,
       title: "Nutrición y alimentos",
-      body: "Plan alimenticio según raza, edad y condición clínica. Si tu mascota tiene una patología, ajustamos la dieta con criterio médico.",
+      body: "Alimento seco, húmedo y suplementos según raza y etapa de vida. Marcas premium y concentrados de alta digestibilidad.",
       img: imgNutricion,
       includes: ["Marcas premium y científicas", "Suplementos terapéuticos", "Plan a medida sin costo"],
       onClick: () => navigate('/tienda?categoria=alimentos'),
@@ -300,7 +290,7 @@ export default function ServiciosLanding() {
                   letterSpacing: "-0.025em",
                 }}
                 segments={[
-                  { text: "Medicina veterinaria con " },
+                  { text: "Atención personalizada con " },
                   { text: "tiempo, calma", color: Cur.navy },
                   { text: " y criterio." },
                 ]}
@@ -310,14 +300,14 @@ export default function ServiciosLanding() {
           <Reveal delay={100}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               <p style={{ fontSize: 16, color: Cur.inkSoft, maxWidth: 520, lineHeight: 1.6, margin: 0 }}>
-                No somos una clínica de turno. Somos un equipo que conoce a tu mascota por su nombre,
-                registra cada consulta y te explica cada decisión antes de tomarla.
+                No vendemos por catálogo. Conocemos a tu mascota por su nombre y elegimos
+                contigo el producto que de verdad le sirve — concentrado, medicamento o juguete.
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px 36px', fontSize: 13 }}>
                 {[
-                  { k: "+10", v: "años de experiencia clínica" },
+                  { k: "+10", v: "años en el mercado" },
                   { k: "4.8★", v: "promedio en reseñas" },
-                  { k: "24/7", v: "atención de urgencias" },
+                  { k: "500+", v: "productos en catálogo" },
                 ].map((s) => (
                   <div key={s.k} style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                     <span className="vp-font-display vp-tabular" style={{

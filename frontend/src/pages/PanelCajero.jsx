@@ -10,6 +10,7 @@ import {
   faCartShopping, faClipboardList, faPills, faMagnifyingGlass,
   faBoxOpen, faSun, faMoon, faCreditCard, faMoneyBill, faMobileScreen,
   faShuffle, faPlus, faXmark, faCheck, faTrash, faRightFromBracket,
+  faHouse,
 } from "@fortawesome/free-solid-svg-icons";
 
 const METODOS = [
@@ -191,6 +192,8 @@ function NuevaVenta({ usuario }) {
   const iva = subtotal * 0.19;
   const total = subtotal + iva;
 
+  const [ventaSnapshot, setVentaSnapshot] = useState(null);
+
   const registrar = async () => {
     if (!cart.length) return setError("Agrega al menos un producto.");
     setError(""); setEnviando(true);
@@ -200,6 +203,24 @@ function NuevaVenta({ usuario }) {
         items: cart.map(i => ({ producto_id: i.producto.id, cantidad: i.cantidad })),
         metodo_pago: metodo,
       });
+      // Snapshot para el comprobante imprimible
+      setVentaSnapshot({
+        items: cart.map(i => ({
+          nombre: i.producto.nombre,
+          marca:  i.producto.marca,
+          cantidad: i.cantidad,
+          precio_unitario: Number(i.producto.precio),
+          subtotal: Number(i.producto.precio) * i.cantidad,
+        })),
+        cliente: clienteSel
+          ? `${clienteSel.nombre} ${clienteSel.apellido || ""}`.trim()
+          : "Cliente general",
+        clienteDoc: clienteSel?.numero_documento || null,
+        clienteEmail: clienteSel?.email || null,
+        metodo,
+        cajero: usuario ? `${usuario.nombre} ${usuario.apellido || ""}`.trim() : "Cajero",
+        fecha: new Date(),
+      });
       setExito(data);
     } catch (err) {
       setError(err.response?.data?.error || "Error al registrar la venta.");
@@ -208,8 +229,125 @@ function NuevaVenta({ usuario }) {
     }
   };
 
+  const imprimirComprobante = () => {
+    if (!exito || !ventaSnapshot) return;
+    const fmtCOP = (n) => "$" + Number(n || 0).toLocaleString("es-CO");
+    const total = ventaSnapshot.items.reduce((a, i) => a + i.subtotal, 0);
+    const subtotal = Math.round(total / 1.19);
+    const iva = total - subtotal;
+    const fechaStr = ventaSnapshot.fecha.toLocaleString("es-CO", { dateStyle: "long", timeStyle: "short" });
+
+    const html = `
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Comprobante ${exito.codigo}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'General Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: #fff; color: #0A1426;
+    padding: 32px 28px; max-width: 480px; margin: 0 auto;
+    font-size: 12.5px; line-height: 1.45;
+  }
+  .header { text-align: center; padding-bottom: 18px; border-bottom: 2px solid #1E3A8A; margin-bottom: 18px; }
+  .brand { font-size: 22px; font-weight: 700; color: #1E3A8A; letter-spacing: -0.02em; }
+  .brand-sub { font-size: 11px; color: #6B7280; margin-top: 2px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .biz { font-size: 10.5px; color: #6B7280; margin-top: 10px; line-height: 1.5; }
+  .meta { display: flex; justify-content: space-between; margin: 14px 0 18px; padding: 12px 14px; background: #FAF7F0; border-radius: 8px; font-size: 11px; }
+  .meta div { line-height: 1.55; }
+  .meta strong { color: #0A1426; }
+  .meta .lbl { color: #6B7280; text-transform: uppercase; letter-spacing: 0.06em; font-size: 9.5px; font-weight: 600; }
+  h3 { font-size: 11px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.08em; margin: 18px 0 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #6B7280; text-align: left; padding: 6px 0; border-bottom: 1px solid #EAE3D2; }
+  th.r { text-align: right; }
+  td { padding: 8px 0; border-bottom: 1px dashed #EAE3D2; font-size: 12px; vertical-align: top; }
+  td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  .item-name { font-weight: 600; color: #0A1426; }
+  .item-marca { font-size: 10px; color: #6B7280; margin-top: 1px; }
+  .totales { margin-top: 14px; padding-top: 12px; border-top: 2px solid #0A1426; }
+  .tot-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .tot-row.big { font-size: 17px; font-weight: 700; color: #1E3A8A; margin-top: 6px; padding-top: 8px; border-top: 1px solid #EAE3D2; }
+  .footer { margin-top: 26px; padding-top: 16px; border-top: 1px dashed #D6CDB7; text-align: center; font-size: 10.5px; color: #6B7280; line-height: 1.55; }
+  .ticket { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-weight: 700; color: #1E3A8A; }
+  @media print {
+    body { padding: 16px; }
+    .footer { page-break-inside: avoid; }
+  }
+</style>
+</head><body>
+  <div class="header">
+    <div class="brand">Victoria · Pets</div>
+    <div class="brand-sub">Clínica veterinaria + tienda</div>
+    <div class="biz">
+      Cra. 5 #34-12, Ibagué · Tolima<br>
+      +57 310 555 4321 · victoriapets.com
+    </div>
+  </div>
+
+  <div class="meta">
+    <div>
+      <div class="lbl">Ticket</div>
+      <div class="ticket">${exito.codigo}</div>
+    </div>
+    <div style="text-align:right">
+      <div class="lbl">Fecha</div>
+      <div><strong>${fechaStr}</strong></div>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:14px; justify-content:space-between; margin-bottom:6px; font-size:11px;">
+    <div><span class="lbl">Cliente</span><br><strong>${ventaSnapshot.cliente}</strong>${ventaSnapshot.clienteDoc ? `<br><span style="color:#6B7280">${ventaSnapshot.clienteDoc}</span>` : ""}</div>
+    <div style="text-align:right"><span class="lbl">Atendido por</span><br><strong>${ventaSnapshot.cajero}</strong></div>
+  </div>
+
+  <h3>Detalle</h3>
+  <table>
+    <thead><tr>
+      <th style="width:40px">Cant</th>
+      <th>Producto</th>
+      <th class="r">Subtotal</th>
+    </tr></thead>
+    <tbody>
+      ${ventaSnapshot.items.map(it => `
+        <tr>
+          <td><strong>${it.cantidad}</strong></td>
+          <td>
+            <div class="item-name">${it.nombre}</div>
+            ${it.marca ? `<div class="item-marca">${it.marca} · ${fmtCOP(it.precio_unitario)} c/u</div>` : ""}
+          </td>
+          <td class="r">${fmtCOP(it.subtotal)}</td>
+        </tr>
+      `).join("")}
+    </tbody>
+  </table>
+
+  <div class="totales">
+    <div class="tot-row"><span>Subtotal</span><span>${fmtCOP(subtotal)}</span></div>
+    <div class="tot-row"><span>IVA (19%)</span><span>${fmtCOP(iva)}</span></div>
+    <div class="tot-row"><span>Método de pago</span><span style="text-transform:capitalize">${ventaSnapshot.metodo}</span></div>
+    <div class="tot-row big"><span>Total</span><span>${fmtCOP(total)}</span></div>
+  </div>
+
+  <div class="footer">
+    Gracias por confiar en Victoria Pets 🐾<br>
+    Conserva este comprobante para cualquier reclamo o devolución.<br>
+    <span style="opacity:0.7">Documento generado automáticamente por el POS.</span>
+  </div>
+
+  <script>
+    window.onload = function() { setTimeout(function() { window.print(); }, 250); };
+  </script>
+</body></html>`;
+
+    const w = window.open("", "_blank", "width=520,height=720");
+    if (!w) { alert("No pudimos abrir la ventana de impresión. Verifica el bloqueador de pop-ups."); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+  };
+
   const nuevaVenta = () => {
     setCart([]); setClienteSel(null); setClienteBus(""); setExito(null);
+    setVentaSnapshot(null);
     setError(""); setMetodo("tarjeta"); setBusqueda("");
   };
 
@@ -239,13 +377,24 @@ function NuevaVenta({ usuario }) {
         Ticket <strong style={{ fontFamily: FONT.mono, color: C.ink }}>#{exito.codigo}</strong>
         {" "}por <strong style={{ color: C.brand, fontFamily: FONT.mono }}>{fmt(exito.total)}</strong>
       </p>
-      <button onClick={nuevaVenta} style={{
-        padding: "12px 28px", borderRadius: RADIUS.sm,
-        background: C.brand, color: "#fff",
-        border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer",
-      }}>
-        Nueva venta
-      </button>
+      <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+        <button onClick={imprimirComprobante} style={{
+          padding: "12px 24px", borderRadius: RADIUS.sm,
+          background: C.lime, color: C.brandDark,
+          border: `1px solid ${C.limeDark}`,
+          fontSize: 13.5, fontWeight: 700, cursor: "pointer",
+          fontFamily: "inherit",
+        }}>
+          🖨 Imprimir comprobante
+        </button>
+        <button onClick={nuevaVenta} style={{
+          padding: "12px 28px", borderRadius: RADIUS.sm,
+          background: C.brand, color: "#fff",
+          border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer",
+        }}>
+          Nueva venta
+        </button>
+      </div>
     </div>
   );
 
@@ -1082,17 +1231,278 @@ const NAV = [
   { id: "historial",   icon: faClipboardList,   label: "Historial"   },
 ];
 
+function GestionTurno({ C, turno, onAbrir, onCerrar, abriendoFlow }) {
+  // Muestra el bloqueo (no hay turno) o el banner (turno activo)
+  const [montoAp, setMontoAp]   = useState("");
+  const [obsAp, setObsAp]       = useState("");
+  const [montoCi, setMontoCi]   = useState("");
+  const [obsCi, setObsCi]       = useState("");
+  const [confirmarCierre, setConfirmarCierre] = useState(false);
+  const [proc, setProc]         = useState(false);
+  const [err, setErr]           = useState("");
+
+  if (!turno) {
+    // Overlay bloqueante de apertura
+    return (
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 200,
+        background: "rgba(15,37,99,0.55)", backdropFilter: "blur(6px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 20,
+      }}>
+        <div style={{
+          width: "100%", maxWidth: 440,
+          background: C.surface,
+          border: `1px solid ${C.border}`,
+          borderRadius: 18, padding: 28,
+          boxShadow: "0 30px 60px -20px rgba(0,0,0,0.4)",
+        }}>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: "-0.025em" }}>
+            Abre tu turno de caja
+          </h2>
+          <p style={{ margin: "8px 0 18px", fontSize: 13, color: C.ink2, lineHeight: 1.55 }}>
+            Declara el efectivo con el que abres la caja. Al cerrar el turno se
+            comparará con el efectivo contado para detectar diferencias.
+          </p>
+
+          <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, color: C.ink3, marginBottom: 6 }}>
+            Monto de apertura (COP)
+          </label>
+          <input
+            type="number" min="0" step="100"
+            value={montoAp} onChange={(e) => { setMontoAp(e.target.value); setErr(""); }}
+            placeholder="50000"
+            autoFocus
+            style={{
+              width: "100%", height: 46,
+              padding: "0 14px", borderRadius: 12,
+              border: `1.5px solid ${C.border}`,
+              background: C.surfaceAlt, color: C.ink,
+              fontSize: 15, fontFamily: "inherit", outline: "none",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          />
+          <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, color: C.ink3, marginTop: 14, marginBottom: 6 }}>
+            Observaciones (opcional)
+          </label>
+          <input
+            type="text" value={obsAp} onChange={(e) => setObsAp(e.target.value)}
+            placeholder="Ej. cambio recibido del turno anterior"
+            style={{
+              width: "100%", height: 42,
+              padding: "0 14px", borderRadius: 12,
+              border: `1.5px solid ${C.border}`,
+              background: C.surfaceAlt, color: C.ink,
+              fontSize: 13, fontFamily: "inherit", outline: "none",
+            }}
+          />
+
+          {err && (
+            <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10, background: C.dangerBg, border: `1px solid ${C.dangerBorder}`, color: C.danger, fontSize: 12.5 }}>
+              {err}
+            </div>
+          )}
+
+          <button
+            disabled={proc || !montoAp}
+            onClick={async () => {
+              setErr(""); setProc(true);
+              try { await onAbrir(Number(montoAp), obsAp); }
+              catch (e) { setErr(e?.response?.data?.error || "Error al abrir turno."); }
+              finally { setProc(false); }
+            }}
+            style={{
+              marginTop: 18, width: "100%", height: 48,
+              background: (proc || !montoAp) ? "#9CA3AF" : C.brand,
+              color: "#FAF7F0", fontWeight: 700,
+              borderRadius: 14, border: "none",
+              fontSize: 14, cursor: (proc || !montoAp) ? "not-allowed" : "pointer",
+              fontFamily: "inherit",
+            }}>
+            {proc ? "Abriendo…" : "Abrir turno"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Turno activo — banner superior con info y acción de cerrar
+  const fmtCOP = (n) => "$" + Number(n || 0).toLocaleString("es-CO");
+  const desde = new Date(turno.abierto_at).toLocaleString("es-CO", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" });
+
+  return (
+    <>
+      <div style={{
+        background: `linear-gradient(135deg, ${C.brand}, ${C.brandDark})`,
+        color: "#FAF7F0",
+        padding: "10px 18px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: 14, flexWrap: "wrap",
+        fontSize: 12.5,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 700 }}>
+            <span style={{ width: 8, height: 8, borderRadius: 999, background: C.lime, boxShadow: `0 0 0 3px ${C.lime}44` }}/>
+            Turno abierto
+          </span>
+          <span style={{ opacity: 0.85 }}>Desde {desde}</span>
+          <span style={{ opacity: 0.85 }}>Base: <strong style={{ fontVariantNumeric: "tabular-nums" }}>{fmtCOP(turno.monto_apertura)}</strong></span>
+        </div>
+        <button
+          onClick={() => setConfirmarCierre(true)}
+          style={{
+            padding: "6px 14px", borderRadius: 999,
+            background: "rgba(255,255,255,0.16)", color: "#FAF7F0",
+            border: "1px solid rgba(255,255,255,0.28)",
+            fontSize: 12, fontWeight: 700,
+            cursor: "pointer", fontFamily: "inherit",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.26)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.16)")}>
+          Cerrar turno
+        </button>
+      </div>
+
+      {confirmarCierre && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 200,
+          background: "rgba(0,0,0,0.50)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+        }}>
+          <div style={{
+            width: "100%", maxWidth: 440,
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 18, padding: 28,
+            boxShadow: "0 30px 60px -20px rgba(0,0,0,0.4)",
+          }}>
+            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: "-0.025em" }}>
+              Cerrar turno
+            </h2>
+            <p style={{ margin: "8px 0 18px", fontSize: 13, color: C.ink2, lineHeight: 1.55 }}>
+              Declara el efectivo contado al cierre. El sistema calcula la
+              diferencia automáticamente.
+            </p>
+
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, color: C.ink3, marginBottom: 6 }}>
+              Monto contado en caja (COP)
+            </label>
+            <input
+              type="number" min="0" step="100"
+              value={montoCi} onChange={(e) => { setMontoCi(e.target.value); setErr(""); }}
+              placeholder="125000"
+              autoFocus
+              style={{
+                width: "100%", height: 46,
+                padding: "0 14px", borderRadius: 12,
+                border: `1.5px solid ${C.border}`,
+                background: C.surfaceAlt, color: C.ink,
+                fontSize: 15, fontFamily: "inherit", outline: "none",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            />
+
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, color: C.ink3, marginTop: 14, marginBottom: 6 }}>
+              Observaciones (opcional)
+            </label>
+            <input
+              type="text" value={obsCi} onChange={(e) => setObsCi(e.target.value)}
+              placeholder="Ej. faltante por vuelto entregado"
+              style={{
+                width: "100%", height: 42,
+                padding: "0 14px", borderRadius: 12,
+                border: `1.5px solid ${C.border}`,
+                background: C.surfaceAlt, color: C.ink,
+                fontSize: 13, fontFamily: "inherit", outline: "none",
+              }}
+            />
+
+            {err && (
+              <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10, background: C.dangerBg, border: `1px solid ${C.dangerBorder}`, color: C.danger, fontSize: 12.5 }}>
+                {err}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+              <button
+                onClick={() => setConfirmarCierre(false)} disabled={proc}
+                style={{
+                  flex: 1, height: 46,
+                  background: "transparent", color: C.ink2,
+                  border: `1px solid ${C.border}`, borderRadius: 12,
+                  fontSize: 13.5, fontWeight: 600,
+                  cursor: proc ? "not-allowed" : "pointer", fontFamily: "inherit",
+                }}>
+                Cancelar
+              </button>
+              <button
+                disabled={proc || !montoCi}
+                onClick={async () => {
+                  setErr(""); setProc(true);
+                  try {
+                    await onCerrar(Number(montoCi), obsCi);
+                    setConfirmarCierre(false);
+                  } catch (e) { setErr(e?.response?.data?.error || "Error al cerrar turno."); }
+                  finally { setProc(false); }
+                }}
+                style={{
+                  flex: 1, height: 46,
+                  background: (proc || !montoCi) ? "#9CA3AF" : C.brand,
+                  color: "#FAF7F0", fontWeight: 700,
+                  borderRadius: 12, border: "none",
+                  fontSize: 13.5, cursor: (proc || !montoCi) ? "not-allowed" : "pointer",
+                  fontFamily: "inherit",
+                }}>
+                {proc ? "Cerrando…" : "Cerrar turno"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function PanelCajero() {
   const { C, toggle, mode } = useTheme();
   const { usuario, logout } = useAuth();
   const navigate = useNavigate();
   const [seccion, setSeccion] = useState("venta");
+  const [turno, setTurno] = useState(undefined); // undefined=cargando, null=sin turno, obj=turno activo
+
+  const cargarTurno = async () => {
+    try {
+      const { data } = await api.get("/cajero/turno-actual");
+      setTurno(data || null);
+    } catch {
+      setTurno(null);
+    }
+  };
 
   useEffect(() => {
     if (usuario && !["cajero", "admin", "superadmin"].includes(usuario.rol)) {
       navigate("/");
+    } else if (usuario) {
+      cargarTurno();
     }
   }, [usuario, navigate]);
+
+  const abrirTurno = async (monto_apertura, observaciones) => {
+    await api.post("/cajero/turno/abrir", { monto_apertura, observaciones });
+    await cargarTurno();
+  };
+  const cerrarTurno = async (monto_cierre, observaciones) => {
+    const { data } = await api.post("/cajero/turno/cerrar", { monto_cierre, observaciones });
+    await cargarTurno();
+    alert(
+      `Turno cerrado.\n\n` +
+      `Base apertura: $${Number(data.monto_apertura).toLocaleString("es-CO")}\n` +
+      `Ventas efectivo: $${Number(data.total_ventas).toLocaleString("es-CO")}\n` +
+      `Esperado en caja: $${Number(data.esperado_caja).toLocaleString("es-CO")}\n` +
+      `Contado: $${Number(data.monto_cierre).toLocaleString("es-CO")}\n` +
+      `Diferencia: $${Number(data.diferencia).toLocaleString("es-CO")}`
+    );
+  };
 
   return (
     <>
@@ -1120,14 +1530,19 @@ export default function PanelCajero() {
           display: "flex", flexDirection: "column",
           padding: "16px 0",
         }}>
-          <Link to="/" style={{
+          <Link to="/" title="Volver al sitio" style={{
             width: 36, height: 36, margin: "0 auto 18px",
             borderRadius: RADIUS.sm,
             background: C.lime, color: C.brandDark,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 14, fontWeight: 900,
+            fontSize: 13,
             textDecoration: "none",
-          }}>✦</Link>
+            transition: "transform 160ms var(--vp-ease-out)",
+          }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}>
+            <FontAwesomeIcon icon={faHouse}/>
+          </Link>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "0 8px", flex: 1 }}>
             {NAV.map(n => {
@@ -1179,12 +1594,25 @@ export default function PanelCajero() {
         </aside>
 
         {/* Contenido */}
-        <main style={{ flex: 1, minWidth: 0 }}>
-          {seccion === "venta" && <NuevaVenta usuario={usuario}/>}
-          {seccion === "consultas" && <ConsultasPago/>}
-          {seccion === "historial" && <Historial/>}
+        <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+          {turno && (
+            <GestionTurno
+              C={C} turno={turno}
+              onAbrir={abrirTurno} onCerrar={cerrarTurno}
+            />
+          )}
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+            {seccion === "venta" && <NuevaVenta usuario={usuario}/>}
+            {seccion === "consultas" && <ConsultasPago/>}
+            {seccion === "historial" && <Historial/>}
+          </div>
         </main>
       </div>
+
+      {/* Overlay bloqueante si no hay turno abierto (turno === null) */}
+      {turno === null && usuario?.rol === "cajero" && (
+        <GestionTurno C={C} turno={null} onAbrir={abrirTurno} onCerrar={cerrarTurno}/>
+      )}
     </>
   );
 }

@@ -1,19 +1,17 @@
 // src/components/landing/HeroLanding.jsx
-import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faCheck, faArrowRight, faArrowRightLong, faUserDoctor,
-  faTruckFast, faShieldHalved, faStethoscope, faRotateLeft,
-  faClock, faBoxOpen,
+  faCheck, faArrowRight, faArrowRightLong, faTags,
+  faTruckFast, faShieldHalved, faRotateLeft,
+  faClock, faBoxOpen, faPaw,
 } from "@fortawesome/free-solid-svg-icons";
-import api from "../../services/api";
-import { Reveal, useLandingPalette, money } from "./landing.utils.jsx";
+import { Reveal, useLandingPalette } from "./landing.utils.jsx";
 
 // Photo wall — fotos editoriales del diseño Victoria Pets
 import p1 from "../../assets/landing/p1-walk.png";
 import p2 from "../../assets/landing/p2-petting.png";
-import p3 from "../../assets/landing/p3-consult.png";
+const p3 = p2; // p3-consult.png eliminada, reutilizamos p2
 import p4 from "../../assets/landing/p4-app.png";
 import p5 from "../../assets/landing/p5-sleep.png";
 import p6 from "../../assets/landing/p6-pharmacy.png";
@@ -98,7 +96,7 @@ function TrustBand({ Cur }) {
   const items = [
     { icon: faTruckFast,    text: "Envío gratis · pedidos sobre $80.000" },
     { icon: faShieldHalved, text: "Pago seguro con ePayco" },
-    { icon: faStethoscope,  text: "Veterinarios titulados" },
+    { icon: faPaw,          text: "Productos de marca verificada" },
     { icon: faRotateLeft,   text: "Devoluciones hasta 7 días" },
   ];
   return (
@@ -131,17 +129,6 @@ function TrustBand({ Cur }) {
 export default function HeroLanding() {
   const { Cur } = useLandingPalette();
   const navigate = useNavigate();
-  const [precioConsulta, setPrecioConsulta] = useState(56000); // fallback
-
-  // TODO: crear endpoint GET /api/config/precio_consulta_base — por ahora fallback
-  useEffect(() => {
-    api.get('/config/precio_consulta_base')
-      .then(r => {
-        const v = Number(r?.data?.valor);
-        if (Number.isFinite(v) && v > 0) setPrecioConsulta(v);
-      })
-      .catch(() => {});
-  }, []);
 
   return (
     <section id="inicio" style={{ backgroundColor: Cur.bg }}>
@@ -186,14 +173,14 @@ export default function HeroLanding() {
 
             <Reveal delay={160}>
               <ul style={{ listStyle: "none", padding: 0, margin: "32px 0 0", maxWidth: 520 }}>
-                <HeroBullet Cur={Cur} icon={faStethoscope}>
-                  Veterinarios titulados disponibles 7 días a la semana
+                <HeroBullet Cur={Cur} icon={faPaw}>
+                  +500 productos para el bienestar de tu mascota
                 </HeroBullet>
                 <HeroBullet Cur={Cur} icon={faBoxOpen}>
                   Tienda con +500 productos y envío gratis sobre $80.000
                 </HeroBullet>
                 <HeroBullet Cur={Cur} icon={faClock}>
-                  Agenda tu cita desde el celular en menos de 60 segundos
+                  Entrega express el mismo día en Ibagué · gratis desde $80.000
                 </HeroBullet>
               </ul>
             </Reveal>
@@ -203,26 +190,11 @@ export default function HeroLanding() {
                 marginTop: 36, display: 'flex', flexWrap: 'wrap',
                 alignItems: 'center', gap: 20,
               }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: 13, color: Cur.inkSoft, fontWeight: 500 }}>
-                    Desde
-                  </span>
-                  <span className="vp-font-display vp-tabular" style={{
-                    fontSize: 38, fontWeight: 700, color: Cur.ink, lineHeight: 1.05,
-                    marginTop: 2,
-                  }}>
-                    {money(precioConsulta)}
-                  </span>
-                  <span style={{ fontSize: 12, color: Cur.inkMuted, marginTop: 2 }}>
-                    Consulta veterinaria, IVA incluido
-                  </span>
-                </div>
-
                 <div style={{ width: 1, height: 56, backgroundColor: Cur.border }} aria-hidden="true" />
 
                 <button
                   className="vp-cta-primary"
-                  onClick={() => navigate('/agendar-cita')}
+                  onClick={() => navigate('/tienda')}
                   style={{
                     backgroundColor: Cur.navy, color: Cur.canvas,
                     padding: "14px 24px", borderRadius: 999,
@@ -233,7 +205,7 @@ export default function HeroLanding() {
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = Cur.navyDeep)}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = Cur.navy)}
                 >
-                  Agendar cita <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 12, marginLeft: 6 }} />
+                  Ver tienda <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: 12, marginLeft: 6 }} />
                 </button>
 
                 <button
@@ -283,15 +255,15 @@ export default function HeroLanding() {
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0,
                 }}>
-                  <FontAwesomeIcon icon={faUserDoctor} style={{ fontSize: 16 }} />
+                  <FontAwesomeIcon icon={faTags} style={{ fontSize: 16 }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: Cur.ink, lineHeight: 1.3 }}>
-                    Conoce a nuestro equipo y agenda con nosotros
+                    Ver nuestro catálogo de productos
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6,
                     marginTop: 4, fontSize: 12, color: Cur.inkSoft }}>
-                    <span>Veterinarios titulados</span>
+                    <span>+500 referencias disponibles</span>
                     <FontAwesomeIcon icon={faArrowRightLong} style={{ fontSize: 11 }} />
                   </div>
                 </div>

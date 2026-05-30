@@ -195,7 +195,7 @@ router.get("/me", verificarToken, async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT id, nombre, apellido, email, telefono, rol, activo,
-              avatar_url, facturacion, created_at
+              facturacion, created_at
        FROM usuarios WHERE id = ?`,
       [req.usuario.id]
     );
@@ -208,7 +208,8 @@ router.get("/me", verificarToken, async (req, res) => {
     }
     res.json(user);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("[GET /auth/me] ERROR:", err.code, err.sqlMessage || err.message);
+    res.status(500).json({ error: err.sqlMessage || err.message });
   }
 });
 
@@ -314,7 +315,8 @@ router.get("/mis-ordenes", verificarToken, async (req, res) => {
     );
     res.json(ordenes);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("[GET /auth/mis-ordenes] ERROR:", err.code, err.sqlMessage || err.message);
+    res.status(500).json({ error: err.sqlMessage || err.message });
   }
 });
 

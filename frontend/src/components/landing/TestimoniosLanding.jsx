@@ -1,133 +1,221 @@
 // src/components/landing/TestimoniosLanding.jsx
-// Marquee horizontal — testimonios de adorno (no verificados).
+// Versión editorial compacta — cita destacada estilo magazine + 3 menciones.
+// Antes: marquee horizontal con cards 380×320 (~600px de alto total).
+// Ahora: una cita grande en lead + 3 mini quotes en grid (~360px total).
+import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faStar } from "@fortawesome/free-solid-svg-icons";
-import { Reveal, TypeReveal, Tilt3D, useLandingPalette } from "./landing.utils.jsx";
+import { faStar, faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { Reveal, useLandingPalette } from "./landing.utils.jsx";
 
 const TESTIMONIOS = [
-  { body: "Llevo a Toby hace tres años, y la veterinaria Camila siempre lo recibe como si fuera suyo. Eso no se paga.", name: "Sara M.",     meta: "Ibagué · cliente desde 2024", initials: "SM", accent: "navy" },
-  { body: "Pedí el alimento un lunes en la mañana, llegó esa misma tarde. Y a mejor precio que la tienda de al lado.",   name: "Andrés P.",   meta: "Ibagué · cliente desde 2024", initials: "AP", accent: "lime" },
-  { body: "Reagendé desde el celular en 30 segundos cuando se me cruzó una reunión. Antes me tocaba llamar mil veces.",  name: "Valentina C.",meta: "Ibagué · cliente desde 2024", initials: "VC", accent: "purple" },
-  { body: "El Dr. Javier le hizo a Roco una cirugía complicada y al otro día ya estaba caminando. Honestidad y oficio.", name: "Carolina B.", meta: "Ibagué · cliente desde 2023", initials: "CB", accent: "red" },
-  { body: "La consulta no se siente apurada. Te toman fotos, te mandan la receta por WhatsApp y hacen seguimiento.",     name: "Mateo G.",    meta: "Ibagué · cliente desde 2025", initials: "MG", accent: "navy" },
-  { body: "Mi gata es de las que no se deja ni mirar y con Andrés ya se relaja. La sala silenciosa hace toda la diferencia.", name: "Luisa R.", meta: "Ibagué · cliente desde 2024", initials: "LR", accent: "lime" },
+  {
+    body: "Pedí el alimento un lunes en la mañana, llegó esa misma tarde. Y a mejor precio que la tienda de al lado.",
+    name: "Andrés P.",   meta: "Cliente desde 2024", initials: "AP",
+  },
+  {
+    body: "El shampoo antiparasitario que me recomendaron le quitó el problema a Milo en una semana. Muy buen producto.",
+    name: "Sara M.",     meta: "Cliente desde 2024", initials: "SM",
+  },
+  {
+    body: "Llevo comprando el concentrado acá hace dos años. Siempre fresco, bien empacado y llega rapidísimo.",
+    name: "Carolina B.", meta: "Cliente desde 2023", initials: "CB",
+  },
+  {
+    body: "Encontré el suplemento articular que no había en ningún lado. Me asesoraron y llegó al día siguiente.",
+    name: "Valentina C.", meta: "Cliente desde 2024", initials: "VC",
+  },
 ];
-
-function TestimonioCard({ Cur, t }) {
-  const accent = Cur[t.accent] || Cur.navy;
-  return (
-    <div style={{ width: 380, flexShrink: 0 }}>
-      <Tilt3D max={7} perspective={1100}>
-        <div style={{
-          backgroundColor: Cur.surface,
-          border: `1px solid ${Cur.border}`,
-          borderRadius: 24, padding: 28, height: 320,
-          display: "flex", flexDirection: "column", position: "relative",
-          boxShadow: "0 10px 30px -20px rgba(10,20,38,0.18)",
-        }}>
-          <div aria-hidden="true" style={{
-            position: "absolute", top: -20, right: -20,
-            width: 80, height: 80, borderRadius: 999,
-            background: `radial-gradient(circle, ${accent}33 0%, ${accent}00 70%)`,
-            pointerEvents: "none",
-          }}/>
-
-          <div style={{ display: 'flex', gap: 4 }}>
-            {[0, 1, 2, 3, 4].map((i) => (
-              <FontAwesomeIcon key={i} icon={faStar} style={{ fontSize: 13, color: Cur.lime }} />
-            ))}
-          </div>
-
-          <blockquote style={{
-            fontSize: 16, lineHeight: 1.55,
-            color: Cur.ink, marginTop: 16, marginBottom: 0, marginInline: 0,
-            position: "relative", flex: 1, fontWeight: 400,
-          }}>
-            <span aria-hidden="true" className="vp-font-display" style={{
-              position: "absolute", left: -8, top: -24,
-              fontSize: 64, color: accent, lineHeight: 1, fontWeight: 700,
-              opacity: 0.35,
-            }}>
-              “
-            </span>
-            <span style={{ position: 'relative', zIndex: 1 }}>{t.body}</span>
-          </blockquote>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18 }}>
-            <div style={{
-              width: 42, height: 42, borderRadius: 999,
-              background: accent,
-              color: Cur.canvas, display: "inline-flex", alignItems: "center", justifyContent: "center",
-              fontWeight: 700, fontSize: 13, flexShrink: 0,
-            }}>
-              {t.initials}
-            </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: Cur.ink }}>{t.name}</div>
-              <div style={{ fontSize: 11, color: Cur.inkSoft, marginTop: 2 }}>{t.meta}</div>
-            </div>
-          </div>
-        </div>
-      </Tilt3D>
-    </div>
-  );
-}
 
 export default function TestimoniosLanding() {
   const { Cur } = useLandingPalette();
-  const loop = [...TESTIMONIOS, ...TESTIMONIOS];
+  const [activo, setActivo] = useState(0);
+
+  const next = () => setActivo((i) => (i + 1) % TESTIMONIOS.length);
+  const prev = () => setActivo((i) => (i - 1 + TESTIMONIOS.length) % TESTIMONIOS.length);
+
+  const lead = TESTIMONIOS[activo];
 
   return (
     <section style={{
       backgroundColor: Cur.surfaceAlt,
       transition: "background-color 400ms ease",
-      position: "relative", overflow: "hidden",
+      position: 'relative', overflow: 'hidden',
     }}>
       <div className="vp-bg-blob" aria-hidden="true"
-        style={{ top: -120, right: -100, width: 460, height: 460, backgroundColor: Cur.lime, opacity: 0.08 }}/>
-      <div className="vp-bg-blob" aria-hidden="true"
-        style={{ bottom: -160, left: -120, width: 520, height: 520, backgroundColor: Cur.red, opacity: 0.06 }}/>
+        style={{ top: -120, right: -100, width: 380, height: 380, backgroundColor: Cur.lime, opacity: 0.06 }}/>
 
-      <div style={{ height: 40 }} aria-hidden="true" />
       <div style={{
-        maxWidth: 1320, margin: '0 auto',
-        padding: '80px 24px 32px',
-        position: "relative", zIndex: 1,
+        maxWidth: 1100, margin: '0 auto',
+        padding: '72px 24px',
+        position: 'relative', zIndex: 1,
       }}>
-        <Reveal>
-          <div style={{ textAlign: 'center' }}>
+        {/* Header sobre la cita — eyebrow inline a la izquierda + controles a la derecha */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          alignItems: 'flex-end', gap: 16, marginBottom: 28,
+          flexWrap: 'wrap',
+        }}>
+          <Reveal>
             <div style={{
-              fontSize: 14, color: Cur.lime, fontWeight: 600,
+              display: 'inline-flex', alignItems: 'center', gap: 10,
+              fontSize: 11, fontWeight: 700,
+              color: Cur.navy, letterSpacing: '0.18em',
+              textTransform: 'uppercase',
             }}>
-              Familias que confían
+              <span style={{ width: 22, height: 1, backgroundColor: Cur.navy }} />
+              <span style={{ display: 'inline-flex', gap: 3 }}>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <FontAwesomeIcon key={i} icon={faStar} style={{ fontSize: 10, color: Cur.lime }} />
+                ))}
+              </span>
+              4.8 · Lo que cuentan en Ibagué
             </div>
-            <TypeReveal
-              as="h2"
-              className="vp-font-display"
-              style={{
-                marginTop: 14, marginBottom: 0,
-                fontSize: "clamp(34px, 4vw, 56px)", lineHeight: 1.0,
-                fontWeight: 700, color: Cur.ink,
-                letterSpacing: "-0.025em",
-              }}
-              segments={[
-                { text: "Lo que cuentan " },
-                { text: "nuestros clientes.", color: Cur.navy },
-              ]}
-            />
-          </div>
-        </Reveal>
-      </div>
+          </Reveal>
 
-      <Reveal delay={120}>
-        <div className="vp-marquee-x-mask" style={{ padding: "32px 0 64px" }}>
-          <div className="vp-marquee-x">
-            {loop.map((t, i) => (
-              <TestimonioCard key={`${t.name}-${i}`} Cur={Cur} t={t} />
-            ))}
+          {/* Controles */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{
+              fontSize: 12, color: Cur.inkSoft, fontWeight: 500,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {String(activo + 1).padStart(2, '0')} <span style={{ opacity: 0.5 }}>/ {String(TESTIMONIOS.length).padStart(2, '0')}</span>
+            </span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[
+                { icon: faChevronLeft,  onClick: prev, label: 'Anterior' },
+                { icon: faChevronRight, onClick: next, label: 'Siguiente' },
+              ].map(({ icon, onClick, label }) => (
+                <button
+                  key={label} type="button"
+                  onClick={onClick} aria-label={label}
+                  style={{
+                    width: 36, height: 36, borderRadius: 999,
+                    backgroundColor: 'transparent',
+                    border: `1px solid ${Cur.border}`,
+                    color: Cur.ink, cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    fontFamily: 'inherit',
+                    transition: 'border-color 180ms ease, color 180ms ease, background-color 180ms ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = Cur.navy;
+                    e.currentTarget.style.color = Cur.navy;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = Cur.border;
+                    e.currentTarget.style.color = Cur.ink;
+                  }}
+                >
+                  <FontAwesomeIcon icon={icon} style={{ fontSize: 11 }} />
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </Reveal>
+
+        {/* Lead quote — italic editorial grande */}
+        <Reveal>
+          <div key={activo} style={{
+            position: 'relative',
+            padding: '8px 0',
+            animation: 'vp-fade-in 320ms cubic-bezier(0.16,1,0.3,1)',
+          }}>
+            <span aria-hidden="true" className="vp-font-display" style={{
+              position: 'absolute', top: -36, left: -8,
+              fontSize: 140, lineHeight: 1, fontWeight: 200, fontStyle: 'italic',
+              color: Cur.lime, opacity: 0.18,
+              pointerEvents: 'none',
+            }}>
+              “
+            </span>
+            <blockquote className="vp-font-display" style={{
+              margin: 0, paddingLeft: 8,
+              fontSize: 'clamp(22px, 2.6vw, 32px)', fontWeight: 400,
+              fontStyle: 'italic',
+              color: Cur.ink, lineHeight: 1.35,
+              letterSpacing: '-0.018em',
+              maxWidth: 880,
+            }}>
+              {lead.body}
+            </blockquote>
+
+            <div style={{
+              marginTop: 24, paddingLeft: 8,
+              display: 'inline-flex', alignItems: 'center', gap: 12,
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 999,
+                backgroundColor: Cur.navy, color: Cur.canvas,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 700,
+              }}>
+                {lead.initials}
+              </div>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: Cur.ink }}>{lead.name}</div>
+                <div style={{ fontSize: 11.5, color: Cur.inkSoft, marginTop: 1 }}>{lead.meta}</div>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+
+        {/* Mini menciones — los OTROS testimonios (no el activo), como índice */}
+        <div className="vp-testim-mini" style={{
+          marginTop: 40,
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12,
+        }}>
+          {TESTIMONIOS.filter((_, i) => i !== activo).slice(0, 3).map((t) => {
+            const realIdx = TESTIMONIOS.findIndex(x => x.name === t.name);
+            return (
+              <button
+                key={t.name} type="button"
+                onClick={() => setActivo(realIdx)}
+                style={{
+                  textAlign: 'left', cursor: 'pointer',
+                  padding: '14px 16px', borderRadius: 14,
+                  backgroundColor: Cur.surface,
+                  border: `1px solid ${Cur.border}`,
+                  fontFamily: 'inherit',
+                  transition: 'border-color 200ms ease, transform 200ms cubic-bezier(0.16,1,0.3,1)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = Cur.navy + '55';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = Cur.border;
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <p style={{
+                  margin: 0, fontSize: 12.5, color: Cur.inkSoft,
+                  lineHeight: 1.5,
+                  display: '-webkit-box', WebkitBoxOrient: 'vertical',
+                  WebkitLineClamp: 2, overflow: 'hidden',
+                }}>
+                  “{t.body}”
+                </p>
+                <div style={{
+                  marginTop: 10, fontSize: 11.5, fontWeight: 600,
+                  color: Cur.ink,
+                }}>
+                  — {t.name}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes vp-fade-in {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0);   }
+        }
+        @media (max-width: 720px) {
+          .vp-testim-mini { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </section>
   );
 }

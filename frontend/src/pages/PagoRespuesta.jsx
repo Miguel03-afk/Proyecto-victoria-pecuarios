@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useCarrito } from "../context/CarritoContext";
 import { useTheme } from "../styles/ThemeProvider.jsx";
 import api from "../services/api";
 import logoVP from "../assets/WhatsApp Image 2026-04-22 at 1.19.17 PM.jpeg";
@@ -47,6 +48,7 @@ export default function PagoRespuesta() {
   const { C } = useTheme();
   const [params]    = useSearchParams();
   const { usuario } = useAuth();
+  const { vaciar }  = useCarrito();
   const navigate    = useNavigate();
 
   const [estadoVerif, setEstadoVerif] = useState(null);
@@ -82,6 +84,13 @@ export default function PagoRespuesta() {
       .then(({ data }) => {
         setEstadoVerif(data.estado);
         sessionStorage.removeItem("vp_pago_pendiente");
+        // El carrito local se vacía SOLO cuando el pago fue efectivamente
+        // procesado (aprobado o pendiente con orden creada). Si el usuario
+        // canceló el widget de ePayco, este componente no se monta y el
+        // carrito queda intacto — exactamente lo que queremos.
+        if (data.estado === "pagada" || data.estado === "pendiente_pago") {
+          vaciar();
+        }
       })
       .catch(() => {})
       .finally(() => setFinalizando(false));

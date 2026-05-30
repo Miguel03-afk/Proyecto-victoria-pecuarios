@@ -68,6 +68,27 @@ export default function ReporteVentas() {
           style={{ background:T.brand, color:'#fff' }}>
           {cargando ? 'Buscando...' : 'Buscar'}
         </button>
+        {datos && (
+          <button onClick={() => window.print()}
+            className="px-5 py-2 rounded-xl text-sm font-semibold transition-colors vp-no-print"
+            style={{ background:T.lime, color:T.brandDark, border:`1px solid ${T.limeDark}` }}
+            title="Imprimir o guardar como PDF (Ctrl/Cmd+P)">
+            📄 Exportar PDF
+          </button>
+        )}
+      </div>
+
+      {/* Header solo visible al imprimir */}
+      <div className="vp-print-only" style={{ display:'none', marginBottom:24, paddingBottom:16, borderBottom:'2px solid #1E3A8A' }}>
+        <h1 style={{ margin:0, fontSize:24, fontWeight:700, color:'#1E3A8A', letterSpacing:'-0.02em' }}>
+          Victoria Pets · Reporte de ventas
+        </h1>
+        <p style={{ margin:'4px 0 0', fontSize:12, color:'#6B7280' }}>
+          {filtros.fecha_inicio ? `Desde ${filtros.fecha_inicio}` : 'Sin fecha inicio'}
+          {' · '}{filtros.fecha_fin ? `Hasta ${filtros.fecha_fin}` : 'Sin fecha fin'}
+          {' · '}Estado: {filtros.estado}
+          {' · '}Generado: {new Date().toLocaleString('es-CO')}
+        </p>
       </div>
 
       {datos && (

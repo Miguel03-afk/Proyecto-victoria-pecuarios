@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import api from "../services/api";
+import { migrarFavoritosGuest } from "../hooks/useFavoritos";
 
 const AuthContext = createContext(null);
 
@@ -21,6 +22,9 @@ export function AuthProvider({ children }) {
     localStorage.setItem("token", token);
     localStorage.setItem("usuario", JSON.stringify(datosUsuario));
     setUsuario(datosUsuario);
+    // Fusiona los favoritos guest del localStorage con los del backend.
+    // Fire-and-forget: no bloqueamos el login.
+    migrarFavoritosGuest(datosUsuario);
   };
 
   const logout = () => {

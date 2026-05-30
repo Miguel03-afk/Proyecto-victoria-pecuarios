@@ -153,4 +153,128 @@ router.post("/facturas", auth, async (req, res) => {
   }
 });
 
+/* ─── TURNOS DE CAJA ─────────────────────────────────────────────────────────
+   Apertura/cierre de turno + cuadre. Solo el cajero dueño (o admin) puede
+   abrir/cerrar su turno. */
+
+/* GET /api/cajero/turno-actual — devuelve el turno abierto del cajero o null. */
+router.get("/turno-actual", auth, async (req, res) => {
+  try {
+    const [[turno]] = await db.query(
+      `SELECT id, cajero_id, monto_apertura, total_ventas, abierto_at, observaciones
+         FROM cajero_turnos
+        WHERE cajero_id = ? AND cerrado_at IS NULL
+        ORDER BY abierto_at DESC
+        LIMIT 1`,
+      [req.usuario.id]
+    );
+    res.json(turno || null);
+  } catch (err) {
+    res.status(500).json({ error: "Error al consultar turno." });
+  }
+});
+
+/* POST /api/cajero/turno/abrir { monto_apertura, observaciones? } */
+router.post("/turno/abrir", auth, async (req, res) => {
+  const monto = Number(req.body?.monto_apertura);
+  const obs   = String(req.body?.observaciones || "").trim() || null;
+  if (!Number.isFinite(monto) || monto < 0) {
+    return res.status(400).json({ error: "monto_apertura inválido." });
+  }
+  try {
+    // Validar que no hay turno abierto
+    const [[abierto]] = await db.query(
+      "SELECT id FROM cajero_turnos WHERE cajero_id = ? AND cerrado_at IS NULL",
+      [req.usuario.id]
+    );
+    if (abierto) {
+      return res.status(409).json({ error: "Ya tienes un turno abierto. Ciérralo antes de abrir uno nuevo." });
+    }
+    const [r] = await db.query(
+      `INSERT INTO cajero_turnos (cajero_id, monto_apertura, observaciones)
+       VALUES (?, ?, ?)`,
+      [req.usuario.id, monto, obs]
+    );
+    res.status(201).json({ mensaje: "Turno abierto.", id: r.insertId, monto_apertura: monto });
+  } catch (err) {
+    console.error("[turno/abrir]", err);
+    res.status(500).json({ error: "Error al abrir turno." });
+  }
+});
+
+/* POST /api/cajero/turno/cerrar { monto_cierre, observaciones? }
+   Calcula automáticamente total_ventas del turno (efectivo, órdenes pagadas
+   por este cajero entre abierto_at y ahora) y la diferencia. */
+router.post("/turno/cerrar", auth, async (req, res) => {
+  const monto = Number(req.body?.monto_cierre);
+  const obs   = String(req.body?.observaciones || "").trim() || null;
+  if (!Number.isFinite(monto) || monto < 0) {
+    return res.status(400).json({ error: "monto_cierre inválido." });
+  }
+  try {
+    const [[turno]] = await db.query(
+      "SELECT id, monto_apertura, abierto_at FROM cajero_turnos WHERE cajero_id = ? AND cerrado_at IS NULL ORDER BY abierto_at DESC LIMIT 1",
+      [req.usuario.id]
+    );
+    if (!turno) return res.status(404).json({ error: "No hay turno abierto." });
+
+    // Suma de ventas en efectivo registradas por este cajero durante el turno
+    const [[{ ventas }]] = await db.query(
+      `SELECT COALESCE(SUM(total), 0) AS ventas
+         FROM ordenes
+        WHERE cajero_id = ?
+          AND metodo_pago = 'efectivo'
+          AND estado IN ('pagada','procesando','enviada','entregada')
+          AND created_at >= ?`,
+      [req.usuario.id, turno.abierto_at]
+    );
+
+    const apertura = Number(turno.monto_apertura);
+    const ventasNum = Number(ventas);
+    const esperado = apertura + ventasNum;
+    const diferencia = monto - esperado;
+
+    await db.query(
+      `UPDATE cajero_turnos
+          SET monto_cierre = ?,
+              total_ventas = ?,
+              diferencia   = ?,
+              cerrado_at   = NOW(),
+              observaciones = COALESCE(NULLIF(?, ''), observaciones)
+        WHERE id = ?`,
+      [monto, ventasNum, diferencia, obs, turno.id]
+    );
+
+    res.json({
+      mensaje: "Turno cerrado.",
+      monto_apertura: apertura,
+      total_ventas:   ventasNum,
+      esperado_caja:  esperado,
+      monto_cierre:   monto,
+      diferencia,
+    });
+  } catch (err) {
+    console.error("[turno/cerrar]", err);
+    res.status(500).json({ error: "Error al cerrar turno." });
+  }
+});
+
+/* GET /api/cajero/turnos — historial de turnos del cajero autenticado */
+router.get("/turnos", auth, async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT id, monto_apertura, monto_cierre, total_ventas, diferencia,
+              abierto_at, cerrado_at, observaciones
+         FROM cajero_turnos
+        WHERE cajero_id = ?
+        ORDER BY abierto_at DESC
+        LIMIT 30`,
+      [req.usuario.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Error al cargar historial." });
+  }
+});
+
 export default router;

@@ -19,6 +19,7 @@ export function useLandingPalette() {
     redDeep:    C.redDeep     || '#C42836',
     purple:     C.purple      || '#9B5DE5',
     bg:         C.canvas,
+    canvas:     C.canvas,
     surface:    C.surface,
     surfaceAlt: C.surfaceAlt,
     border:     C.border      || C.line,
